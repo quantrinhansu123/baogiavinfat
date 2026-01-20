@@ -8,6 +8,12 @@ import { loadPromotionsFromFirebase, filterPromotionsByDongXe } from '../data/pr
 import { provinces } from '../data/provincesData';
 import CurrencyInput from '../components/shared/CurrencyInput';
 import {
+  isValidInterestRate,
+  isSafeCurrency,
+  parseCurrency,
+  clampDiscount,
+} from '../utils/validation';
+import {
   phi_duong_bo,
   phi_cap_bien_so,
   phi_kiem_dinh,
@@ -246,19 +252,39 @@ export default function CalculatorPage() {
       const allPromotions = [...promotionsList, ...newPromotions];
 
       // Ensure all promotions have the required fields with default values
-      const formattedPromotions = allPromotions.map(promotion => ({
-        id: promotion.id,
-        name: promotion.name || '',
-        type: promotion.type || 'display',
-        value: typeof promotion.value === 'number' ? promotion.value : 0,
-        maxDiscount: typeof promotion.maxDiscount === 'number' ? promotion.maxDiscount : 0,
-        minPurchase: typeof promotion.minPurchase === 'number' ? promotion.minPurchase : 0,
-        createdAt: promotion.createdAt || new Date().toISOString(),
-        createdBy: promotion.createdBy || 'system',
-        isHardcoded: !!promotion.isHardcoded
-      }));
+      const formattedPromotions = allPromotions.map(promotion => {
+        let value = typeof promotion.value === 'number' ? promotion.value : 0;
+        // Normalize percentage: nếu value < 1 (ví dụ 0.15), convert sang dạng % (15)
+        if (promotion.type === 'percentage' && value > 0 && value < 1) {
+          value = value * 100;
+        }
+        return {
+          id: promotion.id,
+          name: promotion.name || '',
+          type: promotion.type || 'display',
+          value,
+          maxDiscount: typeof promotion.maxDiscount === 'number' ? promotion.maxDiscount : 0,
+          minPurchase: typeof promotion.minPurchase === 'number' ? promotion.minPurchase : 0,
+          createdAt: promotion.createdAt || new Date().toISOString(),
+          createdBy: promotion.createdBy || 'system',
+          isHardcoded: !!promotion.isHardcoded
+        };
+      });
 
       setPromotions(formattedPromotions);
+
+      // Sync selectedPromotions với data mới từ Firebase
+      // Cập nhật value trong selectedPromotions nếu có thay đổi
+      setSelectedPromotions(prev => {
+        if (prev.length === 0) return prev;
+        return prev.map(sp => {
+          const updated = formattedPromotions.find(p => p.id === sp.id);
+          if (updated) {
+            return { ...sp, value: updated.value, type: updated.type };
+          }
+          return sp;
+        });
+      });
     } catch (error) {
       console.error("Error loading promotions:", error);
       toast.error("Lỗi khi tải danh sách ưu đãi: " + error.message);
@@ -351,12 +377,12 @@ export default function CalculatorPage() {
 
     if (promotion.type === 'percentage') {
       // Calculate percentage discount
-      discount = (amount * promotion.value) / 100;
-
-      // Apply maximum discount limit if set
-      if (promotion.maxDiscount && discount > promotion.maxDiscount) {
-        discount = promotion.maxDiscount;
+      let percentValue = promotion.value;
+      // Auto-normalize: nếu value < 1 (ví dụ 0.15), convert sang dạng % (15)
+      if (percentValue > 0 && percentValue < 1) {
+        percentValue = percentValue * 100;
       }
+      discount = (amount * percentValue) / 100;
     } else if (promotion.type === 'fixed') {
       // Fixed amount discount
       discount = Math.min(promotion.value, amount);
@@ -513,10 +539,18 @@ export default function CalculatorPage() {
       // Only update if there are new promotions to add
       const newPromotions = [
         ...selectedPromotions,
-        ...selectedPromos.map(p => ({
-          ...p,
-          isActive: false // Default to not active when added
-        }))
+        ...selectedPromos.map(p => {
+          // Normalize percentage value when adding
+          let value = p.value;
+          if (p.type === 'percentage' && value > 0 && value < 1) {
+            value = value * 100;
+          }
+          return {
+            ...p,
+            value,
+            isActive: false // Default to not active when added
+          };
+        })
       ];
 
       setSelectedPromotions(newPromotions);
@@ -530,35 +564,43 @@ export default function CalculatorPage() {
 
   // Calculate total discount from selected and active promotions
   const calculatePromotionDiscounts = (price, promotionsToCheck = null) => {
-    const promotions = promotionsToCheck || selectedPromotions;
-    
-    if (!promotions || !promotions.length) {
+    const promoList = promotionsToCheck || selectedPromotions;
+
+    if (!promoList || !promoList.length) {
       return 0;
     }
-    
+
     // Filter out promotions that are not active if we're not checking specific ones
-    const activePromotions = promotionsToCheck 
-      ? promotions 
-      : promotions.filter(p => p.isActive === true);
-    
+    const activePromotions = promotionsToCheck
+      ? promoList
+      : promoList.filter(p => p.isActive === true);
+
     if (activePromotions.length === 0) {
       return 0;
     }
-    
+
     return activePromotions.reduce((total, promo) => {
       try {
         // Skip if promotion is not active (isActive is explicitly false) and we're not checking specific ones
         if (!promo || (!promotionsToCheck && promo.isActive === false)) {
           return total;
         }
-        
-        if (promo.type === 'fixed') {
-          return total + (parseFloat(promo.value) || 0);
-        } else if (promo.type === 'percentage') {
-          const percentage = parseFloat(promo.value) || 0;
-          const maxDiscount = parseFloat(promo.maxDiscount) || 0;
+
+        // Lookup fresh type and value from Firebase promotions state
+        const freshPromo = promotions.find(p => p.id === promo.id);
+        const type = freshPromo?.type ?? promo.type;
+        const value = freshPromo?.value ?? promo.value;
+
+        if (type === 'fixed') {
+          return total + (parseFloat(value) || 0);
+        } else if (type === 'percentage') {
+          let percentage = parseFloat(value) || 0;
+          // Auto-normalize: nếu value < 1 (ví dụ 0.15), convert sang dạng % (15)
+          if (percentage > 0 && percentage < 1) {
+            percentage = percentage * 100;
+          }
           const discount = (price * percentage) / 100;
-          return total + (maxDiscount > 0 ? Math.min(discount, maxDiscount) : discount);
+          return total + discount;
         }
         return total;
       } catch (error) {
@@ -799,10 +841,14 @@ export default function CalculatorPage() {
       const savedPromotions = localStorage.getItem('selectedPromotions');
       if (savedPromotions) {
         const parsed = JSON.parse(savedPromotions);
-        // Set isActive to false by default when loading
+        // Set isActive to false by default when loading + normalize percentage values
         const withDefaults = parsed.map(p => ({
           ...p,
-          isActive: false // Default to false when loading
+          isActive: false, // Default to false when loading
+          // Normalize percentage: nếu value < 1 (ví dụ 0.15), convert sang dạng % (15)
+          value: (p.type === 'percentage' && p.value > 0 && p.value < 1)
+            ? p.value * 100
+            : p.value
         }));
         setSelectedPromotions(withDefaults);
       }
@@ -949,12 +995,12 @@ export default function CalculatorPage() {
     
     // Calculate promotion discounts from selected promotions
     const promotionDiscounts = calculatePromotionDiscounts(basePrice);
-    console.log('Promotion discounts:', promotionDiscounts, 'from promotions:', selectedPromotions);
-    
+
     // Total promotion discounts (both from selected promotions and legacy)
-    const totalPromotionDiscounts = (promotionDiscounts || 0) + (legacyPromotionDiscount || 0);
-    console.log('Total promotion discounts:', totalPromotionDiscounts);
-    
+    // Use clampDiscount to ensure discount never exceeds base price
+    const rawTotalDiscount = (promotionDiscounts || 0) + (legacyPromotionDiscount || 0);
+    const totalPromotionDiscounts = clampDiscount(rawTotalDiscount, basePrice);
+
     const priceAfterBasicPromotions = Math.max(0, basePrice - totalPromotionDiscounts);
 
     // VinClub discount - tính trên (Giá niêm yết - fix discount)
@@ -1015,7 +1061,7 @@ export default function CalculatorPage() {
     if (loanToggle) {
       const loanRatioDecimal = loanRatio / 100;
       let annualRate = lai_suat_vay_hang_nam;
-      if (customInterestRate && !isNaN(Number(customInterestRate)) && Number(customInterestRate) >= 0) {
+      if (customInterestRate && isValidInterestRate(customInterestRate)) {
         annualRate = Number(customInterestRate) / 100;
       }
       const monthlyRate = annualRate / 12;
@@ -1429,11 +1475,28 @@ export default function CalculatorPage() {
                               type="number"
                               min="0"
                               max={promotionType === 'percentage' ? '100' : ''}
+                              step={promotionType === 'percentage' ? '1' : 'any'}
                               value={editingPromotion.value}
-                              onChange={(e) => setEditingPromotion({...editingPromotion, value: parseFloat(e.target.value) || 0})}
+                              onChange={(e) => {
+                                let val = parseFloat(e.target.value) || 0;
+                                // Validate percentage: phải từ 0-100, không nhận giá trị thập phân < 1
+                                if (promotionType === 'percentage') {
+                                  val = Math.min(100, Math.max(0, val));
+                                  // Nếu user nhập 0.15 thay vì 15, auto convert
+                                  if (val > 0 && val < 1) {
+                                    val = Math.round(val * 100);
+                                  }
+                                }
+                                setEditingPromotion({...editingPromotion, value: val});
+                              }}
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-sm sm:text-base"
-                              placeholder={promotionType === 'percentage' ? '0-100%' : '0'}
+                              placeholder={promotionType === 'percentage' ? 'Nhập 15 cho giảm 15%' : '0'}
                             />
+                            {promotionType === 'percentage' && editingPromotion.value > 0 && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Ví dụ: Xe 299 triệu sẽ được giảm {((299000000 * editingPromotion.value) / 100).toLocaleString('vi-VN')} đ
+                              </p>
+                            )}
                           </div>
 
                         </div>
@@ -2140,8 +2203,19 @@ export default function CalculatorPage() {
                         </label>
                         <div className="flex items-center gap-2">
                           <span className={`font-semibold text-red-600`}>
-                            {promo.isActive 
-                              ? `-${formatCurrency(calculatePromotionDiscounts(calculations.basePrice, [promo]))}`
+                            {promo.isActive
+                              ? (() => {
+                                  // Lấy value và type mới nhất từ promotions (Firebase) thay vì selectedPromotions (localStorage cũ)
+                                  const freshPromo = promotions.find(p => p.id === promo.id);
+                                  const value = freshPromo?.value ?? promo.value;
+                                  const type = freshPromo?.type ?? promo.type;
+                                  const discount = calculatePromotionDiscounts(calculations.basePrice, [{
+                                    ...promo,
+                                    value,
+                                    type
+                                  }]);
+                                  return `-${formatCurrency(discount)}`;
+                                })()
                               : '0 ₫'
                             }
                           </span>
@@ -2389,7 +2463,9 @@ export default function CalculatorPage() {
                       value={formatCurrencyInput(registrationFee)}
                       onChange={(e) => {
                         const parsedValue = parseCurrencyInput(e.target.value);
-                        setRegistrationFee(Math.max(0, parsedValue));
+                        if (isSafeCurrency(parsedValue)) {
+                          setRegistrationFee(parsedValue);
+                        }
                       }}
                       className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right font-semibold"
                       placeholder="0"
@@ -2403,8 +2479,10 @@ export default function CalculatorPage() {
                         value={formatCurrencyInput(isBodyInsuranceManual ? bodyInsuranceFee : calculations.bodyInsurance)}
                         onChange={(e) => {
                           const parsedValue = parseCurrencyInput(e.target.value);
-                          setBodyInsuranceFee(Math.max(0, parsedValue));
-                          setIsBodyInsuranceManual(true); // Đánh dấu là chỉnh sửa thủ công
+                          if (isSafeCurrency(parsedValue)) {
+                            setBodyInsuranceFee(parsedValue);
+                            setIsBodyInsuranceManual(true);
+                          }
                         }}
                         className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right font-semibold"
                         placeholder="0"
