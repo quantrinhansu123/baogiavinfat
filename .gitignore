@@ -45,3 +45,6 @@ NUL
 repomix-output.xml
 project-memory.md
 docs/
+
+# Test coverage
+coverage/
