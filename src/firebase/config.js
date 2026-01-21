@@ -20,9 +20,25 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
+// Validate required Firebase config
+const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'databaseURL', 'appId'];
+const missingKeys = requiredKeys.filter(key => !firebaseConfig[key]);
+if (missingKeys.length > 0) {
+  console.error(`Firebase config missing required keys: ${missingKeys.join(', ')}. Please check environment variables.`);
+}
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+
+// Initialize Analytics only in browser environment and with valid config
+let analytics = null;
+if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
+  try {
+    analytics = getAnalytics(app);
+  } catch (error) {
+    console.warn('Firebase Analytics failed to initialize:', error.message);
+  }
+}
 
 // Initialize Realtime Database and get a reference to the service
 export const database = getDatabase(app);
