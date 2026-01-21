@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Car, BarChart3, Package, TrendingUp, Search, Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Edit2, Trash2, Car, BarChart3, Package, TrendingUp, Search, Filter, X, ChevronDown, ChevronUp, Upload, Download, Trash } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { ref, onValue, set, push, update, remove } from 'firebase/database';
+import { database } from '../firebase/config';
+import * as XLSX from 'xlsx';
 import { danh_sach_xe, carPriceData, uniqueNgoaiThatColors, uniqueNoiThatColors, getCarImageUrl } from '../data/calculatorData';
+import { parseVehicleExcel, generateImportTemplate, VEHICLE_STATUSES, STATUS_LABELS, STATUS_COLORS } from '../utils/excelParser';
 
 export default function DanhSachXePage() {
     const [vehicles, setVehicles] = useState([]);
@@ -17,8 +21,11 @@ export default function DanhSachXePage() {
         exterior_color: '',
         interior_color: '',
         quantity: 1,
-        status: 'available'
+        status: VEHICLE_STATUSES.READY
     });
+    const fileInputRef = useRef(null);
+    const [isImporting, setIsImporting] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [filters, setFilters] = useState({
         searchTerm: '',
         model: '',
@@ -28,17 +35,116 @@ export default function DanhSachXePage() {
     });
     const [stats, setStats] = useState({
         total: 0,
-        available: 0,
-        reserved: 0,
-        sold: 0,
+        ready: 0,
+        notArrived: 0,
+        arrived: 0,
+        matched: 0,
+        exported: 0,
+        delivered: 0,
         byModel: {},
         byColor: {}
     });
 
-    // Load vehicles from localStorage
+    // Load vehicles from Firebase (real-time listener)
     useEffect(() => {
-        loadVehicles();
+        const vehiclesRef = ref(database, 'vehicleInventory');
+        const unsubscribe = onValue(
+            vehiclesRef,
+            (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    const vehiclesList = Object.entries(data).map(([id, vehicle]) => ({
+                        ...vehicle,
+                        id
+                    }));
+                    setVehicles(vehiclesList);
+                } else {
+                    setVehicles([]);
+                }
+                setIsLoading(false);
+            },
+            (error) => {
+                console.error('Firebase listener error:', error);
+                toast.error('Lỗi kết nối Firebase: ' + error.message);
+                setIsLoading(false);
+            }
+        );
+        return () => unsubscribe();
     }, []);
+
+    // Save vehicle to Firebase
+    const saveVehicle = async (vehicleData) => {
+        const vehiclesRef = ref(database, 'vehicleInventory');
+        const newRef = push(vehiclesRef);
+        await set(newRef, { ...vehicleData, id: newRef.key, created_at: new Date().toISOString() });
+        return newRef.key;
+    };
+
+    // Update vehicle in Firebase
+    const updateVehicle = async (id, vehicleData) => {
+        const vehicleRef = ref(database, `vehicleInventory/${id}`);
+        await update(vehicleRef, { ...vehicleData, updated_at: new Date().toISOString() });
+    };
+
+    // Delete vehicle from Firebase
+    const deleteVehicle = async (id) => {
+        const vehicleRef = ref(database, `vehicleInventory/${id}`);
+        await remove(vehicleRef);
+    };
+
+    // Clear all vehicles from Firebase
+    const clearAllVehicles = async () => {
+        if (window.confirm(`Bạn có chắc muốn xóa toàn bộ ${vehicles.length} xe trong kho?`)) {
+            const vehiclesRef = ref(database, 'vehicleInventory');
+            await set(vehiclesRef, null);
+            toast.success('Đã xóa toàn bộ kho xe');
+        }
+    };
+
+    // Export to Excel
+    const handleExportExcel = () => {
+        if (vehicles.length === 0) {
+            toast.warning('Không có dữ liệu để xuất');
+            return;
+        }
+
+        const exportData = vehicles.map((v, idx) => ({
+            'STT': idx + 1,
+            'Showroom': v.showroom || '',
+            'Dòng xe': v.model || '',
+            'Phiên bản': v.trim || '',
+            'Màu ngoại thất': v.exterior_color_name || v.exterior_color || '',
+            'Màu nội thất': v.interior_color_name || v.interior_color || '',
+            'Số VIN': v.vin || '',
+            'Năm SX': v.year_mfg || '',
+            'Ngày nhập kho': v.import_date || '',
+            'Trạng thái': STATUS_LABELS[v.status] || v.status || '',
+            'Tên KH': v.customer_name || '',
+            'TVBH': v.sales_person || '',
+            'Số lượng': v.quantity || 1,
+            'Giá': v.price || 0
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Kho xe');
+        XLSX.writeFile(wb, `KhoXe_${new Date().toISOString().split('T')[0]}.xlsx`);
+        toast.success('Xuất Excel thành công');
+    };
+
+    // Download import template
+    const handleDownloadTemplate = () => {
+        const { headers, sampleRow } = generateImportTemplate();
+        const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+
+        // Set column widths for better readability
+        ws['!cols'] = headers.map(() => ({ wch: 18 }));
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'KHO XE');
+        XLSX.writeFile(wb, 'Mau_Import_KhoXe.xlsx');
+        toast.success('Đã tải mẫu import');
+    };
 
     // Group vehicles whenever vehicles change
     useEffect(() => {
@@ -54,16 +160,6 @@ export default function DanhSachXePage() {
     useEffect(() => {
         calculateStats();
     }, [filteredGroupedVehicles]);
-
-    const loadVehicles = () => {
-        const savedVehicles = JSON.parse(localStorage.getItem('vehicleInventory') || '[]');
-        setVehicles(savedVehicles);
-    };
-
-    const saveVehicles = (updatedVehicles) => {
-        localStorage.setItem('vehicleInventory', JSON.stringify(updatedVehicles));
-        setVehicles(updatedVehicles);
-    };
 
     const groupVehiclesByConfig = () => {
         const grouped = {};
@@ -184,20 +280,79 @@ export default function DanhSachXePage() {
         });
 
         const total = filteredVehicles.reduce((sum, v) => sum + v.quantity, 0);
-        const available = filteredVehicles.filter(v => v.status === 'available').reduce((sum, v) => sum + v.quantity, 0);
-        const reserved = filteredVehicles.filter(v => v.status === 'reserved').reduce((sum, v) => sum + v.quantity, 0);
-        const sold = filteredVehicles.filter(v => v.status === 'sold').reduce((sum, v) => sum + v.quantity, 0);
+        const ready = filteredVehicles.filter(v => v.status === VEHICLE_STATUSES.READY).reduce((sum, v) => sum + v.quantity, 0);
+        const notArrived = filteredVehicles.filter(v => v.status === VEHICLE_STATUSES.NOT_ARRIVED).reduce((sum, v) => sum + v.quantity, 0);
+        const arrived = filteredVehicles.filter(v => v.status === VEHICLE_STATUSES.ARRIVED).reduce((sum, v) => sum + v.quantity, 0);
+        const matched = filteredVehicles.filter(v => v.status === VEHICLE_STATUSES.MATCHED).reduce((sum, v) => sum + v.quantity, 0);
+        const exported = filteredVehicles.filter(v => v.status === VEHICLE_STATUSES.EXPORTED).reduce((sum, v) => sum + v.quantity, 0);
+        const delivered = filteredVehicles.filter(v => v.status === VEHICLE_STATUSES.DELIVERED).reduce((sum, v) => sum + v.quantity, 0);
 
         const byModel = {};
         const byColor = {};
 
         filteredVehicles.forEach(v => {
             byModel[v.model] = (byModel[v.model] || 0) + v.quantity;
-            const colorName = getColorName(v.exterior_color, true);
+            const colorName = v.exterior_color_name || v.exterior_color || 'Không xác định';
             byColor[colorName] = (byColor[colorName] || 0) + v.quantity;
         });
 
-        setStats({ total, available, reserved, sold, byModel, byColor });
+        setStats({ total, ready, notArrived, arrived, matched, exported, delivered, byModel, byColor });
+    };
+
+    // Handle Excel import with batch write optimization
+    const handleExcelImport = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsImporting(true);
+        try {
+            const importedVehicles = await parseVehicleExcel(file);
+            if (importedVehicles.length === 0) {
+                toast.warning('Không tìm thấy dữ liệu xe trong file');
+                return;
+            }
+
+            // Prepare batch updates object
+            const updates = {};
+            let addedCount = 0;
+            let updatedCount = 0;
+
+            for (const newVehicle of importedVehicles) {
+                // Check if vehicle with same VIN exists
+                const existing = vehicles.find(v => v.vin && newVehicle.vin && v.vin === newVehicle.vin);
+
+                if (existing) {
+                    // Update existing vehicle
+                    updates[`vehicleInventory/${existing.id}`] = {
+                        ...existing,
+                        ...newVehicle,
+                        id: existing.id,
+                        updated_at: new Date().toISOString()
+                    };
+                    updatedCount++;
+                } else {
+                    // Add new vehicle with generated key
+                    const newKey = push(ref(database, 'vehicleInventory')).key;
+                    updates[`vehicleInventory/${newKey}`] = {
+                        ...newVehicle,
+                        id: newKey,
+                        created_at: new Date().toISOString()
+                    };
+                    addedCount++;
+                }
+            }
+
+            // Single batch update to Firebase
+            await update(ref(database), updates);
+            toast.success(`Import thành công: ${addedCount} xe mới, ${updatedCount} xe cập nhật`);
+        } catch (error) {
+            toast.error(error.message || 'Lỗi import file Excel');
+        } finally {
+            setIsImporting(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
     };
 
     // Helper function to get color name from code
@@ -297,83 +452,79 @@ export default function DanhSachXePage() {
         return getCarImageUrl(car.car_image_url) || car.car_image_url;
     };
 
-    const handleAddVehicle = () => {
+    const handleAddVehicle = async () => {
         if (!formData.model || !formData.trim || !formData.exterior_color || !formData.interior_color) {
             toast.error('Vui lòng điền đầy đủ thông tin xe');
             return;
         }
 
-        // Check if this exact configuration already exists
-        const existingVehicle = vehicles.find(v =>
-            v.model === formData.model &&
-            v.trim === formData.trim &&
-            v.exterior_color === formData.exterior_color &&
-            v.interior_color === formData.interior_color &&
-            v.status === formData.status
-        );
-
-        if (existingVehicle) {
-            // Update quantity of existing vehicle
-            const updatedVehicles = vehicles.map(v =>
-                v.id === existingVehicle.id
-                    ? { ...v, quantity: v.quantity + formData.quantity, updated_at: new Date().toISOString() }
-                    : v
+        try {
+            // Check if this exact configuration already exists
+            const existingVehicle = vehicles.find(v =>
+                v.model === formData.model &&
+                v.trim === formData.trim &&
+                v.exterior_color === formData.exterior_color &&
+                v.interior_color === formData.interior_color &&
+                v.status === formData.status
             );
-            saveVehicles(updatedVehicles);
-            toast.success(`Đã cập nhật số lượng xe (thêm ${formData.quantity} xe)`);
-        } else {
-            // Add new vehicle
-            const newVehicle = {
-                id: Date.now(),
-                ...formData,
-                price: getCarPrice(),
-                image_url: getCarImage(),
-                exterior_color_name: getColorName(formData.exterior_color, true),
-                interior_color_name: getColorName(formData.interior_color, false),
-                created_at: new Date().toISOString()
-            };
 
-            const updatedVehicles = [...vehicles, newVehicle];
-            saveVehicles(updatedVehicles);
-            toast.success('Thêm xe thành công');
-        }
-
-        resetForm();
-        setShowAddModal(false);
-    };
-
-    const handleEditVehicle = () => {
-        if (!formData.model || !formData.trim || !formData.exterior_color || !formData.interior_color) {
-            toast.error('Vui lòng điền đầy đủ thông tin xe');
-            return;
-        }
-
-        const updatedVehicles = vehicles.map(v =>
-            v.id === editingVehicle.id
-                ? {
-                    ...v,
+            if (existingVehicle) {
+                // Update quantity of existing vehicle
+                await updateVehicle(existingVehicle.id, {
+                    quantity: existingVehicle.quantity + formData.quantity
+                });
+                toast.success(`Đã cập nhật số lượng xe (thêm ${formData.quantity} xe)`);
+            } else {
+                // Add new vehicle
+                const newVehicle = {
                     ...formData,
                     price: getCarPrice(),
                     image_url: getCarImage(),
                     exterior_color_name: getColorName(formData.exterior_color, true),
-                    interior_color_name: getColorName(formData.interior_color, false),
-                    updated_at: new Date().toISOString()
-                }
-                : v
-        );
+                    interior_color_name: getColorName(formData.interior_color, false)
+                };
+                await saveVehicle(newVehicle);
+                toast.success('Thêm xe thành công');
+            }
 
-        saveVehicles(updatedVehicles);
-        toast.success('Cập nhật xe thành công');
-        resetForm();
-        setShowEditModal(false);
-        setEditingVehicle(null);
+            resetForm();
+            setShowAddModal(false);
+        } catch (error) {
+            toast.error('Lỗi khi thêm xe: ' + error.message);
+        }
     };
 
-    const handleDeleteVehicle = (id) => {
+    const handleEditVehicle = async () => {
+        if (!formData.model || !formData.trim || !formData.exterior_color || !formData.interior_color) {
+            toast.error('Vui lòng điền đầy đủ thông tin xe');
+            return;
+        }
+
+        try {
+            await updateVehicle(editingVehicle.id, {
+                ...formData,
+                price: getCarPrice(),
+                image_url: getCarImage(),
+                exterior_color_name: getColorName(formData.exterior_color, true),
+                interior_color_name: getColorName(formData.interior_color, false)
+            });
+            toast.success('Cập nhật xe thành công');
+            resetForm();
+            setShowEditModal(false);
+            setEditingVehicle(null);
+        } catch (error) {
+            toast.error('Lỗi khi cập nhật xe: ' + error.message);
+        }
+    };
+
+    const handleDeleteVehicle = async (id) => {
         if (window.confirm('Bạn có chắc chắn muốn xóa xe này?')) {
-            const updatedVehicles = vehicles.filter(v => v.id !== id);
-            saveVehicles(updatedVehicles);
-            toast.success('Xóa xe thành công');
+            try {
+                await deleteVehicle(id);
+                toast.success('Xóa xe thành công');
+            } catch (error) {
+                toast.error('Lỗi khi xóa xe: ' + error.message);
+            }
         }
     };
 
@@ -397,7 +548,7 @@ export default function DanhSachXePage() {
             exterior_color: '',
             interior_color: '',
             quantity: 1,
-            status: 'available'
+            status: VEHICLE_STATUSES.READY
         });
     };
 
@@ -410,21 +561,11 @@ export default function DanhSachXePage() {
     };
 
     const getStatusColor = (status) => {
-        switch (status) {
-            case 'available': return 'bg-green-100 text-green-800';
-            case 'reserved': return 'bg-yellow-100 text-yellow-800';
-            case 'sold': return 'bg-gray-100 text-gray-800';
-            default: return 'bg-gray-100 text-gray-800';
-        }
+        return STATUS_COLORS[status] || 'bg-gray-100 text-gray-800';
     };
 
     const getStatusText = (status) => {
-        switch (status) {
-            case 'available': return 'Có sẵn';
-            case 'reserved': return 'Đã đặt';
-            case 'sold': return 'Đã bán';
-            default: return status;
-        }
+        return STATUS_LABELS[status] || status;
     };
 
     return (
@@ -539,9 +680,9 @@ export default function DanhSachXePage() {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                             <option value="">Tất cả</option>
-                            <option value="available">Có sẵn</option>
-                            <option value="reserved">Đã đặt</option>
-                            <option value="sold">Đã bán</option>
+                            {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                                <option key={value} value={value}>{label}</option>
+                            ))}
                         </select>
                     </div>
                 </div>
@@ -553,44 +694,74 @@ export default function DanhSachXePage() {
             </div>
 
             {/* Statistics Dashboard */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
+                <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-600 mb-1">Tổng số xe</p>
-                            <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+                            <p className="text-xs text-gray-600 mb-1">Tổng số</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
                         </div>
-                        <Package className="w-12 h-12 text-blue-500 opacity-80" />
+                        <Package className="w-8 h-8 text-blue-500 opacity-80" />
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+                <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-600 mb-1">Có sẵn</p>
-                            <p className="text-3xl font-bold text-gray-900">{stats.available}</p>
+                            <p className="text-xs text-gray-600 mb-1">Sẵn Sàng</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.ready}</p>
                         </div>
-                        <Car className="w-12 h-12 text-green-500 opacity-80" />
+                        <Car className="w-8 h-8 text-green-500 opacity-80" />
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
+                <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-gray-400">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-600 mb-1">Đã đặt</p>
-                            <p className="text-3xl font-bold text-gray-900">{stats.reserved}</p>
+                            <p className="text-xs text-gray-600 mb-1">Chưa về</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.notArrived}</p>
                         </div>
-                        <TrendingUp className="w-12 h-12 text-yellow-500 opacity-80" />
+                        <TrendingUp className="w-8 h-8 text-gray-400 opacity-80" />
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-gray-500">
+                <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-400">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-600 mb-1">Đã bán</p>
-                            <p className="text-3xl font-bold text-gray-900">{stats.sold}</p>
+                            <p className="text-xs text-gray-600 mb-1">Đã về</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.arrived}</p>
                         </div>
-                        <BarChart3 className="w-12 h-12 text-gray-500 opacity-80" />
+                        <Car className="w-8 h-8 text-blue-400 opacity-80" />
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-purple-500">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-gray-600 mb-1">Đã ghép KH</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.matched}</p>
+                        </div>
+                        <BarChart3 className="w-8 h-8 text-purple-500 opacity-80" />
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-yellow-500">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-gray-600 mb-1">Đã xuất</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.exported}</p>
+                        </div>
+                        <TrendingUp className="w-8 h-8 text-yellow-500 opacity-80" />
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-emerald-500">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-gray-600 mb-1">Đã giao</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.delivered}</p>
+                        </div>
+                        <Car className="w-8 h-8 text-emerald-500 opacity-80" />
                     </div>
                 </div>
             </div>
@@ -659,13 +830,64 @@ export default function DanhSachXePage() {
 
 
             {/* Action Button */}
-            <div className="mb-6">
+            <div className="mb-6 flex gap-3 flex-wrap">
                 <button
                     onClick={() => setShowAddModal(true)}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-md transition-all duration-200 hover:shadow-lg"
                 >
                     <Plus className="w-5 h-5" />
                     Thêm xe mới
+                </button>
+
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleExcelImport}
+                    className="hidden"
+                />
+                <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isImporting}
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-md transition-all duration-200 hover:shadow-lg"
+                >
+                    {isImporting ? (
+                        <>
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Đang import...
+                        </>
+                    ) : (
+                        <>
+                            <Upload className="w-5 h-5" />
+                            Import Excel
+                        </>
+                    )}
+                </button>
+
+                <button
+                    onClick={handleDownloadTemplate}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-md transition-all duration-200 hover:shadow-lg"
+                >
+                    <Download className="w-5 h-5" />
+                    Tải mẫu import
+                </button>
+
+                <button
+                    onClick={handleExportExcel}
+                    disabled={vehicles.length === 0}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-md transition-all duration-200 hover:shadow-lg"
+                >
+                    <Download className="w-5 h-5" />
+                    Export Excel
+                </button>
+
+                <button
+                    onClick={clearAllVehicles}
+                    disabled={vehicles.length === 0}
+                    className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-md transition-all duration-200 hover:shadow-lg"
+                >
+                    <Trash className="w-5 h-5" />
+                    Xóa tất cả
                 </button>
             </div>
 
@@ -1061,9 +1283,9 @@ export default function DanhSachXePage() {
                                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     >
-                                        <option value="available">Có sẵn</option>
-                                        <option value="reserved">Đã đặt</option>
-                                        <option value="sold">Đã bán</option>
+                                        {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                                            <option key={value} value={value}>{label}</option>
+                                        ))}
                                     </select>
                                 </div>
 
@@ -1209,9 +1431,9 @@ export default function DanhSachXePage() {
                                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     >
-                                        <option value="available">Có sẵn</option>
-                                        <option value="reserved">Đã đặt</option>
-                                        <option value="sold">Đã bán</option>
+                                        {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                                            <option key={value} value={value}>{label}</option>
+                                        ))}
                                     </select>
                                 </div>
 
