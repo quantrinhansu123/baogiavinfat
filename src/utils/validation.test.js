@@ -192,3 +192,81 @@ describe('parseCurrency', () => {
     expect(parseCurrency(null)).toBe(0);
   });
 });
+
+// Additional edge case tests
+describe('validateContractForPrint - edge cases', () => {
+  it('handles whitespace-only values as missing', () => {
+    const contract = {
+      tenKh: '   ',
+      cccd: '012345678901',
+      soDienThoai: '\t\n',
+      diaChi: '123 ABC',
+      dongXe: 'VF 7',
+      ngoaiThat: 'Đỏ'
+    };
+    const result = validateContractForPrint(contract);
+    expect(result.valid).toBe(false);
+    expect(result.missing).toContain('tenKh');
+    expect(result.missing).toContain('soDienThoai');
+  });
+
+  it('handles null/undefined object fields', () => {
+    const contract = {
+      tenKh: 'Nguyen Van A',
+      cccd: null,
+      soDienThoai: undefined,
+      diaChi: '123 ABC',
+      dongXe: 'VF 7',
+      ngoaiThat: ''
+    };
+    const result = validateContractForPrint(contract);
+    expect(result.valid).toBe(false);
+    expect(result.missing).toContain('cccd');
+    expect(result.missing).toContain('soDienThoai');
+    expect(result.missing).toContain('ngoaiThat');
+  });
+
+  it('passes with all valid fields', () => {
+    const contract = {
+      tenKh: 'Nguyễn Văn A',
+      cccd: '079123456789',
+      soDienThoai: '0912345678',
+      diaChi: '123 ABC Street, TP.HCM',
+      dongXe: 'VF 7',
+      ngoaiThat: 'Trắng Ngọc Trai'
+    };
+    const result = validateContractForPrint(contract);
+    expect(result.valid).toBe(true);
+    expect(result.missing).toHaveLength(0);
+  });
+});
+
+describe('isValidCCCD - additional edge cases', () => {
+  it('handles leading zeros correctly', () => {
+    expect(isValidCCCD('001234567890')).toBe(true);
+    expect(isValidCCCD('000000000000')).toBe(true);
+  });
+
+  it('handles mixed whitespace', () => {
+    expect(isValidCCCD('012 345\t678 901')).toBe(true);
+  });
+});
+
+describe('isValidPhone - additional edge cases', () => {
+  it('accepts all valid prefixes', () => {
+    // Test various valid prefixes
+    expect(isValidPhone('0312345678')).toBe(true); // 03x
+    expect(isValidPhone('0512345678')).toBe(true); // 05x
+    expect(isValidPhone('0712345678')).toBe(true); // 07x
+    expect(isValidPhone('0812345678')).toBe(true); // 08x
+    expect(isValidPhone('0912345678')).toBe(true); // 09x
+  });
+
+  it('rejects invalid prefixes', () => {
+    expect(isValidPhone('0012345678')).toBe(false);
+    expect(isValidPhone('0112345678')).toBe(false);
+    expect(isValidPhone('0212345678')).toBe(false);
+    expect(isValidPhone('0412345678')).toBe(false);
+    expect(isValidPhone('0612345678')).toBe(false);
+  });
+});
