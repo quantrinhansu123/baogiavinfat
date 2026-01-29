@@ -159,6 +159,9 @@ export default function Invoice2Page() {
             padding: 2px 4px !important;
             font-size: 9pt !important;
           }
+          table {
+            width: calc(100% - 1px) !important;
+          }
           .p-1 {
             padding: 2px 4px !important;
           }
@@ -836,22 +839,30 @@ export default function Invoice2Page() {
           </tbody>
         </table>
 
-        <div className="bg-blue-50 text-blue-900 font-bold uppercase p-1 mt-3 mb-0 border border-gray-900 text-xs">
-          Quà tặng
-        </div>
-        <table className="w-full border-collapse mb-0 text-sm bg-white">
-          <tbody>
-            <tr>
-              <td
-                className="border border-gray-900 p-1"
-                style={{ width: "33%" }}
-              >
-                Áo trùm, bao tay lái, sáp thơm, bình chữa cháy
-              </td>
-              <td className="border border-gray-900 p-1 text-right">Tặng</td>
-            </tr>
-          </tbody>
-        </table>
+        {invoiceData.gifts && invoiceData.gifts.length > 0 && (
+          <>
+            <div className="bg-blue-50 text-blue-900 font-bold uppercase p-1 mt-3 mb-0 border border-gray-900 text-xs">
+              Quà tặng
+            </div>
+            <table className="w-full border-collapse mb-0 text-sm bg-white">
+              <tbody>
+                {invoiceData.gifts.map((gift, index) => (
+                  <tr key={index}>
+                    <td
+                      className="border border-gray-900 p-1"
+                      style={{ width: "33%" }}
+                    >
+                      {gift.name}
+                    </td>
+                    <td className="border border-gray-900 p-1 text-right">
+                      {gift.price || "Tặng"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
 
         <p className="text-xs italic mt-2 text-right text-gray-700">
           Báo giá có hiệu lực đến hết ngày 30/11/2025
