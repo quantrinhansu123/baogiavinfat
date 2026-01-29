@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
@@ -14,6 +14,7 @@ import {
 import { vndToWords } from "../../utils/vndToWords";
 import { formatCurrency } from "../../utils/formatting";
 import CurrencyInput from "../shared/CurrencyInput";
+import { PrintStyles } from "./PrintStyles";
 
 const HopDongMuaBanXe = () => {
   const location = useLocation();
@@ -35,6 +36,7 @@ const HopDongMuaBanXe = () => {
   const [soTienDot2BangChu, setSoTienDot2BangChu] = useState("");
   const [soTienVay, setSoTienVay] = useState("");
   const [soTienVayBangChu, setSoTienVayBangChu] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState(""); // "trả thẳng" or "trả góp"
   const [soTienDot3, setSoTienDot3] = useState("");
   const [soTienDot3BangChu, setSoTienDot3BangChu] = useState("");
   const [diaDiemGiaoXe, setDiaDiemGiaoXe] = useState("");
@@ -152,6 +154,8 @@ const HopDongMuaBanXe = () => {
           // Chính sách ưu đãi
           uuDai: incoming.uuDai || incoming["Ưu đãi"] || "",
           showroom: incoming.showroom || branchInfo.shortName,
+          payment: incoming.payment || incoming.thanhToan || "",
+          loanAmount: incoming.loanAmount || incoming.soTienVay || "",
         };
         setData(processedData);
         setUuDai(String(processedData.uuDai || ""));
@@ -182,6 +186,12 @@ const HopDongMuaBanXe = () => {
         setCustomerAddress(processedData.customerAddress || "");
         setCustomerPhone(processedData.phone || "");
         setCustomerEmail(processedData.email || "");
+        // Initialize payment method and loan amount from processed data
+        setPaymentMethod(processedData.payment || "");
+        if (processedData.loanAmount) {
+          setSoTienVay(processedData.loanAmount);
+          setSoTienVayBangChu(vndToWords(processedData.loanAmount));
+        }
       } else {
         // Default data
         const today = new Date();
@@ -353,7 +363,8 @@ const HopDongMuaBanXe = () => {
       <div
         className="min-h-screen bg-gray-50 flex items-center justify-center"
         style={{ fontFamily: "Times New Roman" }}
-      >
+    >
+      <PrintStyles />
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Đang tải dữ liệu...</p>
@@ -367,7 +378,8 @@ const HopDongMuaBanXe = () => {
       <div
         className="min-h-screen bg-gray-50 flex items-center justify-center"
         style={{ fontFamily: "Times New Roman" }}
-      >
+    >
+      <PrintStyles />
         <div className="text-center">
           <p className="text-gray-600 mb-4">Không có dữ liệu hợp đồng</p>
           <button
@@ -386,10 +398,10 @@ const HopDongMuaBanXe = () => {
       className="min-h-screen bg-gray-50 p-8"
       style={{ fontFamily: "Times New Roman" }}
     >
+      <PrintStyles />
       <div className="max-w-5xl mx-auto print:max-w-5xl print:mx-auto">
         <div
-          className="bg-white p-8 print:pt-4 print:pb-4"
-          id="printable-content"
+          className="bg-white p-8 print:pt-4 print:pb-4 text-value" id="printable-content"
         >
           {/* Header */}
           <div className="text-center mb-6">
@@ -994,6 +1006,9 @@ const HopDongMuaBanXe = () => {
                   Khách Hàng lựa chọn một trong hai hình thức thanh toán trả
                   thẳng hoặc trả góp.
                 </p>
+                {/* Trả thẳng section - show when no payment method selected or payment is trả thẳng */}
+                {(!paymentMethod || paymentMethod === "trả thẳng") && (
+                  <>
                 <p className="pl-4">
                   • <span className="underline">Thanh toán trả thẳng:</span>
                 </p>
@@ -1009,6 +1024,11 @@ const HopDongMuaBanXe = () => {
                   ngày Bên Bán thông báo về việc Xe sẵn có để giao cho Khách
                   Hàng.
                 </p>
+                  </>
+                )}
+                {/* Trả góp section - show when no payment method selected or payment is trả góp */}
+                {(!paymentMethod || paymentMethod === "trả góp") && (
+                  <>
                 <p className="pl-4">
                   • <span className="underline">Thanh toán trả góp:</span>
                 </p>
@@ -1133,6 +1153,8 @@ const HopDongMuaBanXe = () => {
                   việc kể từ ngày Bên Bán và Khách Hàng bàn giao giấy hẹn trả
                   kết quả đăng ký Xe cho ngân hàng này.
                 </p>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1454,59 +1476,7 @@ const HopDongMuaBanXe = () => {
         </button>
       </div>
 
-      <style>{`
-        @media print {
-          @page {
-            margin: 10mm 10mm 25mm 10mm;
-            size: A4;
-          }
-          
-          body * {
-            visibility: hidden;
-          }
-          
-          #printable-content,
-          #printable-content * {
-            visibility: visible;
-          }
-          
-          #printable-content {
-            position: relative;
-            width: 100%;
-            padding: 0;
-            font-family: 'Times New Roman', Times, serif !important;
-          }
-          
-          .print\\:hidden {
-            display: none !important;
-          }
-          
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            height: auto !important;
-            overflow: visible !important;
-            font-family: 'Times New Roman', Times, serif !important;
-          }
-          
-          /* Footer styling for print */
-          .page-footer {
-            position: fixed;
-            bottom: 10mm;
-            left: 20mm;
-            right: 20mm;
-            display: none;
-            font-size: 10px;
-          }
-          
-          /* Show footer on appropriate pages */
-          .page-footer.page-1 {
-            display: flex;
-          }
-          
-          /* Page break for content sections */
-        }
-      `}</style>
+      
     </div>
   );
 };

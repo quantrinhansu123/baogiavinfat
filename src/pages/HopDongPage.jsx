@@ -1599,6 +1599,7 @@ export default function HopDongPage() {
                                   contract.contractPrice || contract.giaHD,
                                 deposit: contract.deposit || contract.soTienCoc,
                                 payment: contract.payment || contract.thanhToan,
+                                loanAmount: contract.loanAmount || contract.soTienVay || "",
                                 bank: contract.bank || contract.nganHang,
                                 uuDai: (() => {
                                   const uuDaiValue = contract.uuDai || contract["Ưu đãi"] || contract["ưu đãi"] || "";
