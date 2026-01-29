@@ -4,9 +4,8 @@ import { toast } from 'react-toastify';
 import { ref, set, push, update, remove } from 'firebase/database';
 import { database } from '../firebase/config';
 import { useFirebaseQuery } from '../hooks';
-import * as XLSX from 'xlsx';
 import { danh_sach_xe, carPriceData, uniqueNgoaiThatColors, uniqueNoiThatColors, getCarImageUrl } from '../data/calculatorData';
-import { parseVehicleExcel, generateImportTemplate, VEHICLE_STATUSES, STATUS_LABELS, STATUS_COLORS } from '../utils/excelParser';
+import { parseVehicleExcel, exportVehiclesToExcel, downloadImportTemplate, VEHICLE_STATUSES, STATUS_LABELS, STATUS_COLORS } from '../utils/excelParser';
 
 export default function DanhSachXePage() {
     // Use custom Firebase hook for realtime data
@@ -73,48 +72,30 @@ export default function DanhSachXePage() {
     };
 
     // Export to Excel
-    const handleExportExcel = () => {
+    const handleExportExcel = async () => {
         if (vehicles.length === 0) {
             toast.warning('Không có dữ liệu để xuất');
             return;
         }
 
-        const exportData = vehicles.map((v, idx) => ({
-            'STT': idx + 1,
-            'Showroom': v.showroom || '',
-            'Dòng xe': v.model || '',
-            'Phiên bản': v.trim || '',
-            'Màu ngoại thất': v.exterior_color_name || v.exterior_color || '',
-            'Màu nội thất': v.interior_color_name || v.interior_color || '',
-            'Số VIN': v.vin || '',
-            'Năm SX': v.year_mfg || '',
-            'Ngày nhập kho': v.import_date || '',
-            'Trạng thái': STATUS_LABELS[v.status] || v.status || '',
-            'Tên KH': v.customer_name || '',
-            'TVBH': v.sales_person || '',
-            'Số lượng': v.quantity || 1,
-            'Giá': v.price || 0
-        }));
-
-        const ws = XLSX.utils.json_to_sheet(exportData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Kho xe');
-        XLSX.writeFile(wb, `KhoXe_${new Date().toISOString().split('T')[0]}.xlsx`);
-        toast.success('Xuất Excel thành công');
+        try {
+            await exportVehiclesToExcel(vehicles, `KhoXe_${new Date().toISOString().split('T')[0]}.xlsx`);
+            toast.success('Xuất Excel thành công');
+        } catch (error) {
+            console.error('Export error:', error);
+            toast.error('Lỗi xuất Excel: ' + error.message);
+        }
     };
 
     // Download import template
-    const handleDownloadTemplate = () => {
-        const { headers, sampleRow } = generateImportTemplate();
-        const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
-
-        // Set column widths for better readability
-        ws['!cols'] = headers.map(() => ({ wch: 18 }));
-
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'KHO XE');
-        XLSX.writeFile(wb, 'Mau_Import_KhoXe.xlsx');
-        toast.success('Đã tải mẫu import');
+    const handleDownloadTemplate = async () => {
+        try {
+            await downloadImportTemplate();
+            toast.success('Đã tải mẫu import');
+        } catch (error) {
+            console.error('Template error:', error);
+            toast.error('Lỗi tải mẫu: ' + error.message);
+        }
     };
 
     // Memoize grouped vehicles calculation
