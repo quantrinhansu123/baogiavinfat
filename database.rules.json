@@ -1,6 +1,56 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null"
+    ".read": false,
+    ".write": false,
+
+    "contracts": {
+      ".read": true,
+      ".write": true
+    },
+
+    "exportedContracts": {
+      ".read": true,
+      ".write": true
+    },
+
+    "customers": {
+      ".read": true,
+      ".write": true
+    },
+
+    "employees": {
+      ".read": true,
+      ".write": true
+    },
+
+    "users": {
+      ".read": true,
+      ".write": true
+    },
+
+    "vehicleInventory": {
+      ".read": true,
+      ".write": true
+    },
+
+    "promotions": {
+      ".read": true,
+      ".write": true
+    },
+
+    "vsoCounters": {
+      ".read": true,
+      ".write": true
+    },
+
+    "notifications": {
+      ".read": true,
+      ".write": true
+    },
+
+    "dailySummaries": {
+      ".read": true,
+      ".write": false
+    }
   }
 }
