@@ -391,7 +391,7 @@ const GiayXacNhanKieuLoai = () => {
                     className="border-b border-gray-400 px-2 py-1 text-sm w-12 text-center focus:outline-none focus:border-blue-500"
                   />
                 </span>
-                <span className="hidden print:inline">{ngayThang}</span> tháng{" "}
+                <span className="hidden print:inline date-blank">{ngayThang || "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0"}</span> tháng{" "}
                 <span className="print:hidden">
                   <input
                     type="text"
@@ -400,7 +400,7 @@ const GiayXacNhanKieuLoai = () => {
                     className="border-b border-gray-400 px-2 py-1 text-sm w-12 text-center focus:outline-none focus:border-blue-500"
                   />
                 </span>
-                <span className="hidden print:inline">{thangNam}</span> năm{" "}
+                <span className="hidden print:inline date-blank">{thangNam || "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0"}</span> năm{" "}
                 <span className="print:hidden">
                   <input
                     type="text"
@@ -409,7 +409,7 @@ const GiayXacNhanKieuLoai = () => {
                     className="border-b border-gray-400 px-2 py-1 text-sm w-16 text-center focus:outline-none focus:border-blue-500"
                   />
                 </span>
-                <span className="hidden print:inline">{nam}</span>
+                <span className="hidden print:inline date-blank">{nam || "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0"}</span>
               </p>
 
               <div className="text-center">
@@ -506,6 +506,13 @@ const GiayXacNhanKieuLoai = () => {
             box-shadow: none !important;
             padding: 0 !important;
             margin: 0 !important;
+          }
+
+          .date-blank {
+            border-bottom: 1px solid black !important;
+            padding: 0 12px !important;
+            margin: 0 4px !important;
+            display: inline !important;
           }
         }
       `}</style>

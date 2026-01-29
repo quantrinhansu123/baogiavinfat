@@ -567,7 +567,7 @@ const GiayXacNhanThanhToanNH = () => {
             height: auto !important;
             max-height: 281mm !important;
             overflow: hidden !important;
-            padding: 3mm !important;
+            padding: 5mm 10mm !important;
             margin: 0 !important;
             background: white !important;
             font-family: 'Times New Roman', Times, serif !important;

@@ -317,7 +317,7 @@ const GiayThoaThuanTraThay = () => {
     >
       <PrintStyles />
       <div className="flex gap-6 max-w-4xl mx-auto print:max-w-4xl print:mx-auto">
-        <div className="flex-1 bg-white" id="printable-content">
+        <div className="flex-1 bg-white p-8" id="printable-content">
           {/* Title */}
           <div className="text-center mb-2">
             <h1 className="text-xl font-bold uppercase mb-4">

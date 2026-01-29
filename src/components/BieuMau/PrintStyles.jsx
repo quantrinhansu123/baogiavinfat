@@ -83,7 +83,7 @@ export function PrintStyles() {
           width: 210mm;
           max-width: 210mm;
           margin: 0;
-          padding: 0 !important;
+          padding: 5mm 10mm !important;
           box-shadow: none;
           font-family: 'Times New Roman', serif !important;
           box-sizing: border-box;
