@@ -1,9 +1,13 @@
 import { useRef, useState } from 'react';
 
+// Giới hạn tối đa: 100 tỷ VND
+const MAX_VND = 100_000_000_000;
+
 /**
  * CurrencyInput - Input component cho tiền tệ
  * - Tự động format với dấu phân cách hàng nghìn
  * - Hỗ trợ IME tiếng Việt (Unikey/EVKey)
+ * - Giới hạn giá trị tối đa: 100 tỷ VND
  */
 const CurrencyInput = ({
   value,
@@ -25,11 +29,12 @@ const CurrencyInput = ({
     return new Intl.NumberFormat('vi-VN').format(Number(num));
   };
 
-  // Parse input để lấy số thuần
+  // Parse input để lấy số thuần (với giới hạn tối đa)
   const parseCurrency = (val) => {
     if (!val) return 0;
     const num = String(val).replace(/[^\d]/g, '');
-    return num ? parseInt(num, 10) : 0;
+    const parsed = num ? parseInt(num, 10) : 0;
+    return Math.min(parsed, MAX_VND);
   };
 
   // Xử lý thay đổi
@@ -104,7 +109,7 @@ const CurrencyInput = ({
     setTimeout(() => e.target.select(), 0);
   };
 
-  // Khi blur - đảm bảo format đúng, kể cả đang composing
+  // Khi blur - đảm bảo format đúng, kể cả đang composing (với clamp)
   const handleBlur = (e) => {
     if (isComposing) {
       setIsComposing(false);
@@ -113,7 +118,7 @@ const CurrencyInput = ({
     // Lấy giá trị hiện tại từ input và format lại
     const inputValue = e.target.value;
     const numericOnly = inputValue.replace(/[^\d]/g, '');
-    const parsed = numericOnly ? parseInt(numericOnly, 10) : 0;
+    const parsed = numericOnly ? Math.min(parseInt(numericOnly, 10), MAX_VND) : 0;
     if (onChange && parsed !== value) {
       onChange(parsed);
     }

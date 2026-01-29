@@ -12,6 +12,12 @@ import {
 } from '../data/calculatorData';
 import { clampDiscount } from '../utils/validation';
 
+// Default insurance values for fallback
+const DEFAULT_INSURANCE = {
+  phi_tnds_ca_nhan: 500000,
+  phi_tnds_kinh_doanh: 800000,
+};
+
 const locationMap = {
   hcm: "ho_chi_minh",
   hanoi: "ha_noi",
@@ -137,9 +143,10 @@ export function usePriceCalculations({
     const roadFee = isRoadFeeManual ? roadFeeValue : roadFeeAuto;
 
     const carInfo = getDataByKey(thong_tin_ky_thuat_xe, 'dong_xe', selectedDongXe);
+    const fallbackCarInfo = getDataByKey(thong_tin_ky_thuat_xe, 'dong_xe', 'vf_7') || DEFAULT_INSURANCE;
     const liabilityInsuranceAuto = carInfo
-      ? businessType === 'khong_kinh_doanh' ? carInfo.phi_tnds_ca_nhan : carInfo.phi_tnds_kinh_doanh
-      : getDataByKey(thong_tin_ky_thuat_xe, 'dong_xe', 'vf_7').phi_tnds_ca_nhan;
+      ? (businessType === 'khong_kinh_doanh' ? carInfo.phi_tnds_ca_nhan : carInfo.phi_tnds_kinh_doanh)
+      : (fallbackCarInfo.phi_tnds_ca_nhan ?? DEFAULT_INSURANCE.phi_tnds_ca_nhan);
     const liabilityInsurance = isLiabilityInsuranceManual ? liabilityInsuranceValue : liabilityInsuranceAuto;
 
     const inspectionFeeAuto = phi_kiem_dinh;
