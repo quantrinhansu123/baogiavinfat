@@ -454,7 +454,17 @@ export default function EditHopDongDaXuatPage() {
       setSaving(true);
 
       const contractRef = ref(database, `exportedContracts/${id}`);
-      const safeValue = (val) => val !== undefined && val !== null ? val : "";
+      const safeValue = (val) => (val !== undefined && val !== null ? val : "");
+      // Firebase rules validate numeric fields as number >= 0; empty string causes PERMISSION_DENIED
+      const safeNum = (val) => {
+        if (val === undefined || val === null || val === "") return 0;
+        const n = Number(val);
+        return Number.isFinite(n) && n >= 0 ? n : 0;
+      };
+      const safeThanhToan = (val) => {
+        const v = (val || "").trim();
+        return v === "trả góp" || v === "trả thẳng" ? v : "trả thẳng";
+      };
 
       await update(contractRef, {
         id: safeValue(contract.id),
@@ -473,20 +483,20 @@ export default function EditHopDongDaXuatPage() {
         "Phiên Bản": safeValue(contract.phienBan),
         "Ngoại Thất": safeValue(contract.ngoaiThat),
         "Nội Thất": safeValue(contract.noiThat),
-        "Giá Niêm Yết": safeValue(contract.giaNiemYet),
-        "Giá Giảm": safeValue(contract.giaGiam),
-        "Giá Hợp Đồng": safeValue(contract.giaHopDong),
-        giaXuatHoaDon: safeValue(contract.giaXuatHoaDon),
-        "Giá Xuất Hóa Đơn": safeValue(contract.giaXuatHoaDon),
-        "Số tiền cọc": safeValue(contract.soTienCoc),
-        "Tiền đặt cọc": safeValue(contract.soTienCoc),
-        soTienCoc: safeValue(contract.soTienCoc),
-        tienDatCoc: safeValue(contract.soTienCoc),
-        "Tiền đối ứng": safeValue(contract.tienDoiUng),
-        tienDoiUng: safeValue(contract.tienDoiUng),
-        thanhToan: safeValue(contract.thanhToan),
-        soTienVay: safeValue(contract.soTienVay),
-        tienVayNganHang: safeValue(contract.soTienVay),
+        "Giá Niêm Yết": safeNum(contract.giaNiemYet),
+        "Giá Giảm": safeNum(contract.giaGiam),
+        "Giá Hợp Đồng": safeNum(contract.giaHopDong),
+        giaXuatHoaDon: safeNum(contract.giaXuatHoaDon),
+        "Giá Xuất Hóa Đơn": safeNum(contract.giaXuatHoaDon),
+        "Số tiền cọc": safeNum(contract.soTienCoc),
+        "Tiền đặt cọc": safeNum(contract.soTienCoc),
+        soTienCoc: safeNum(contract.soTienCoc),
+        tienDatCoc: safeNum(contract.soTienCoc),
+        "Tiền đối ứng": safeNum(contract.tienDoiUng),
+        tienDoiUng: safeNum(contract.tienDoiUng),
+        thanhToan: safeThanhToan(contract.thanhToan),
+        soTienVay: safeNum(contract.soTienVay),
+        tienVayNganHang: safeNum(contract.soTienVay),
         "Số Khung": safeValue(contract.soKhung),
         "Số Máy": safeValue(contract.soMay),
         "Tình Trạng": safeValue(contract.tinhTrang),
@@ -495,11 +505,11 @@ export default function EditHopDongDaXuatPage() {
         "Quà tặng": safeValue(contract.quaTang),
         "Quà tặng khác": safeValue(contract.quaTangKhac),
         "quà tặng khác": safeValue(contract.quaTangKhac),
-        "Số tiền vay": safeValue(contract.soTienVay),
-        "Số tiền phải thu": safeValue(contract.soTienPhaiThu),
+        "Số tiền vay": safeNum(contract.soTienVay),
+        "Số tiền phải thu": safeNum(contract.soTienPhaiThu),
         quaTang: safeValue(contract.quaTang),
         quaTangKhac: safeValue(contract.quaTangKhac),
-        soTienPhaiThu: safeValue(contract.soTienPhaiThu),
+        soTienPhaiThu: safeNum(contract.soTienPhaiThu),
         // Company customer fields
         khachHangLa: safeValue(contract.khachHangLa),
         msdn: safeValue(contract.msdn),

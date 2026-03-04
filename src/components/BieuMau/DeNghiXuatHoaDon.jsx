@@ -302,6 +302,23 @@ const DeNghiXuatHoaDon = () => {
       style={{ fontFamily: "Times New Roman" }}
     >
       <PrintStyles />
+      <style>{`
+        @media print {
+          .de-nghi-print-footer {
+            position: fixed !important;
+            bottom: 15mm !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 210mm !important;
+            margin: 0 !important;
+            padding: 0.5rem 10mm 0 !important;
+            border-top: 1px solid #000;
+            text-align: right;
+            font-size: 0.75rem;
+            font-style: italic;
+          }
+        }
+      `}</style>
       <div className="max-w-4xl mx-auto print:max-w-4xl print:mx-auto">
         <div className="flex-1 bg-white p-8 print:p-0 flex flex-col min-h-screen print:min-h-0 print:h-auto" id="printable-content">
           {/* Header */}
@@ -369,7 +386,7 @@ const DeNghiXuatHoaDon = () => {
                     </div>
                     <div className="text-sm info-row grid-cols-[100px_1fr]">
                       <span className="info-label w-[100px]">Ngày ban hành:</span>{" "}
-                      <div className="info-value">
+                      <div className="info-value print:whitespace-nowrap">
                         <span className="print:hidden">
                           <input
                             type="text"
@@ -555,8 +572,8 @@ const DeNghiXuatHoaDon = () => {
             </div>
           </div>
 
-          {/* Form Reference */}
-          <div className="pt-4 w-full text-right pr-16 border-t border-black print:pt-2">
+          {/* Form Reference - cố định sát đáy tờ in */}
+          <div className="de-nghi-print-footer pt-4 w-full text-right pr-16 border-t border-black print:pt-2">
             <p className="text-xs italic">
               Biểu mẫu QTTCKT-BM06 ban hành lần 1 ngày 01/7/2014
             </p>

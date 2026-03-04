@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getBranchByShowroomName } from "../../data/branchData";
-import { formatDate } from "../../utils/formatting";
 import { ref, get } from "firebase/database";
 import { database } from "../../firebase/config";
 
@@ -142,20 +141,20 @@ const GiayXacNhanThongTin = () => {
   }, [location.state]);
 
   const formatDateForDisplay = (dateStr) => {
-    if (!dateStr) return { formatted: "08 tháng 10 năm 2024" };
+    if (!dateStr) return { formatted: "8 tháng 10 năm 2024" };
     try {
       const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return { formatted: "08 tháng 10 năm 2024" };
+      if (isNaN(date.getTime())) return { formatted: "8 tháng 10 năm 2024" };
 
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate();
+      const month = date.getMonth() + 1;
       const year = date.getFullYear();
 
       return {
         formatted: `${day} tháng ${month} năm ${year}`
       };
     } catch {
-      return { formatted: "08 tháng 10 năm 2024" };
+      return { formatted: "8 tháng 10 năm 2024" };
     }
   };
 
@@ -205,7 +204,7 @@ const GiayXacNhanThongTin = () => {
     );
   }
 
-  const dateInfo = formatDate(data.contractDate);
+  const dateInfo = formatDateForDisplay(data.contractDate);
 
   return (
     <div className="min-h-screen bg-white p-8" style={{ fontFamily: 'Times New Roman' }}>
@@ -284,7 +283,7 @@ const GiayXacNhanThongTin = () => {
 
           {/* Ngày tháng và chữ ký */}
           <div className="mt-12">
-            <p className="text-right mb-4">TP. Hồ Chí Minh, Ngày {dateInfo.formatted}</p>
+            <p className="text-right mb-4 italic">TP. Hồ Chí Minh, ngày {dateInfo.formatted}</p>
             <div className="text-left leading-relaxed w-[280px] ml-auto">
               <p className="font-bold">{branch ? `CÔNG TY CỔ PHẦN ĐẦU TƯ THƯƠNG MẠI VÀ DỊCH VỤ Ô TÔ ĐÔNG SÀI GÒN - CHI NHÁNH ${branch.shortName?.toUpperCase()}` : "[Chưa chọn showroom]"}</p>
             </div>

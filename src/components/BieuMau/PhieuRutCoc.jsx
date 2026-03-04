@@ -198,7 +198,7 @@ const PhieuRutCoc = () => {
                   >
                     <div className="info-row grid-cols-[40px_1fr]">
                       <span className="info-label w-[40px]">Số: </span>
-                      <div className="info-value">
+                      <div className="info-value whitespace-nowrap">
                         <span className="print:hidden">
                           <input
                             type="text"
@@ -212,7 +212,7 @@ const PhieuRutCoc = () => {
                     </div>
                     <div className="mt-2 info-row grid-cols-[100px_1fr]">
                       <span className="info-label w-[100px] italic">Ngày đề nghị: </span>
-                      <div className="info-value italic">
+                      <div className="info-value italic whitespace-nowrap">
                         <span className="print:hidden">
                           <input
                             type="text"

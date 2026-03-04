@@ -1559,7 +1559,7 @@ export default function ContractFormPage() {
                             )}
                             {promotion.type === 'percentage' && (
                               <div className="text-xs text-gray-600">
-                                Giảm: {promotion.value}% (tối đa {formatCurrency(promotion.maxDiscount)} VNĐ)
+                                Giảm: {promotion.value}%{promotion.maxDiscount > 0 ? ` (tối đa ${formatCurrency(promotion.maxDiscount)} VNĐ)` : ''}
                               </div>
                             )}
                           </div>
@@ -1787,7 +1787,7 @@ export default function ContractFormPage() {
                             )}
                             {promotion.type === 'percentage' && (
                               <div className="text-xs text-gray-600">
-                                Giảm: {promotion.value}% (tối đa {formatCurrency(promotion.maxDiscount)} VNĐ)
+                                Giảm: {promotion.value}%{promotion.maxDiscount > 0 ? ` (tối đa ${formatCurrency(promotion.maxDiscount)} VNĐ)` : ''}
                               </div>
                             )}
                             {promotion.type === 'display' && (

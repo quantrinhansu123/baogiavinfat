@@ -386,8 +386,16 @@ export default function HopDongPage() {
         bank: c.nganHang || c["ngân hàng"],
         uuDai: c.uuDai || c["Ưu đãi"] || c["ưu đãi"] || "",
         quaTang: c.quaTang || c["Quà tặng"] || c["quà tặng"] || "",
+        quaTangKhac: c.quaTangKhac || c["Quà tặng khác"] || c["quà tặng khác"] || "",
         giamGia: c.giamGia || c["Giảm giá"] || c["giảm giá"] || "",
         status: c.trangThai || c.status,
+        // Company / customer type fields (must match initial load mapSample so edit form has full data)
+        khachHangLa: c.khachHangLa || '',
+        msdn: c.msdn || '',
+        daiDien: c.daiDien || '',
+        chucVu: c.chucVu || '',
+        giayUyQuyen: c.giayUyQuyen || '',
+        giayUyQuyenNgay: c.giayUyQuyenNgay || '',
       });
 
       const loadFromFirebase = async () => {

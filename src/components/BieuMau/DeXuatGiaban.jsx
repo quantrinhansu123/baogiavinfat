@@ -565,12 +565,28 @@ const DeXuatGiaban = () => {
       style={{ fontFamily: "Times New Roman" }}
     >
       <PrintStyles />
-      <div className="max-w-5xl mx-auto print:max-w-5xl print:mx-auto">
+      <style>{`
+        @media print {
+          /* Thu nhỏ form để vừa khổ A4 (210mm), tránh tràn */
+          #printable-content.de-xuat-gia-ban-print {
+            width: 210mm !important;
+            max-width: 210mm !important;
+            overflow: hidden !important;
+          }
+          #printable-content.de-xuat-gia-ban-print .de-xuat-gia-ban-print-inner {
+            width: 132% !important;   /* 100% / 0.76 ≈ 132% */
+            max-width: none !important;
+            transform: scale(0.76) !important;
+            transform-origin: top left !important;
+          }
+        }
+      `}</style>
+      <div className="max-w-5xl mx-auto print:max-w-full">
         <div
-          className="flex-1 bg-white p-6 print:pt-0 flex flex-col min-h-screen print:min-h-[calc(100vh-40mm)]"
+          className="flex-1 bg-white p-6 print:pt-0 flex flex-col min-h-screen print:min-h-0 de-xuat-gia-ban-print"
           id="printable-content"
         >
-          {/* Header */}
+          <div className="de-xuat-gia-ban-print-inner">
           <div className="flex items-start justify-between mb-4">
             {/* Logo */}
             <div className="w-16">
@@ -1082,7 +1098,7 @@ const DeXuatGiaban = () => {
                   <td className="border-r border-black p-1 font-bold">
                     <div className="info-row grid-cols-[60px_1fr]">
                       <strong className="info-label w-[60px]">Trả thẳng:</strong>{" "}
-                      <div className="info-value">
+                      <div className="info-value print:whitespace-nowrap">
                         <span className="print:hidden">
                           <CurrencyInput
                             value={traThang}
@@ -1099,7 +1115,7 @@ const DeXuatGiaban = () => {
                   <td className="border-r border-black p-1 font-bold">
                     <div className="info-row grid-cols-[60px_1fr]">
                       <strong className="info-label w-[60px]">Trả góp:</strong>{" "}
-                      <div className="info-value">
+                      <div className="info-value print:whitespace-nowrap">
                         <span className="print:hidden">
                           <CurrencyInput
                             value={traGop}
@@ -1116,7 +1132,7 @@ const DeXuatGiaban = () => {
                   <td className="p-1 font-bold">
                     <div className="info-row grid-cols-[40px_1fr]">
                       <strong className="info-label w-[40px]">Bank:</strong>{" "}
-                      <div className="info-value">
+                      <div className="info-value print:whitespace-nowrap">
                         <span className="print:hidden">
                           <input
                             type="text"
@@ -1258,6 +1274,7 @@ const DeXuatGiaban = () => {
                 </tr>
               </tbody>
             </table>
+          </div>
           </div>
         </div>
       </div>
