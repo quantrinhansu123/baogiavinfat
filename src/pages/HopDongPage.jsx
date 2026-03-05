@@ -5,12 +5,16 @@ import { ref, get, update, remove, push, set } from 'firebase/database';
 import { database } from '../firebase/config';
 import { X, Trash2, Plus, Check, AlertTriangle, Edit, Download, ArrowLeft, Gift } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { uniqueNgoaiThatColors, uniqueNoiThatColors } from '../data/calculatorData';
+import { uniqueNgoaiThatColors, uniqueNoiThatColors, getAvailableDongXeForPromotion } from '../data/calculatorData';
+import { useCarPriceData } from '../contexts/CarPriceDataContext';
 import { getBranchByShowroomName, getAllBranches } from '../data/branchData';
-import { loadPromotionsFromFirebase, filterPromotionsByDongXe } from '../data/promotionsData';
+import { loadPromotionsFromFirebase, filterPromotionsByDongXe, normalizeDongXe } from '../data/promotionsData';
 import CurrencyInput from '../components/shared/CurrencyInput';
 
 export default function HopDongPage() {
+  const { carPriceData } = useCarPriceData();
+  const availableDongXeForPromotion = getAvailableDongXeForPromotion(carPriceData);
+
   const [userTeam, setUserTeam] = useState('');
   const [userRole, setUserRole] = useState('user');
   const [userEmail, setUserEmail] = useState('');
@@ -785,7 +789,7 @@ export default function HopDongPage() {
           };
         }
         
-        // For existing objects, ensure all fields are present
+        // For existing objects, ensure all fields are present; giữ dongXe để hiển thị đúng
         return {
           id: promotion.id || Math.random().toString(36).substr(2, 9),
           name: promotion.name || 'Tên ưu đãi',
@@ -793,6 +797,7 @@ export default function HopDongPage() {
           value: typeof promotion.value === 'number' ? promotion.value : 0,
           maxDiscount: typeof promotion.maxDiscount === 'number' ? promotion.maxDiscount : 0,
           minPurchase: typeof promotion.minPurchase === 'number' ? promotion.minPurchase : 0,
+          dongXe: promotion.dongXe,
           createdAt: promotion.createdAt || new Date().toISOString(),
           createdBy: promotion.createdBy || 'system'
         };
@@ -965,21 +970,25 @@ export default function HopDongPage() {
     }
   };
 
-  // Start editing promotion
+  // Start editing promotion — khôi phục dòng xe áp dụng để hiển thị đúng khi sửa
   const startEditPromotion = (promotion) => {
+    const dongXe = normalizeDongXe(promotion.dongXe);
+    setSelectedDongXeList(dongXe);
     setEditingPromotion({
       id: promotion.id,
       name: promotion.name || '',
       type: promotion.type || 'display',
       value: promotion.value || 0,
       maxDiscount: promotion.maxDiscount || 0,
-      minPurchase: promotion.minPurchase || 0
+      minPurchase: promotion.minPurchase || 0,
+      dongXe: [...dongXe],
     });
     setPromotionType(promotion.type || 'display');
   };
 
   // Cancel editing
   const cancelEditPromotion = () => {
+    setSelectedDongXeList([]);
     setEditingPromotion({
       id: null,
       name: '',
@@ -1005,13 +1014,14 @@ export default function HopDongPage() {
 
     try {
       const promotionRef = ref(database, `promotions/${editingPromotion.id}`);
-      
+      const dongXeToSave = normalizeDongXe(selectedDongXeList);
       await update(promotionRef, {
         name: editingPromotion.name.trim(),
         type: editingPromotion.type,
         value: editingPromotion.value || 0,
         maxDiscount: editingPromotion.maxDiscount || 0,
         minPurchase: editingPromotion.minPurchase || 0,
+        dongXe: dongXeToSave,
         updatedAt: new Date().toISOString(),
         updatedBy: userEmail || username || "admin",
       });
@@ -2014,20 +2024,7 @@ export default function HopDongPage() {
                     Dòng xe áp dụng
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
-                    {[
-                      { code: 'vf_3', name: 'VF 3' },
-                      { code: 'vf_5', name: 'VF 5' },
-                      { code: 'vf_6', name: 'VF 6' },
-                      { code: 'vf_7', name: 'VF 7' },
-                      { code: 'vf_8', name: 'VF 8' },
-                      { code: 'vf_9', name: 'VF 9' },
-                      { code: 'minio', name: 'Minio' },
-                      { code: 'herio', name: 'Herio' },
-                      { code: 'nerio', name: 'Nerio' },
-                      { code: 'limo', name: 'Limo' },
-                      { code: 'ec', name: 'EC' },
-                      { code: 'ec_nang_cao', name: 'EC Nâng Cao' }
-                    ].map((car) => (
+                    {availableDongXeForPromotion.map((car) => (
                       <label key={car.code} className="flex items-center gap-2 text-sm">
                         <input
                           type="checkbox"
@@ -2174,18 +2171,9 @@ export default function HopDongPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
                   >
                     <option value="all">Tất cả dòng xe</option>
-                    <option value="vf_3">VF 3</option>
-                    <option value="vf_5">VF 5</option>
-                    <option value="vf_6">VF 6</option>
-                    <option value="vf_7">VF 7</option>
-                    <option value="vf_8">VF 8</option>
-                    <option value="vf_9">VF 9</option>
-                    <option value="minio">Minio</option>
-                    <option value="herio">Herio</option>
-                    <option value="nerio">Nerio</option>
-                    <option value="limo">Limo</option>
-                    <option value="ec">EC</option>
-                    <option value="ec_nang_cao">EC Nâng Cao</option>
+                    {availableDongXeForPromotion.map((car) => (
+                      <option key={car.code} value={car.code}>{car.name}</option>
+                    ))}
                   </select>
                 </div>
                 

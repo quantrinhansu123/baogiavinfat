@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ref, get } from "firebase/database";
 import { database } from "../../firebase/config";
@@ -10,10 +10,13 @@ import {
   getDefaultBranch,
 } from "../../data/branchData";
 import CurrencyInput from "../shared/CurrencyInput";
+import { downloadElementAsPdf } from "../../utils/pdfExport";
 
 const Thoa_thuan_ho_tro_lai_suat_vay_CĐX_Vinfast_va_LFVN = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const printableRef = useRef(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [branch, setBranch] = useState(null);
@@ -348,7 +351,7 @@ const Thoa_thuan_ho_tro_lai_suat_vay_CĐX_Vinfast_va_LFVN = () => {
       style={{ fontFamily: "Times New Roman" }}
     >
       {/* Content */}
-      <div id="printable-content" className="max-w-4xl mx-auto p-6 bg-white">
+      <div ref={printableRef} id="printable-content" className="max-w-4xl mx-auto p-6 bg-white">
         {/* Header with title */}
         <div className="text-center mb-6">
           <img src={logoImage} alt="Logo" className="w-20 h-20 mx-auto mb-4" />
@@ -1164,7 +1167,7 @@ const Thoa_thuan_ho_tro_lai_suat_vay_CĐX_Vinfast_va_LFVN = () => {
       </div>
 
       {/* Action Buttons - hidden when printing */}
-      <div className="print:hidden bg-gray-100 p-4 flex justify-center items-center space-x-4 mt-8">
+      <div className="print:hidden bg-gray-100 p-4 flex flex-wrap justify-center items-center gap-3 mt-8">
         <button
           onClick={handleBack}
           className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
@@ -1176,6 +1179,13 @@ const Thoa_thuan_ho_tro_lai_suat_vay_CĐX_Vinfast_va_LFVN = () => {
           className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
         >
           In Thỏa thuận hỗ trợ lãi suất LFVN
+        </button>
+        <button
+          onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "thoa-thuan-ho-tro-lai-suat-vay-cdx-vinfast-lfvn").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
+          disabled={downloadingPdf}
+          className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
         </button>
       </div>
 

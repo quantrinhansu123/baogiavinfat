@@ -4,7 +4,8 @@ import { ref, update, push, get, set, remove } from 'firebase/database';
 import { database } from '../firebase/config';
 import { X, Check, ArrowLeft, ChevronDown, Search, Gift } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { carPriceData, uniqueNgoaiThatColors, uniqueNoiThatColors } from '../data/calculatorData';
+import { carPriceData as staticCarPriceData, uniqueNgoaiThatColors, uniqueNoiThatColors, getAvailableDongXeForPromotion } from '../data/calculatorData';
+import { useCarPriceData } from '../contexts/CarPriceDataContext';
 import { getAllBranches, getBranchByShowroomName } from '../data/branchData';
 import { loadPromotionsFromFirebase, defaultPromotions, filterPromotionsByDongXe } from '../data/promotionsData';
 import CurrencyInput from '../components/shared/CurrencyInput';
@@ -21,6 +22,13 @@ export default function ContractFormPage() {
   const isEditMode = mode === 'edit';
   const isDetailsMode = mode === 'details';
   const isCreateMode = mode === 'create';
+
+  const { carPriceData: carPriceDataFromContext } = useCarPriceData();
+  const carPriceData = Array.isArray(carPriceDataFromContext) && carPriceDataFromContext.length > 0 ? carPriceDataFromContext : staticCarPriceData;
+  const modelToDongXeMapFromData = useMemo(() => {
+    const list = getAvailableDongXeForPromotion(carPriceData);
+    return Object.fromEntries(list.map((x) => [x.name, x.code]));
+  }, [carPriceData]);
 
   // Get all branches for showroom dropdown
   const branches = getAllBranches();
@@ -364,32 +372,24 @@ export default function ContractFormPage() {
     };
   }, [isUuDaiDropdownOpen]);
 
-  // Get unique car models from carPriceData
+  // Get unique car models from carPriceData (từ Firebase khi có, gồm dòng xe mới thêm ở quản trị bảng giá)
   const carModels = useMemo(() => {
     const uniqueModels = new Set();
     carPriceData.forEach((car) => {
       if (car.model) uniqueModels.add(car.model);
     });
 
-    // Custom sort order: VF series first, then other models
     const modelOrder = ['VF 3', 'VF 5', 'VF 6', 'VF 7', 'VF 8', 'VF 9', 'Minio', 'Herio', 'Nerio', 'Limo', 'EC', 'EC Nâng Cao'];
 
     return Array.from(uniqueModels).sort((a, b) => {
       const indexA = modelOrder.indexOf(a);
       const indexB = modelOrder.indexOf(b);
-
-      // If both are in the order list, sort by their position
-      if (indexA !== -1 && indexB !== -1) {
-        return indexA - indexB;
-      }
-      // If only A is in the list, it comes first
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
       if (indexA !== -1) return -1;
-      // If only B is in the list, it comes first
       if (indexB !== -1) return 1;
-      // If neither is in the list, sort alphabetically
       return a.localeCompare(b);
     });
-  }, []);
+  }, [carPriceData]);
 
   // Get available trims (variants) for selected model
   const availableTrims = useMemo(() => {
@@ -1730,28 +1730,10 @@ export default function ContractFormPage() {
                       promotion.name.toLowerCase().includes(promotionSearch.toLowerCase())
                     )
                     .filter(promotion => {
-                      // Lọc theo dòng xe đã chọn
-                      if (!contract.model) return true; // Hiển thị tất cả nếu chưa chọn dòng xe
-                      
-                      // Chuyển đổi model name thành dong_xe code
-                      const modelToDongXeMap = {
-                        'VF 3': 'vf_3',
-                        'VF 5': 'vf_5', 
-                        'VF 6': 'vf_6',
-                        'VF 7': 'vf_7',
-                        'VF 8': 'vf_8',
-                        'VF 9': 'vf_9',
-                        'Minio': 'minio',
-                        'Herio': 'herio',
-                        'Nerio': 'nerio',
-                        'Limo': 'limo',
-                        'EC': 'ec',
-                        'EC Nâng Cao': 'ec_nang_cao'
-                      };
-                      
-                      const selectedDongXe = modelToDongXeMap[contract.model];
-                      if (!selectedDongXe) return true; // Hiển thị tất cả nếu không tìm thấy mapping
-                      
+                      // Lọc theo dòng xe đã chọn (dùng map từ bảng giá để hỗ trợ dòng xe mới như VF Lạc Hồng)
+                      if (!contract.model) return true;
+                      const selectedDongXe = modelToDongXeMapFromData[contract.model];
+                      if (!selectedDongXe) return true;
                       return filterPromotionsByDongXe([promotion], selectedDongXe).length > 0;
                     })
                     .map((promotion) => (

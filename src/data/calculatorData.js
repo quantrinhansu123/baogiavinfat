@@ -22,13 +22,15 @@ const vf3ImageMap = {
 
 // Helper function to get image URL (handles both local imports and remote URLs)
 export const getCarImageUrl = (imagePath) => {
-  if (!imagePath) return null;
+  if (imagePath == null) return null;
+  const path = typeof imagePath === 'string' ? imagePath.trim() : String(imagePath || '').trim();
+  if (!path) return null;
   // If it's a local path (starts with vinfast_images), return the imported image
-  if (imagePath.startsWith("vinfast_images/vf3/")) {
-    return vf3ImageMap[imagePath] || null;
+  if (path.startsWith("vinfast_images/vf3/")) {
+    return vf3ImageMap[path] || null;
   }
-  // Otherwise, it's a remote URL
-  return imagePath;
+  // Remote URL (https/http) hoặc đường dẫn khác: trả về nguyên (để <img src> dùng đúng link)
+  return path;
 };
 
 // Phí đường bộ
@@ -205,7 +207,12 @@ export const thong_tin_ky_thuat_xe = [
   },
 ];
 
-// Danh sách xe
+/**
+ * Danh sách xe cơ bản (nguồn: file tĩnh).
+ * Dùng làm nền cho "Dòng xe áp dụng" ở báo giá / ưu đãi.
+ * Danh sách đầy đủ = danh_sach_xe + các model có trong bảng giá (Firebase calculatorConfig/carPriceData).
+ * Thêm dòng xe mới: bổ sung vào mảng này HOẶC thêm bản ghi tương ứng trong Quản trị bảng giá.
+ */
 export const danh_sach_xe = [
   { dong_xe: "vf_3", ten_hien_thi: "VF 3" },
   { dong_xe: "vf_5", ten_hien_thi: "VF 5" },
@@ -220,6 +227,40 @@ export const danh_sach_xe = [
   { dong_xe: "ec", ten_hien_thi: "EC" },
   { dong_xe: "ec_nang_cao", ten_hien_thi: "EC Nâng Cao" },
 ];
+
+/** Chuẩn hóa tên model thành code dùng cho dongXe: "VF 3" -> "vf_3", "VF Lạc Hồng" -> "vf_lac_hong". Export để dùng thống nhất khi lọc/lưu ưu đãi. */
+export function modelNameToCode(name) {
+  if (!name || typeof name !== "string") return "";
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "");
+}
+
+/**
+ * Danh sách đầy đủ "Dòng xe áp dụng": danh_sach_xe + mọi model có trong bảng giá (carPriceData).
+ * Nguồn: (1) danh_sach_xe ở file này, (2) trường model từ từng bản ghi carPriceData (Firebase).
+ * @param {Array} carPriceData - Mảng bảng giá (từ context/Firebase), có thể null/undefined
+ * @returns {Array<{ code: string, name: string }>}
+ */
+export function getAvailableDongXeForPromotion(carPriceData) {
+  const byCode = new Map();
+  danh_sach_xe.forEach((x) =>
+    byCode.set(x.dong_xe, { code: x.dong_xe, name: x.ten_hien_thi || x.dong_xe })
+  );
+  const list = Array.isArray(carPriceData) ? carPriceData : [];
+  const seenModels = new Set();
+  list.forEach((entry) => {
+    const model = String(entry.model || "").trim();
+    if (!model || seenModels.has(model)) return;
+    seenModels.add(model);
+    const code = modelNameToCode(model);
+    if (code && !byCode.has(code)) byCode.set(code, { code, name: model });
+  });
+  return Array.from(byCode.values());
+}
 
 // Dữ liệu giá xe với car_image_url đầy đủ
 export const carPriceData = [

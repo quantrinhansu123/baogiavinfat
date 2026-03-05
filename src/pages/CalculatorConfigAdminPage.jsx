@@ -28,6 +28,14 @@ const FB = {
 const DEFAULT_CAR_ROW = { model: '', trim: '', exterior_color: '', interior_color: '', price_vnd: 0, car_image_url: '' };
 const DEFAULT_COLOR_ROW = { code: '', name: '', icon: '' };
 
+/** Chuẩn hóa giá VNĐ từ form/Firebase (string "12.000.000" hoặc number) thành number */
+function parsePriceVnd(val) {
+  if (val == null || val === '') return 0;
+  if (typeof val === 'number' && !Number.isNaN(val)) return Math.max(0, val);
+  const num = String(val).replace(/\D/g, '');
+  return num ? Math.max(0, parseInt(num, 10)) : 0;
+}
+
 export default function CalculatorConfigAdminPage() {
   const [tab, setTab] = useState('carPrice');
   const [showForm, setShowForm] = useState(false);
@@ -61,7 +69,7 @@ export default function CalculatorConfigAdminPage() {
       setForm({
         model: row.model || '', trim: row.trim || '',
         exterior_color: row.exterior_color || '', interior_color: row.interior_color || '',
-        price_vnd: row.price_vnd ?? 0, car_image_url: row.car_image_url || '',
+        price_vnd: parsePriceVnd(row.price_vnd), car_image_url: row.car_image_url || '',
       });
     } else {
       setForm({ code: row.code || '', name: row.name || '', icon: row.icon || '' });
@@ -77,22 +85,41 @@ export default function CalculatorConfigAdminPage() {
       const payload = {
         model: String(form.model).trim(), trim: String(form.trim).trim(),
         exterior_color: String(form.exterior_color).trim(), interior_color: String(form.interior_color).trim(),
-        price_vnd: Number(form.price_vnd) || 0, car_image_url: String(form.car_image_url).trim(),
+        price_vnd: parsePriceVnd(form.price_vnd), car_image_url: String(form.car_image_url).trim(),
       };
-      if (!payload.model || !payload.trim) { toast.warning('Vui lòng nhập Model và Trim'); return; }
+      if (!payload.model || !payload.trim) { toast.warning('Vui lòng nhập Dòng xe và Phiên bản'); return; }
       try {
-        if (editingId) { await update(ref(database, `${path}/${editingId}`), payload); toast.success('Đã cập nhật'); }
-        else { await push(ref(database, path), payload); toast.success('Đã thêm'); }
+        if (editingId) {
+          await update(ref(database, `${path}/${editingId}`), payload);
+          toast.success('Đã cập nhật');
+        } else {
+          const newRef = push(ref(database, path));
+          await set(newRef, payload);
+          toast.success('Đã thêm');
+        }
         closeForm();
-      } catch (err) { console.error(err); toast.error(err.message || 'Lỗi lưu'); }
+      } catch (err) {
+        console.error('Lỗi lưu bảng giá xe:', err);
+        const msg = err?.message || err?.code || 'Lỗi lưu';
+        toast.error(msg);
+      }
     } else {
       const payload = { code: String(form.code).trim(), name: String(form.name).trim(), icon: String(form.icon).trim() };
       if (!payload.code || !payload.name) { toast.warning('Vui lòng nhập Mã và Tên màu'); return; }
       try {
-        if (editingId) { await update(ref(database, `${path}/${editingId}`), payload); toast.success('Đã cập nhật'); }
-        else { await push(ref(database, path), payload); toast.success('Đã thêm'); }
+        if (editingId) {
+          await update(ref(database, `${path}/${editingId}`), payload);
+          toast.success('Đã cập nhật');
+        } else {
+          const newRef = push(ref(database, path));
+          await set(newRef, payload);
+          toast.success('Đã thêm');
+        }
         closeForm();
-      } catch (err) { console.error(err); toast.error(err.message || 'Lỗi lưu'); }
+      } catch (err) {
+        console.error('Lỗi lưu màu:', err);
+        toast.error(err?.message || err?.code || 'Lỗi lưu');
+      }
     }
   };
 
@@ -156,9 +183,6 @@ export default function CalculatorConfigAdminPage() {
           </Link>
           <div>
             <h1 className="text-xl font-semibold text-slate-900">Quản trị dữ liệu Báo giá</h1>
-            <p className="text-sm text-slate-500">
-              {rawRows.length > 0 ? `${rawRows.length} dòng từ Firebase` : 'Chưa có dữ liệu — bấm Khôi phục mặc định'}
-            </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -235,12 +259,12 @@ function CarPriceTable({ rows, onEdit, onDelete }) {
         <thead className="bg-slate-50">
           <tr>
             <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Ảnh</th>
-            <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Model</th>
-            <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Trim</th>
-            <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Ngoại thất</th>
-            <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Nội thất</th>
+            <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Dòng xe</th>
+            <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Phiên bản</th>
+            <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Màu ngoại thất</th>
+            <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Màu nội thất</th>
             <th className="px-3 py-3 text-right text-xs font-medium text-slate-600 uppercase">Giá (VNĐ)</th>
-            <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">URL ảnh</th>
+            <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase">Đường dẫn ảnh xe</th>
             <th className="px-3 py-3 w-24 text-right text-xs font-medium text-slate-600 uppercase">Thao tác</th>
           </tr>
         </thead>
@@ -279,10 +303,10 @@ function ColorTable({ rows, onEdit, onDelete, type }) {
       <table className="min-w-full divide-y divide-slate-200">
         <thead className="bg-slate-50">
           <tr>
-            <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Icon</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Hình màu</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Mã màu</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Tên màu</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">URL icon</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase">Đường dẫn ảnh màu</th>
             <th className="px-4 py-3 w-24 text-right text-xs font-medium text-slate-600 uppercase">Thao tác</th>
           </tr>
         </thead>
@@ -315,8 +339,8 @@ function ColorTable({ rows, onEdit, onDelete, type }) {
 function CarPriceForm({ form, setForm }) {
   return (
     <div className="space-y-4">
-      <Field label="Model" value={form.model} onChange={(v) => setForm((f) => ({ ...f, model: v }))} placeholder="VD: VF 3" />
-      <Field label="Trim" value={form.trim} onChange={(v) => setForm((f) => ({ ...f, trim: v }))} placeholder="VD: Base" />
+      <Field label="Dòng xe" value={form.model} onChange={(v) => setForm((f) => ({ ...f, model: v }))} placeholder="VD: VF 3" />
+      <Field label="Phiên bản" value={form.trim} onChange={(v) => setForm((f) => ({ ...f, trim: v }))} placeholder="VD: Base" />
       <Field label="Mã màu ngoại thất" value={form.exterior_color} onChange={(v) => setForm((f) => ({ ...f, exterior_color: v }))} placeholder="VD: CE18" />
       <Field label="Mã màu nội thất" value={form.interior_color} onChange={(v) => setForm((f) => ({ ...f, interior_color: v }))} placeholder="VD: CI11" />
       <div>
@@ -324,7 +348,7 @@ function CarPriceForm({ form, setForm }) {
         <CurrencyInput value={form.price_vnd} onChange={(v) => setForm((f) => ({ ...f, price_vnd: v }))} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">URL ảnh xe</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Đường dẫn ảnh xe</label>
         <input type="text" value={form.car_image_url} onChange={(e) => setForm((f) => ({ ...f, car_image_url: e.target.value }))} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="URL hoặc vinfast_images/vf3/..." />
         {form.car_image_url && (
           <div className="mt-2 flex justify-center">
@@ -343,7 +367,7 @@ function ColorForm({ form, setForm }) {
       <Field label="Mã màu" value={form.code} onChange={(v) => setForm((f) => ({ ...f, code: v }))} placeholder="VD: CE18" />
       <Field label="Tên màu" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} placeholder="VD: Infinity Blanc" />
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">URL icon</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Đường dẫn ảnh màu</label>
         <input type="text" value={form.icon} onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="https://..." />
         {form.icon && (
           <div className="mt-2 flex justify-center">

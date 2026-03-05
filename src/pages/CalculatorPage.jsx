@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Gift, X, Trash2, Edit, Save, XCircle, Plus, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Gift, X, Trash2, Edit, Save, XCircle, Plus, Check, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { ref, push, set, update, remove, get } from 'firebase/database';
 import { database } from '../firebase/config';
-import { loadPromotionsFromFirebase, filterPromotionsByDongXe } from '../data/promotionsData';
+import { loadPromotionsFromFirebase, filterPromotionsByDongXe, isPromotionAssignedToDongXe, normalizeDongXe as normalizeDongXePromo } from '../data/promotionsData';
 import { provinces } from '../data/provincesData';
 import CurrencyInput from '../components/shared/CurrencyInput';
 import {
@@ -25,6 +25,8 @@ import {
   quy_doi_2_nam_bhvc,
   thong_tin_ky_thuat_xe,
   danh_sach_xe,
+  getAvailableDongXeForPromotion,
+  modelNameToCode as modelNameToCodeFromData,
   uniqueNgoaiThatColors,
   uniqueNoiThatColors,
   getDataByKey,
@@ -78,21 +80,15 @@ const getInteriorImage = (model) => {
   return vf3Interior; // default
 };
 
-// Enhanced color data with actual images from uniqueNgoaiThatColors and uniqueNoiThatColors
-// These already have icon URLs from shop.vinfastauto.com
-const enhancedExteriorColors = uniqueNgoaiThatColors.map(color => ({
-  ...color,
-  // Use icon from uniqueNgoaiThatColors (already has correct URL)
-  icon: color.icon || colorImageMap[color.code] || whiteColor,
-}));
+// Lấy chuỗi URL/path ảnh từ row (Firebase đôi khi trả về object hoặc chuỗi có khoảng trắng)
+const toImageUrl = (val) => {
+  if (val == null) return '';
+  if (typeof val === 'string') return val.trim();
+  if (typeof val === 'object' && val !== null && typeof val.url === 'string') return val.url.trim();
+  return String(val).trim();
+};
 
-const enhancedInteriorColors = uniqueNoiThatColors.map(color => ({
-  ...color,
-  // Use icon from uniqueNoiThatColors (already has correct URL)
-  icon: color.icon || colorImageMap[color.code] || whiteColor,
-}));
-
-// Get car image from carPriceData (same logic as HTML) - uses data from context
+// Get car image from carPriceData (same logic as HTML) - uses data from context, ưu tiên link từ Firebase/admin
 const getCarImage = (carPriceData, model, version, exteriorColor) => {
   if (!model || !version || !exteriorColor) return vf3Full;
   if (!Array.isArray(carPriceData)) return vf3Full;
@@ -101,18 +97,25 @@ const getCarImage = (carPriceData, model, version, exteriorColor) => {
     String(e.trim || '').trim() === version &&
     String(e.exterior_color || '').trim() === exteriorColor
   );
-  if (exact?.car_image_url) {
-    const imageUrl = getCarImageUrl(exact.car_image_url);
-    if (imageUrl) return imageUrl;
+  if (exact) {
+    const rawUrl = exact.car_image_url ?? exact.carImageUrl;
+    const path = toImageUrl(rawUrl);
+    if (path) {
+      const imageUrl = getCarImageUrl(path);
+      if (imageUrl) return imageUrl;
+    }
   }
   const fallback = carPriceData.find(e =>
     String(e.model || '').trim() === model &&
     String(e.trim || '').trim() === version &&
-    e.car_image_url
+    (e.car_image_url || e.carImageUrl)
   );
-  if (fallback?.car_image_url) {
-    const imageUrl = getCarImageUrl(fallback.car_image_url);
-    if (imageUrl) return imageUrl;
+  if (fallback) {
+    const path = toImageUrl(fallback.car_image_url ?? fallback.carImageUrl);
+    if (path) {
+      const imageUrl = getCarImageUrl(path);
+      if (imageUrl) return imageUrl;
+    }
   }
   if (model === 'VF 3') return vf3Full;
   if (model === 'VF 5') return vf5Full;
@@ -121,7 +124,23 @@ const getCarImage = (carPriceData, model, version, exteriorColor) => {
 
 export default function CalculatorPage() {
   const navigate = useNavigate();
-  const { carPriceData } = useCarPriceData();
+  const { carPriceData, exteriorColors: exteriorColorsFromContext, interiorColors: interiorColorsFromContext } = useCarPriceData();
+
+  // Ảnh màu lấy từ Firebase (quản trị bảng giá) khi có, khớp với quan-tri-bang-gia
+  const enhancedExteriorColors = useMemo(
+    () => (exteriorColorsFromContext || uniqueNgoaiThatColors).map(color => ({
+      ...color,
+      icon: color.icon || colorImageMap[color.code] || whiteColor,
+    })),
+    [exteriorColorsFromContext]
+  );
+  const enhancedInteriorColors = useMemo(
+    () => (interiorColorsFromContext || uniqueNoiThatColors).map(color => ({
+      ...color,
+      icon: color.icon || colorImageMap[color.code] || whiteColor,
+    })),
+    [interiorColorsFromContext]
+  );
 
   // Customer info
   const [customerName, setCustomerName] = useState('');
@@ -179,7 +198,8 @@ export default function CalculatorPage() {
     type: 'display', // 'percentage', 'fixed', 'display'
     value: 0,
     maxDiscount: 0,
-    minPurchase: 0
+    minPurchase: 0,
+    dongXe: [] // Dòng xe áp dụng (rỗng = áp dụng tất cả)
   });
   const [deletingPromotionId, setDeletingPromotionId] = useState(null);
   const [loadingPromotions, setLoadingPromotions] = useState(false);
@@ -187,6 +207,7 @@ export default function CalculatorPage() {
   const [selectedPromotionIds, setSelectedPromotionIds] = useState([]);
   const [promotionType, setPromotionType] = useState('display'); // 'percentage', 'fixed', 'display'
   const [filterType, setFilterType] = useState('all'); // 'all', 'display', 'percentage', 'fixed'
+  const [promotionSearchTerm, setPromotionSearchTerm] = useState(''); // Tìm kiếm chương trình ưu đãi
   const [selectedDongXeList, setSelectedDongXeList] = useState([]); // Danh sách dòng xe được chọn cho promotion
 
   // Get current user info for tracking who added/edited promotions
@@ -234,10 +255,9 @@ export default function CalculatorPage() {
       const newPromotions = hardcodedPromotions.filter(p => !existingIds.has(p.id));
       const allPromotions = [...promotionsList, ...newPromotions];
 
-      // Ensure all promotions have the required fields with default values
+      // Ensure all promotions have the required fields; giữ dongXe từ Firebase để hiển thị "Áp dụng: ..."
       const formattedPromotions = allPromotions.map(promotion => {
         let value = typeof promotion.value === 'number' ? promotion.value : 0;
-        // Normalize percentage: nếu value < 1 (ví dụ 0.15), convert sang dạng % (15)
         if (promotion.type === 'percentage' && value > 0 && value < 1) {
           value = value * 100;
         }
@@ -248,6 +268,7 @@ export default function CalculatorPage() {
           value,
           maxDiscount: typeof promotion.maxDiscount === 'number' ? promotion.maxDiscount : 0,
           minPurchase: typeof promotion.minPurchase === 'number' ? promotion.minPurchase : 0,
+          dongXe: promotion.dongXe,
           createdAt: promotion.createdAt || new Date().toISOString(),
           createdBy: promotion.createdBy || 'system',
           isHardcoded: !!promotion.isHardcoded
@@ -278,13 +299,14 @@ export default function CalculatorPage() {
     }
   };
 
-  // Open add promotion modal
+  // Open add promotion modal — tải lại ưu đãi từ Firebase khi mở
   const openAddPromotionModal = () => {
     setIsAddPromotionModalOpen(true);
     setNewPromotionName('');
     setEditingPromotionId(null);
     setPromotionType('display');
     setSelectedDongXeList([]);
+    loadPromotions();
   };
 
   // Close add promotion modal
@@ -294,6 +316,7 @@ export default function CalculatorPage() {
     setEditingPromotionId(null);
     setPromotionType('display');
     setSelectedDongXeList([]);
+    setPromotionSearchTerm('');
   };
 
   // Handle add promotion
@@ -336,7 +359,8 @@ export default function CalculatorPage() {
         type: 'display',
         value: 0,
         maxDiscount: 0,
-        minPurchase: 0
+        minPurchase: 0,
+        dongXe: []
       });
       await loadPromotions(); // Reload list
     } catch (err) {
@@ -374,15 +398,25 @@ export default function CalculatorPage() {
     return Math.round(discount);
   };
 
-  // Start editing promotion
+  // Chuẩn hóa dongXe từ Firebase (có thể là mảng hoặc object dạng { "0": "vf_3", "1": "vf_6" })
+  const normalizeDongXe = (val) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val.filter(Boolean);
+    if (typeof val === 'object' && !Array.isArray(val)) return Object.values(val).filter(Boolean);
+    return [];
+  };
+
+  // Start editing promotion (gồm cả dòng xe áp dụng)
   const startEditPromotion = (promotion) => {
     setEditingPromotionId(promotion.id);
+    const dongXe = normalizeDongXe(promotion.dongXe);
     setEditingPromotion({
       name: promotion.name || '',
       type: promotion.type || 'display',
       value: promotion.value || 0,
       maxDiscount: promotion.maxDiscount || 0,
-      minPurchase: promotion.minPurchase || 0
+      minPurchase: promotion.minPurchase || 0,
+      dongXe: [...dongXe]
     });
   };
 
@@ -394,7 +428,8 @@ export default function CalculatorPage() {
       type: 'display',
       value: 0,
       maxDiscount: 0,
-      minPurchase: 0
+      minPurchase: 0,
+      dongXe: []
     });
   };
 
@@ -426,6 +461,7 @@ export default function CalculatorPage() {
 
     try {
       const promotionRef = ref(database, `promotions/${editingPromotionId}`);
+      const dongXeToSave = normalizeDongXePromo(editingPromotion.dongXe);
 
       await update(promotionRef, {
         name: editingPromotion.name.trim(),
@@ -433,6 +469,7 @@ export default function CalculatorPage() {
         value: editingPromotion.value || 0,
         maxDiscount: editingPromotion.maxDiscount || 0,
         minPurchase: editingPromotion.minPurchase || 0,
+        dongXe: dongXeToSave,
         updatedAt: new Date().toISOString(),
         updatedBy: userEmail || username || "admin",
       });
@@ -543,10 +580,11 @@ export default function CalculatorPage() {
     // Clear selection and close modal
     setSelectedPromotionIds([]);
     setIsAddPromotionModalOpen(false);
+    setPromotionSearchTerm('');
   };
 
-  // Calculate total discount from selected and active promotions
-  const calculatePromotionDiscounts = (price, promotionsToCheck = null) => {
+  // Calculate total discount from selected and active promotions (chỉ tính ưu đãi áp dụng cho dòng xe hiện tại)
+  const calculatePromotionDiscounts = (price, promotionsToCheck = null, selectedDongXeFilter = null) => {
     const promoList = promotionsToCheck || selectedPromotions;
 
     if (!promoList || !promoList.length) {
@@ -554,9 +592,18 @@ export default function CalculatorPage() {
     }
 
     // Filter out promotions that are not active if we're not checking specific ones
-    const activePromotions = promotionsToCheck
+    let activePromotions = promotionsToCheck
       ? promoList
       : promoList.filter(p => p.isActive === true);
+
+    // Chỉ áp dụng ưu đãi khớp với dòng xe đang chọn (báo giá); đổi dòng xe thì ưu đãi không khớp không được cộng
+    if (selectedDongXeFilter !== undefined && selectedDongXeFilter !== null) {
+      if (!selectedDongXeFilter) {
+        activePromotions = []; // Chưa chọn dòng xe thì không tính ưu đãi
+      } else {
+        activePromotions = filterPromotionsByDongXe(activePromotions, selectedDongXeFilter);
+      }
+    }
 
     if (activePromotions.length === 0) {
       return 0;
@@ -620,6 +667,7 @@ export default function CalculatorPage() {
   };
 
   const [imageFade, setImageFade] = useState(false);
+  const [carImageLoadError, setCarImageLoadError] = useState(false);
 
   // Helper function to format currency for input (without ₫ symbol)
   const formatCurrencyInput = (value) => {
@@ -709,16 +757,28 @@ export default function CalculatorPage() {
     });
   }, [carPriceData]);
 
-  // Get unique car models
+  // Unique car model names (từ bảng giá) — dùng cho dropdown chọn dòng xe
   const carModels = useMemo(() => {
     const uniqueModels = {};
     derivedVersions.forEach((xe) => {
-      if (!uniqueModels[xe.model]) {
-        uniqueModels[xe.model] = xe.model;
-      }
+      if (!uniqueModels[xe.model]) uniqueModels[xe.model] = xe.model;
     });
     return uniqueModels;
   }, [derivedVersions]);
+
+  // Dùng cùng modelNameToCode với getAvailableDongXeForPromotion (có NFD) để mã dòng xe khớp khi lưu & lọc (vd. VF Lạc Hồng -> vf_lac_hong)
+  const modelNameToCode = modelNameToCodeFromData;
+
+  // Danh sách dòng xe cho "Dòng xe áp dụng": từ danh_sach_xe + mọi model trong bảng giá (Firebase)
+  const availableDongXeForPromotion = useMemo(
+    () => getAvailableDongXeForPromotion(carPriceData),
+    [carPriceData]
+  );
+
+  const dongXeCodeToName = useMemo(
+    () => Object.fromEntries(availableDongXeForPromotion.map((x) => [x.code, x.name])),
+    [availableDongXeForPromotion]
+  );
 
   // Get available versions for selected model
   const availableVersions = useMemo(() => {
@@ -726,7 +786,7 @@ export default function CalculatorPage() {
     return derivedVersions.filter(v => v.model === carModel);
   }, [carModel, derivedVersions]);
 
-  // Get selected dong_xe code
+  // Get selected dong_xe code (hỗ trợ cả model tùy chỉnh như VF Lạc Hồng) — dùng modelNameToCode có NFD để khớp với code đã lưu trong ưu đãi
   const selectedDongXe = useMemo(() => {
     if (!carModel) return '';
     const found = danh_sach_xe.find(x =>
@@ -734,10 +794,16 @@ export default function CalculatorPage() {
     );
     if (found && found.dong_xe) return found.dong_xe;
 
-    const norm = carModel.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const norm = modelNameToCode(carModel);
     const found2 = danh_sach_xe.find(x => x.dong_xe === norm || x.dong_xe === norm.replace(/__+/g, '_'));
-    return found2?.dong_xe || '';
+    return found2?.dong_xe || norm || '';
   }, [carModel]);
+
+  // Chỉ ưu đãi áp dụng cho dòng xe hiện tại mới hiển thị và tính vào báo giá; chọn dòng xe khác thì ưu đãi không khớp không áp dụng
+  const selectedPromotionsForCurrentCar = useMemo(() => {
+    if (!selectedDongXe) return []; // Chưa chọn dòng xe thì không áp dụng ưu đãi
+    return filterPromotionsByDongXe(selectedPromotions, selectedDongXe);
+  }, [selectedPromotions, selectedDongXe]);
 
   // Get available colors for selected version
   const availableExteriorColors = useMemo(() => {
@@ -783,10 +849,14 @@ export default function CalculatorPage() {
     }).filter(c => c);
   }, [carModel, carVersion, derivedVersions]);
 
-  // Get car image URL
+  // Get car image URL (ưu tiên link từ Firebase/quản trị bảng giá)
   const carImageUrl = useMemo(() => {
     return getCarImage(carPriceData, carModel, carVersion, exteriorColor);
   }, [carPriceData, carModel, carVersion, exteriorColor]);
+
+  useEffect(() => {
+    setCarImageLoadError(false);
+  }, [carImageUrl]);
 
   const interiorImageUrl = useMemo(() => {
     return getInteriorImage(carModel);
@@ -976,8 +1046,8 @@ export default function CalculatorPage() {
     // Old hardcoded discounts (keeping for backward compatibility)
     const legacyPromotionDiscount = discount2Potential + discount3Potential;
     
-    // Calculate promotion discounts from selected promotions
-    const promotionDiscounts = calculatePromotionDiscounts(basePrice);
+    // Calculate promotion discounts from selected promotions (chỉ ưu đãi áp dụng cho dòng xe hiện tại)
+    const promotionDiscounts = calculatePromotionDiscounts(basePrice, null, selectedDongXe);
 
     // Total promotion discounts (both from selected promotions and legacy)
     // Use clampDiscount to ensure discount never exceeds base price
@@ -1033,7 +1103,8 @@ export default function CalculatorPage() {
     const totalOnRoadCost = plateFee + roadFee + liabilityInsurance + inspectionFee + bodyInsurance + registrationFeeValue;
     const totalCost = finalPayable + totalOnRoadCost;
 
-    // Loan calculations
+    // Loan calculations: Tiền vay và lãi dựa trên Giá XHD (giá trị xe), không dựa trên totalCost
+    // Số tiền trả trước = (Giá XHD - Tiền vay) + phí đường bộ/đăng ký (trả trước bao gồm đối ứng xe + toàn bộ phí)
     let loanData = {
       downPayment: 0,
       loanAmount: 0,
@@ -1049,25 +1120,21 @@ export default function CalculatorPage() {
       }
       const monthlyRate = annualRate / 12;
 
-      // Calculate loan amount based on total cost
-      const loanAmount = Math.round(totalCost * loanRatioDecimal);
-      const downPayment = totalCost - loanAmount;
+      // Tiền vay = loanRatio% × Giá XHD (giá trị xe), không nhân với totalCost
+      const loanAmount = Math.round(giaXuatHoaDon * loanRatioDecimal);
+      // Số tiền trả trước = (Giá XHD - Tiền vay) + tổng phí (đối ứng xe + phí đường bộ, đăng ký, ...)
+      const downPayment = Math.max(0, giaXuatHoaDon - loanAmount) + totalOnRoadCost;
 
       // Calculate monthly payment using annuity formula
       let monthlyPayment = 0;
       if (monthlyRate > 0 && loanTerm > 0) {
-        // Annuity formula: P * (r * (1 + r)^n) / ((1 + r)^n - 1)
-        // where P = principal, r = monthly rate, n = number of months
         const numerator = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, loanTerm));
         const denominator = Math.pow(1 + monthlyRate, loanTerm) - 1;
         monthlyPayment = numerator / denominator;
       } else if (loanTerm > 0) {
-        // If no interest rate, just divide loan amount by term
         monthlyPayment = loanAmount / loanTerm;
       }
 
-      // Calculate total payment and interest
-      // Important: Use unrounded monthlyPayment for accurate totalInterest calculation
       const totalPayment = monthlyPayment * loanTerm;
       const totalInterest = totalPayment - loanAmount;
 
@@ -1079,13 +1146,9 @@ export default function CalculatorPage() {
       };
     }
 
-    // Phase 7: Số tiền thanh toán đối ứng = Giá XHD - Tiền vay (dựa trên Giá XHD)
-    let tienVayTuGiaXHD = 0;
-    let soTienThanhToanDoiUng = giaXuatHoaDon;
-    if (loanToggle && loanRatio > 0) {
-      tienVayTuGiaXHD = Math.round(giaXuatHoaDon * (loanRatio / 100));
-      soTienThanhToanDoiUng = Math.max(0, giaXuatHoaDon - tienVayTuGiaXHD);
-    }
+    // Phase 7: Số tiền thanh toán đối ứng (phần xe) = Giá XHD - Tiền vay
+    let tienVayTuGiaXHD = loanData.loanAmount || 0;
+    let soTienThanhToanDoiUng = Math.max(0, giaXuatHoaDon - tienVayTuGiaXHD);
 
     return {
       basePrice,
@@ -1402,26 +1465,13 @@ export default function CalculatorPage() {
                         />
                       </div>
 
-                      {/* Chọn dòng xe áp dụng */}
+                      {/* Chọn dòng xe áp dụng - dùng danh sách từ bảng giá (Firebase) để hiển thị cả dòng xe mới thêm */}
                       <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Dòng xe áp dụng
                         </label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
-                          {[
-                            { code: 'vf_3', name: 'VF 3' },
-                            { code: 'vf_5', name: 'VF 5' },
-                            { code: 'vf_6', name: 'VF 6' },
-                            { code: 'vf_7', name: 'VF 7' },
-                            { code: 'vf_8', name: 'VF 8' },
-                            { code: 'vf_9', name: 'VF 9' },
-                            { code: 'minio', name: 'Minio' },
-                            { code: 'herio', name: 'Herio' },
-                            { code: 'nerio', name: 'Nerio' },
-                            { code: 'limo', name: 'Limo' },
-                            { code: 'ec', name: 'EC' },
-                            { code: 'ec_nang_cao', name: 'EC Nâng Cao' }
-                          ].map((car) => (
+                          {availableDongXeForPromotion.map((car) => (
                             <label key={car.code} className="flex items-center gap-2 text-sm">
                               <input
                                 type="checkbox"
@@ -1496,10 +1546,22 @@ export default function CalculatorPage() {
                       </div>
                     </div>
 
-                    {/* List of existing promotions */}
+                    {/* List of existing promotions — lấy từ Firebase */}
                     <div>
-                      <div className="flex justify-between items-center mb-3">
+                      <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
                         <h4 className="text-sm font-semibold text-gray-700">Danh sách chương trình ưu đãi</h4>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => loadPromotions()}
+                            disabled={loadingPromotions}
+                            className="inline-flex items-center gap-1 px-2 py-1.5 text-xs rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            title="Tải lại từ database"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingPromotions ? 'animate-spin' : ''}`} />
+                            Tải lại
+                          </button>
+                        </div>
                         <div className="flex space-x-1">
                           <button
                             onClick={() => setFilterType('all')}
@@ -1552,12 +1614,23 @@ export default function CalculatorPage() {
                       {carModel && (
                         <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
                           <p className="text-sm text-blue-700">
-                            <span className="font-medium">Lọc theo dòng xe:</span> {carModel}
-                            <br />
-                            <span className="text-xs">Chỉ hiển thị ưu đãi áp dụng cho dòng xe này</span>
+                            <span className="font-medium">Áp dụng dòng xe:</span> {carModel}
+                            <span className="text-xs block mt-0.5">Chỉ ưu đãi áp dụng cho dòng xe này mới được chọn và tính vào báo giá.</span>
                           </p>
                         </div>
                       )}
+
+                      {/* Tìm kiếm chương trình ưu đãi */}
+                      <div className="mb-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Tìm kiếm chương trình</label>
+                        <input
+                          type="text"
+                          value={promotionSearchTerm}
+                          onChange={(e) => setPromotionSearchTerm(e.target.value)}
+                          placeholder="Nhập tên chương trình ưu đãi..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                        />
+                      </div>
                       
                       {loadingPromotions ? (
                         <div className="text-center py-4">
@@ -1566,17 +1639,27 @@ export default function CalculatorPage() {
                         </div>
                       ) : promotions.length === 0 ? (
                         <div className="text-center py-4 text-sm text-gray-500">
-                          Chưa có chương trình ưu đãi nào
+                          Chưa có chương trình ưu đãi nào trong database. Thêm ưu đãi ở form phía trên hoặc bấm <strong>Tải lại</strong>.
                         </div>
-                      ) : (
-                        <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                          {promotions
-                            .filter(promotion => filterType === 'all' || promotion.type === filterType)
-                            .filter(promotion => {
-                              // Lọc theo dòng xe đã chọn
-                              return filterPromotionsByDongXe([promotion], selectedDongXe).length > 0;
-                            })
-                            .map((promotion) => (
+                      ) : (() => {
+                        const filtered = promotions
+                          .filter(promotion => filterType === 'all' || promotion.type === filterType)
+                          .filter(promotion => isPromotionAssignedToDongXe(promotion, selectedDongXe))
+                          .filter(promotion => !promotionSearchTerm.trim() || (promotion.name || '').toLowerCase().includes(promotionSearchTerm.trim().toLowerCase()));
+                        if (filtered.length === 0) {
+                          return (
+                            <div className="text-center py-4 text-sm text-gray-500">
+                              {carModel ? (
+                                <>Không có ưu đãi nào áp dụng cho <strong>{carModel}</strong>. Bấm <strong>Tải lại</strong> hoặc thử bỏ chọn dòng xe ở báo giá.</>
+                              ) : (
+                                <>Không có ưu đãi nào trùng bộ lọc. Thử đổi bộ lọc hoặc bấm <strong>Tải lại</strong>.</>
+                              )}
+                            </div>
+                          );
+                        }
+                        return (
+                        <div key="promo-list" className="space-y-2 max-h-[400px] overflow-y-auto">
+                          {filtered.map((promotion) => (
                             <div
                               key={promotion.id}
                               className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors"
@@ -1642,6 +1725,34 @@ export default function CalculatorPage() {
                                       placeholder="Nhập tên chương trình"
                                       autoFocus
                                     />
+                                  </div>
+
+                                  {/* Dòng xe áp dụng - khi sửa ưu đãi (gồm cả dòng xe từ bảng giá như Test) */}
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Dòng xe áp dụng</label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2 bg-gray-50">
+                                      {availableDongXeForPromotion.map((car) => (
+                                        <label key={car.code} className="flex items-center gap-2 text-sm">
+                                          <input
+                                            type="checkbox"
+                                            checked={(editingPromotion.dongXe || []).includes(car.code)}
+                                            onChange={(e) => {
+                                              const checked = e.target.checked;
+                                              setEditingPromotion((prev) => {
+                                                const list = normalizeDongXe(prev.dongXe);
+                                                const next = checked ? [...list, car.code] : list.filter((c) => c !== car.code);
+                                                return { ...prev, dongXe: next };
+                                              });
+                                            }}
+                                            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                          />
+                                          <span className="text-gray-700">{car.name}</span>
+                                        </label>
+                                      ))}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      {(editingPromotion.dongXe || []).length === 0 ? 'Không chọn = áp dụng tất cả dòng xe' : `Đã chọn ${(editingPromotion.dongXe || []).length} dòng xe`}
+                                    </p>
                                   </div>
 
                                   {editingPromotion.type !== 'display' && (
@@ -1725,6 +1836,17 @@ export default function CalculatorPage() {
                                         </span>
                                       )}
                                     </div>
+                                    {/* Hiển thị dòng xe áp dụng */}
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                      {(() => {
+                                        const list = normalizeDongXe(promotion.dongXe);
+                                        return list.length > 0 ? (
+                                          <>Áp dụng: {list.map(c => dongXeCodeToName[c] || c).join(', ')}</>
+                                        ) : (
+                                          <span className="text-amber-600">Chưa gán dòng xe (áp dụng tất cả)</span>
+                                        );
+                                      })()}
+                                    </p>
                                     {promotion.createdAt && (
                                       <p className="text-xs text-gray-500">
                                         Tạo lúc: {new Date(promotion.createdAt).toLocaleString('vi-VN')}
@@ -1765,7 +1887,8 @@ export default function CalculatorPage() {
                             </div>
                           ))}
                         </div>
-                      )}
+                        );
+                      })()}
                       
                       {/* Add selected promotions button */}
                       <div className="mt-4 pt-4 border-t border-gray-200">
@@ -2026,8 +2149,9 @@ export default function CalculatorPage() {
             {/* Car Image */}
             <div className="w-full aspect-[1.8] rounded-lg overflow-hidden mb-5 bg-gray-800 relative">
               <img
-                src={carImageUrl}
+                src={carImageLoadError ? vf3Full : carImageUrl}
                 alt="Ngoại thất"
+                onError={() => setCarImageLoadError(true)}
                 className={`w-full h-full object-cover transition-opacity duration-300 ${imageFade ? 'opacity-0' : 'opacity-100'
                   }`}
               />
@@ -2168,12 +2292,14 @@ export default function CalculatorPage() {
               </div>
 
               <div className="my-4">
-                <div className="text-sm font-medium text-gray-600">Chọn ưu đãi áp dụng</div>
+                <div className="text-sm font-medium text-gray-600">Chọn ưu đãi áp dụng {carModel && <span className="text-gray-500 font-normal">(chỉ ưu đãi cho {carModel})</span>}</div>
                 <div className="space-y-2">
-                  {selectedPromotions.length === 0 ? (
-                    <div className="text-sm text-gray-500 py-2 text-center">Chưa có ưu đãi nào được chọn</div>
+                  {selectedPromotionsForCurrentCar.length === 0 ? (
+                    <div className="text-sm text-gray-500 py-2 text-center">
+                      {selectedDongXe ? 'Chưa có ưu đãi nào áp dụng cho dòng xe này' : 'Chọn dòng xe để xem ưu đãi áp dụng'}
+                    </div>
                   ) : (
-                    selectedPromotions.map((promo) => (
+                    selectedPromotionsForCurrentCar.map((promo) => (
                       <div key={promo.id} className="flex justify-between items-center py-3 border-b border-gray-200">
                         <label className="flex items-center gap-2 flex-1">
                           <input
@@ -2212,10 +2338,10 @@ export default function CalculatorPage() {
               <div className="flex justify-between py-3 border-b border-gray-200">
                 <span className="text-gray-600 font-medium">Giá sau ưu đãi</span>
                 <span className="text-gray-900 font-semibold">
-                  {formatCurrency(calculations.priceAfterBasicPromotions - (calculations.promotionDiscounts || 0))}
+                  {formatCurrency(calculations.priceAfterBasicPromotions)}
                 </span>
               </div>
-              {selectedPromotions.length > 0 && (
+              {selectedPromotionsForCurrentCar.length > 0 && (
                 <div className="flex justify-between py-1 text-sm text-gray-600">
                   <span>Bao gồm ưu đãi:</span>
                   <span className="text-red-600">-{formatCurrency(calculations.promotionDiscounts || 0)}</span>
@@ -2257,6 +2383,13 @@ export default function CalculatorPage() {
                   {hoTroLaiSuat && (
                     <p className="text-xs text-orange-600 mt-1">* KH tham gia CT hỗ trợ lãi suất không được hưởng ưu đãi này</p>
                   )}
+                </div>
+
+                <div className="flex justify-between py-3 border-b border-gray-200">
+                  <span className="text-gray-600 font-medium">Giá xuất hóa đơn (Giá XHD)</span>
+                  <span className="text-gray-900 font-semibold">
+                    {formatCurrency(calculations.giaXuatHoaDon)}
+                  </span>
                 </div>
 
                 <div className="flex justify-between items-center py-3 border-b border-gray-200">

@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getBranchByShowroomName } from "../../data/branchData";
 import { ref, get } from "firebase/database";
 import { database } from "../../firebase/config";
+import { downloadElementAsPdf } from "../../utils/pdfExport";
 
 const GiayXacNhanThongTin = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const printableRef = useRef(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -208,7 +211,7 @@ const GiayXacNhanThongTin = () => {
 
   return (
     <div className="min-h-screen bg-white p-8" style={{ fontFamily: 'Times New Roman' }}>
-      <div className="max-w-4xl mx-auto bg-white" id="printable-content">
+      <div ref={printableRef} className="max-w-4xl mx-auto bg-white" id="printable-content">
 
 
         {/* Header */}
@@ -292,7 +295,7 @@ const GiayXacNhanThongTin = () => {
       </div>
 
       {/* Nút hành động */}
-      <div className="text-center mt-8 print:hidden space-x-4">
+      <div className="text-center mt-8 print:hidden flex flex-wrap justify-center gap-3">
         <button
           onClick={handleBack}
           className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition"
@@ -304,6 +307,13 @@ const GiayXacNhanThongTin = () => {
           className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
         >
           In Giấy Xác Nhận
+        </button>
+        <button
+          onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "giay-xac-nhan-thong-tin").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
+          disabled={downloadingPdf}
+          className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
         </button>
       </div>
 

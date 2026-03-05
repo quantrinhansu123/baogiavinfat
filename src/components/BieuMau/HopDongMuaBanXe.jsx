@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { downloadElementAsPdf } from "../../utils/pdfExport";
 import {
   getBranchByShowroomName,
   getDefaultBranch,
@@ -19,6 +20,8 @@ import { PrintStyles } from "./PrintStyles";
 const HopDongMuaBanXe = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const printableRef = useRef(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [branch, setBranch] = useState(null);
@@ -401,6 +404,7 @@ const HopDongMuaBanXe = () => {
       <PrintStyles />
       <div className="max-w-5xl mx-auto print:max-w-5xl print:mx-auto">
         <div
+          ref={printableRef}
           className="bg-white p-8 print:pt-4 print:pb-4 text-value" id="printable-content"
         >
           {/* Header */}
@@ -1470,7 +1474,7 @@ const HopDongMuaBanXe = () => {
       </div>
 
       {/* Action Buttons */}
-      <div className="text-center mt-8 print:hidden space-x-4">
+      <div className="text-center mt-8 print:hidden flex flex-wrap justify-center gap-3">
         <button
           onClick={handleBack}
           className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition"
@@ -1482,6 +1486,13 @@ const HopDongMuaBanXe = () => {
           className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
         >
           In Hợp Đồng
+        </button>
+        <button
+          onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "hop-dong-mua-ban-xe").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
+          disabled={downloadingPdf}
+          className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
         </button>
       </div>
 

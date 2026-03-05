@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ref, get } from "firebase/database";
 import { database } from "../../firebase/config";
@@ -7,10 +7,13 @@ import { vndToWords } from "../../utils/vndToWords";
 import { formatCurrency, formatDate } from "../../utils/formatting";
 import vinfastLogo from "../../assets/vinfast.svg";
 import CurrencyInput from "../shared/CurrencyInput";
+import { downloadElementAsPdf } from "../../utils/pdfExport";
 
 const TT_HTLV_CĐX_TPB = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const printableRef = useRef(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [branch, setBranch] = useState(null);
@@ -615,6 +618,7 @@ const TT_HTLV_CĐX_TPB = () => {
     >
       <div className="max-w-4xl mx-auto print:max-w-4xl print:mx-auto">
         <div
+          ref={printableRef}
           className="flex-1 bg-white p-8 print:pt-0 flex flex-col"
           id="printable-content"
         >
@@ -1543,7 +1547,7 @@ const TT_HTLV_CĐX_TPB = () => {
       </div>
 
       {/* Action Buttons */}
-      <div className="text-center mt-8 print:hidden space-x-4">
+      <div className="text-center mt-8 print:hidden flex flex-wrap justify-center gap-3">
         <button
           onClick={handleBack}
           className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition"
@@ -1555,6 +1559,13 @@ const TT_HTLV_CĐX_TPB = () => {
           className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
         >
           In Thỏa Thuận
+        </button>
+        <button
+          onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "tt-htlv-cdx-tpb").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
+          disabled={downloadingPdf}
+          className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
         </button>
       </div>
 

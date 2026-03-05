@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   getBranchByShowroomName,
@@ -10,10 +10,13 @@ import { vndToWords } from "../../utils/vndToWords";
 import { formatCurrency, formatDate } from "../../utils/formatting";
 import CurrencyInput from "../shared/CurrencyInput";
 import { PrintStyles } from "./PrintStyles";
+import { downloadElementAsPdf } from "../../utils/pdfExport";
 
 const GiayThoaThuanTraThay = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const printableRef = useRef(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [branch, setBranch] = useState(null);
@@ -317,7 +320,7 @@ const GiayThoaThuanTraThay = () => {
     >
       <PrintStyles />
       <div className="flex gap-6 max-w-4xl mx-auto print:max-w-4xl print:mx-auto">
-        <div className="flex-1 bg-white p-8" id="printable-content">
+        <div ref={printableRef} className="flex-1 bg-white p-8" id="printable-content">
           {/* Title */}
           <div className="text-center mb-2">
             <h1 className="text-xl font-bold uppercase mb-4">
@@ -1389,10 +1392,10 @@ const GiayThoaThuanTraThay = () => {
       </div>
 
       {/* Action Buttons */}
-      <div className="text-center mt-8 print:hidden">
+      <div className="text-center mt-8 print:hidden flex flex-wrap justify-center gap-3">
         <button
           onClick={handleBack}
-          className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition mr-4"
+          className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition"
         >
           Quay lại
         </button>
@@ -1401,6 +1404,13 @@ const GiayThoaThuanTraThay = () => {
           className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
         >
           In Giấy Thỏa Thuận
+        </button>
+        <button
+          onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "giay-thoa-thuan-tra-thay").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
+          disabled={downloadingPdf}
+          className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
         </button>
       </div>
     </div>

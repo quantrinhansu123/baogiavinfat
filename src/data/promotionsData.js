@@ -2,30 +2,70 @@
 // This file exports a function to get promotions from Firebase
 // and can be used by components that need the promotions list
 
-import { ref, get } from 'firebase/database';
+import { ref, get, set } from 'firebase/database';
 import { database } from '../firebase/config';
 
 /**
- * Load promotions from Firebase
- * @returns {Promise<Array>} Array of promotions with structure: { id, name, createdAt, createdBy }
+ * Tạo bảng promotions nếu chưa có: ghi danh sách ưu đãi mặc định lên Firebase.
+ * Gọi khi load về rỗng để luôn có dữ liệu khởi tạo.
+ */
+const seedDefaultPromotionsToFirebase = async () => {
+  try {
+    const promotionsRef = ref(database, 'promotions');
+    for (const promo of defaultPromotions) {
+      const itemRef = ref(database, `promotions/${promo.id}`);
+      await set(itemRef, {
+        name: promo.name,
+        type: promo.type,
+        value: promo.value ?? 0,
+        maxDiscount: promo.maxDiscount ?? 0,
+        minPurchase: promo.minPurchase ?? 0,
+        dongXe: promo.dongXe ?? [],
+        createdAt: promo.createdAt || new Date().toISOString(),
+        createdBy: promo.createdBy || 'system',
+      });
+    }
+    return true;
+  } catch (err) {
+    console.error('Error seeding default promotions to Firebase:', err);
+    return false;
+  }
+};
+
+/**
+ * Load promotions from Firebase. Nếu chưa có dữ liệu (bảng trống) thì tự động tạo và ghi ưu đãi mặc định lên database, rồi trả về danh sách đó.
+ * @returns {Promise<Array>} Array of promotions with structure: { id, name, createdAt, createdBy, dongXe, ... }
  */
 export const loadPromotionsFromFirebase = async () => {
   try {
     const promotionsRef = ref(database, "promotions");
     const snapshot = await get(promotionsRef);
     const data = snapshot.exists() ? snapshot.val() : {};
-    
-    // Convert to array with firebase key
     const promotionsList = Object.entries(data || {}).map(([key, value]) => ({
       id: key,
       ...value,
     })).sort((a, b) => {
-      // Sort by createdAt descending (newest first)
       const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
       const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
       return dateB - dateA;
     });
-    
+
+    if (promotionsList.length === 0) {
+      const seeded = await seedDefaultPromotionsToFirebase();
+      if (seeded) {
+        const snapshot2 = await get(promotionsRef);
+        const data2 = snapshot2.exists() ? snapshot2.val() : {};
+        return Object.entries(data2 || {}).map(([key, value]) => ({
+          id: key,
+          ...value,
+        })).sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+          const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+          return dateB - dateA;
+        });
+      }
+    }
+
     return promotionsList;
   } catch (err) {
     console.error("Error loading promotions from Firebase:", err);
@@ -178,10 +218,19 @@ export const defaultPromotions = [
   }
 ];
 
+/** Chuẩn hóa dongXe từ Firebase (có thể là mảng hoặc object { "0": "vf_3", "1": "test" }) */
+export const normalizeDongXe = (val) => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.filter(Boolean);
+  if (typeof val === 'object' && val !== null) return Object.values(val).filter(Boolean);
+  return [];
+};
+
 /**
  * Filter promotions by car model (dongXe)
+ * Bao gồm cả ưu đãi "áp dụng tất cả" (chưa gán dòng xe) — dùng cho tính báo giá.
  * @param {Array} promotions - Array of promotions
- * @param {string} selectedDongXe - Selected car model code (e.g., 'vf_3', 'vf_5')
+ * @param {string} selectedDongXe - Selected car model code (e.g., 'vf_3', 'vf_5', 'test')
  * @returns {Array} Filtered promotions for the selected car model
  */
 export const filterPromotionsByDongXe = (promotions, selectedDongXe) => {
@@ -190,13 +239,24 @@ export const filterPromotionsByDongXe = (promotions, selectedDongXe) => {
   }
 
   return promotions.filter(promotion => {
-    // If promotion doesn't have dongXe field, it applies to all models (backward compatibility)
-    if (!promotion.dongXe || !Array.isArray(promotion.dongXe)) {
-      return true;
-    }
-    
-    // Check if the selected dongXe is in the promotion's dongXe array
-    return promotion.dongXe.includes(selectedDongXe);
+    const list = normalizeDongXe(promotion.dongXe);
+    if (list.length === 0) return true; // Không gán dòng xe = áp dụng tất cả
+    return list.includes(selectedDongXe);
   });
+};
+
+/**
+ * Kiểm tra ưu đãi có áp dụng cho dòng xe đang chọn hay không.
+ * Trả về true khi: (1) chưa chọn dòng xe, hoặc (2) ưu đãi không gán dòng xe (áp dụng tất cả), hoặc (3) ưu đãi có dòng xe chứa selectedDongXe.
+ * Nhờ đó ưu đãi mới thêm (áp dụng tất cả) vẫn hiện khi đã chọn dòng xe (vd. VF 6).
+ * @param {Object} promotion - Một promotion
+ * @param {string} selectedDongXe - Mã dòng xe đang chọn (vd: 'vf_6', 'vf_3')
+ * @returns {boolean}
+ */
+export const isPromotionAssignedToDongXe = (promotion, selectedDongXe) => {
+  if (!selectedDongXe) return true; // Chưa chọn dòng xe: hiện tất cả
+  const list = normalizeDongXe(promotion.dongXe);
+  if (list.length === 0) return true; // Áp dụng tất cả dòng xe → luôn hiện
+  return list.includes(selectedDongXe);
 };
 

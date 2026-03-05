@@ -1,7 +1,9 @@
+import { useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getBranchByShowroomName } from '../../data/branchData';
 import { formatCurrency, formatDate } from '../../utils/formatting';
+import { downloadElementAsPdf } from '../../utils/pdfExport';
 import { PrintStyles } from './PrintStyles';
 
 /**
@@ -14,6 +16,8 @@ export function BieuMauWrapper({
 }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const printableRef = useRef(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const data = location.state || {};
   const branch = getBranchByShowroomName(data.showroom);
 
@@ -55,12 +59,22 @@ export function BieuMauWrapper({
 
   const handleBack = () => navigate(-1);
 
+  const handleDownloadPdf = () => {
+    const el = printableRef.current || document.getElementById('printable-content');
+    if (!el) return;
+    setDownloadingPdf(true);
+    const slug = (title || 'bieu-mau').replace(/\s+/g, '-').toLowerCase();
+    downloadElementAsPdf(el, slug)
+      .then(() => setDownloadingPdf(false))
+      .catch(() => setDownloadingPdf(false));
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8" style={{ fontFamily: 'Times New Roman' }}>
       <PrintStyles />
 
       <div className="flex gap-6 max-w-4xl mx-auto">
-        <div className="flex-1 bg-white" id="printable-content">
+        <div ref={printableRef} className="flex-1 bg-white" id="printable-content">
           {typeof children === 'function'
             ? children({ data, branch, formatCurrency, formatDate })
             : children
@@ -69,12 +83,19 @@ export function BieuMauWrapper({
       </div>
 
       <div className="max-w-4xl mx-auto mt-8 print:hidden">
-        <div className="text-center space-x-4">
+        <div className="text-center flex flex-wrap justify-center gap-3">
           <button onClick={handleBack} className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition">
             Quay lại
           </button>
           <button onClick={handlePrint} className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition">
             In {title}
+          </button>
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {downloadingPdf ? 'Đang tạo PDF...' : 'Tải PDF'}
           </button>
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
 import { formatCurrency } from "../../utils/formatting";
 import { ref, get } from "firebase/database";
 import { database } from "../../firebase/config";
+import { downloadElementAsPdf } from "../../utils/pdfExport";
 import { PrintStyles } from "./PrintStyles";
 
 const DeNghiXuatHoaDon = () => {
@@ -38,6 +39,8 @@ const DeNghiXuatHoaDon = () => {
   // Refs để lưu vị trí con trỏ
   const soTienThuInputRef = useRef(null);
   const nganHangSoTienInputRef = useRef(null);
+  const printableRef = useRef(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Helper function to get shortName from showroom
   const getShowroomShortName = (showroomValue) => {
@@ -263,6 +266,14 @@ const DeNghiXuatHoaDon = () => {
     navigate(-1);
   };
 
+  const handleDownloadPdf = () => {
+    const el = printableRef.current || document.getElementById("printable-content");
+    if (!el) return;
+    setDownloadingPdf(true);
+    const name = soPhieu ? `de-nghi-xuat-hoa-don-${soPhieu}` : "de-nghi-xuat-hoa-don";
+    downloadElementAsPdf(el, name).then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false));
+  };
+
   if (loading) {
     return (
       <div
@@ -320,7 +331,7 @@ const DeNghiXuatHoaDon = () => {
         }
       `}</style>
       <div className="max-w-4xl mx-auto print:max-w-4xl print:mx-auto">
-        <div className="flex-1 bg-white p-8 print:p-0 flex flex-col min-h-screen print:min-h-0 print:h-auto" id="printable-content">
+        <div ref={printableRef} className="flex-1 bg-white p-8 print:p-0 flex flex-col min-h-screen print:min-h-0 print:h-auto" id="printable-content">
           {/* Header */}
           <div className="mb-6">
             <table className="w-full border-2 border-black border-table">
@@ -582,7 +593,7 @@ const DeNghiXuatHoaDon = () => {
       </div>
 
       {/* Action Buttons */}
-      <div className="text-center mt-8 print:hidden space-x-4">
+      <div className="text-center mt-8 print:hidden flex flex-wrap justify-center gap-3">
         <button
           onClick={handleBack}
           className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition"
@@ -594,6 +605,13 @@ const DeNghiXuatHoaDon = () => {
           className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
         >
           In Phiếu Đề Nghị
+        </button>
+        <button
+          onClick={handleDownloadPdf}
+          disabled={downloadingPdf}
+          className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
         </button>
       </div>
     </div>

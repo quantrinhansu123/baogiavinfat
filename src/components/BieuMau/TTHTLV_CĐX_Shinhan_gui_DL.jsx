@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ref, get } from "firebase/database";
 import { database } from "../../firebase/config";
 import { getBranchByShowroomName, getDefaultBranch } from "../../data/branchData";
 import { formatDate } from "../../utils/formatting";
 import vinfastLogo from "../../assets/vinfast.svg";
+import { downloadElementAsPdf } from "../../utils/pdfExport";
 
 const TTHTLV_CĐX_Shinhan_gui_DL = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const printableRef = useRef(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [loading, setLoading] = useState(true);
   const [branch, setBranch] = useState(null);
 
@@ -189,7 +192,7 @@ const TTHTLV_CĐX_Shinhan_gui_DL = () => {
     <div className="bg-gray-50 min-h-screen p-8">
 
       {/* Content */}
-      <div id="printable-content" className="max-w-[210mm] mx-auto p-10 bg-white shadow-lg">
+      <div ref={printableRef} id="printable-content" className="max-w-[210mm] mx-auto p-10 bg-white shadow-lg">
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Times+New+Roman&display=swap');
 
@@ -641,7 +644,7 @@ const TTHTLV_CĐX_Shinhan_gui_DL = () => {
 
       {/* Action Buttons */}
       <div className="max-w-7xl mx-auto mt-8 print:hidden">
-        <div className="text-center space-x-4">
+        <div className="text-center flex flex-wrap justify-center gap-3">
           <button
             onClick={handleBack}
             className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition"
@@ -653,6 +656,13 @@ const TTHTLV_CĐX_Shinhan_gui_DL = () => {
             className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
           >
             In Thỏa thuận hỗ trợ lãi vay Shinhan
+          </button>
+          <button
+            onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "tthtlv-cdx-shinhan-gui-dl").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
+            disabled={downloadingPdf}
+            className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
           </button>
         </div>
       </div>

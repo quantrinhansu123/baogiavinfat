@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ref, get } from "firebase/database";
 import { database } from "../../firebase/config";
 import vinfastLogo from "../../assets/vinfast.svg";
+import { downloadElementAsPdf } from "../../utils/pdfExport";
 
 const PhieuDeNghiLapPhuKien = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const printableRef = useRef(null);
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [loading, setLoading] = useState(true);
 
     // Form fields
@@ -242,7 +245,7 @@ const PhieuDeNghiLapPhuKien = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="text-center mt-8 print:hidden space-x-4 pb-8">
+            <div className="text-center mt-8 print:hidden flex flex-wrap justify-center gap-3 pb-8">
                 <button
                     onClick={handleBack}
                     className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition"
@@ -254,6 +257,13 @@ const PhieuDeNghiLapPhuKien = () => {
                     className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
                 >
                     In Phiếu
+                </button>
+                <button
+                    onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "phieu-de-nghi-lap-phu-kien").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
+                    disabled={downloadingPdf}
+                    className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                    {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
                 </button>
             </div>
 

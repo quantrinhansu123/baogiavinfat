@@ -1,13 +1,20 @@
 import { createContext, useContext, useMemo } from 'react';
-import { useCarPriceDataFirebase } from '../hooks/useCarPriceDataFirebase';
+import { useCalculatorConfigFirebase } from '../hooks/useCalculatorConfigFirebase';
 
 const CarPriceDataContext = createContext(null);
 
 export function CarPriceDataProvider({ children }) {
-  const { data, loading, error, isFromFirebase } = useCarPriceDataFirebase();
+  const { carPriceData, exteriorColors, interiorColors, loading, isFromFirebase } = useCalculatorConfigFirebase();
   const value = useMemo(
-    () => ({ carPriceData: data, loading, error, isFromFirebase }),
-    [data, loading, error, isFromFirebase]
+    () => ({
+      carPriceData,
+      exteriorColors,
+      interiorColors,
+      loading,
+      error: null,
+      isFromFirebase,
+    }),
+    [carPriceData, exteriorColors, interiorColors, loading, isFromFirebase]
   );
   return (
     <CarPriceDataContext.Provider value={value}>
@@ -19,9 +26,15 @@ export function CarPriceDataProvider({ children }) {
 export function useCarPriceData() {
   const ctx = useContext(CarPriceDataContext);
   if (!ctx) {
-    // Fallback khi dùng ngoài Provider: dùng static từ calculatorData
-    const { carPriceData } = require('../data/calculatorData');
-    return { carPriceData, loading: false, error: null, isFromFirebase: false };
+    const { carPriceData, uniqueNgoaiThatColors, uniqueNoiThatColors } = require('../data/calculatorData');
+    return {
+      carPriceData,
+      exteriorColors: uniqueNgoaiThatColors,
+      interiorColors: uniqueNoiThatColors,
+      loading: false,
+      error: null,
+      isFromFirebase: false,
+    };
   }
   return ctx;
 }

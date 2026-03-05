@@ -9,7 +9,8 @@ import { parseVehicleExcel, exportVehiclesToExcel, downloadImportTemplate, VEHIC
 
 export default function DanhSachXePage() {
     // Use custom Firebase hook for realtime data
-    const { data: vehicles, loading: isLoading, error } = useFirebaseQuery('vehicleInventory');
+    const { data: vehiclesRaw, loading: isLoading, error } = useFirebaseQuery('vehicleInventory');
+    const vehicles = Array.isArray(vehiclesRaw) ? vehiclesRaw : [];
 
     const [expandedRows, setExpandedRows] = useState(new Set());
     const [showAddModal, setShowAddModal] = useState(false);
