@@ -8,13 +8,11 @@ import {
 } from "../../data/branchData";
 import logo from "../../assets/images/logo.png";
 import { PrintStyles } from "./PrintStyles";
-import { downloadElementAsPdf } from "../../utils/pdfExport";
 
 const GiayThoaThuanHoTroVayLai = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const printableRef = useRef(null);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [branch, setBranch] = useState(null);
@@ -1064,13 +1062,6 @@ const GiayThoaThuanHoTroVayLai = () => {
           className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
         >
           In Thỏa Thuận
-        </button>
-        <button
-          onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "giay-thoa-thuan-ho-tro-vay-lai").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
-          disabled={downloadingPdf}
-          className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
         </button>
       </div>
     </div>

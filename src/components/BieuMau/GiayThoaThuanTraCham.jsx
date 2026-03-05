@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { downloadElementAsPdf } from "../../utils/pdfExport";
 import {
   getBranchByShowroomName,
   getDefaultBranch,
@@ -16,7 +15,6 @@ const GiayThoaThuanTraCham = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const printableRef = useRef(null);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [branch, setBranch] = useState(null);
@@ -1380,13 +1378,6 @@ const GiayThoaThuanTraCham = () => {
             className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
           >
             In Giấy Thỏa Thuận
-          </button>
-          <button
-            onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "giay-thoa-thuan-tra-cham").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
-            disabled={downloadingPdf}
-            className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
           </button>
         </div>
       </div>

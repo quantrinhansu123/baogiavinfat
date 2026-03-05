@@ -14,13 +14,11 @@ import {
 import VinfastLogo from "../../assets/images/logo.svg";
 import CurrencyInput from "../shared/CurrencyInput";
 import { PrintStyles } from "./PrintStyles";
-import { downloadElementAsPdf } from "../../utils/pdfExport";
 
 const DeXuatGiaban = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const printableRef = useRef(null);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [branch, setBranch] = useState(null);
@@ -570,16 +568,25 @@ const DeXuatGiaban = () => {
       <PrintStyles />
       <style>{`
         @media print {
-          /* Thu nhỏ form để vừa khổ A4 (210mm), tránh tràn */
+          @page {
+            size: A4 portrait;
+            margin: 12mm 15mm;
+          }
+          /* Khung in đúng khổ A4: 210mm x 297mm */
           #printable-content.de-xuat-gia-ban-print {
             width: 210mm !important;
             max-width: 210mm !important;
+            min-height: 297mm !important;
+            height: auto !important;
             overflow: hidden !important;
+            padding: 0 10mm 10mm !important;
+            box-sizing: border-box !important;
           }
+          /* Thu nhỏ nội dung vừa 1 trang A4, căn góc trên-trái */
           #printable-content.de-xuat-gia-ban-print .de-xuat-gia-ban-print-inner {
-            width: 132% !important;   /* 100% / 0.76 ≈ 132% */
+            width: 128% !important;
             max-width: none !important;
-            transform: scale(0.76) !important;
+            transform: scale(0.78) !important;
             transform-origin: top left !important;
           }
         }
@@ -1296,13 +1303,6 @@ const DeXuatGiaban = () => {
           className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
         >
           In Đề Xuất
-        </button>
-        <button
-          onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "de-xuat-gia-ban").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
-          disabled={downloadingPdf}
-          className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
         </button>
       </div>
     </div>

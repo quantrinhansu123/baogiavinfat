@@ -6,13 +6,11 @@ import {
   getBranchByShowroomName,
 } from "../../data/branchData";
 import { formatDate } from "../../utils/formatting";
-import { downloadElementAsPdf } from "../../utils/pdfExport";
 
 const GiayXacNhanKieuLoai = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const printableRef = useRef(null);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [branch, setBranch] = useState(null);
@@ -447,13 +445,6 @@ const GiayXacNhanKieuLoai = () => {
           className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
         >
           In Giấy Xác Nhận
-        </button>
-        <button
-          onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "giay-xac-nhan-kieu-loai").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
-          disabled={downloadingPdf}
-          className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
         </button>
       </div>
 

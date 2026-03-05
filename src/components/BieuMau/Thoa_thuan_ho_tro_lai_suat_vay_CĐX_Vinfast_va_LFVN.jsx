@@ -10,13 +10,11 @@ import {
   getDefaultBranch,
 } from "../../data/branchData";
 import CurrencyInput from "../shared/CurrencyInput";
-import { downloadElementAsPdf } from "../../utils/pdfExport";
 
 const Thoa_thuan_ho_tro_lai_suat_vay_CĐX_Vinfast_va_LFVN = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const printableRef = useRef(null);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [branch, setBranch] = useState(null);
@@ -1179,13 +1177,6 @@ const Thoa_thuan_ho_tro_lai_suat_vay_CĐX_Vinfast_va_LFVN = () => {
           className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
         >
           In Thỏa thuận hỗ trợ lãi suất LFVN
-        </button>
-        <button
-          onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "thoa-thuan-ho-tro-lai-suat-vay-cdx-vinfast-lfvn").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
-          disabled={downloadingPdf}
-          className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
         </button>
       </div>
 

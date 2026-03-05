@@ -8,13 +8,11 @@ import {
 } from "../../data/branchData";
 import { formatCurrency } from "../../utils/formatting";
 import { PrintStyles } from "./PrintStyles";
-import { downloadElementAsPdf } from "../../utils/pdfExport";
 
 const GiayThoaThuanHTVLCT90_nien_kim_60_thang = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const printableRef = useRef(null);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -900,13 +898,6 @@ const GiayThoaThuanHTVLCT90_nien_kim_60_thang = () => {
           className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
         >
           In Thỏa Thuận
-        </button>
-        <button
-          onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "giay-thoa-thuan-htvlct90").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
-          disabled={downloadingPdf}
-          className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
         </button>
       </div>
     </div>

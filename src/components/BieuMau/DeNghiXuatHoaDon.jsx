@@ -7,7 +7,6 @@ import {
 import { formatCurrency } from "../../utils/formatting";
 import { ref, get } from "firebase/database";
 import { database } from "../../firebase/config";
-import { downloadElementAsPdf } from "../../utils/pdfExport";
 import { PrintStyles } from "./PrintStyles";
 
 const DeNghiXuatHoaDon = () => {
@@ -40,7 +39,6 @@ const DeNghiXuatHoaDon = () => {
   const soTienThuInputRef = useRef(null);
   const nganHangSoTienInputRef = useRef(null);
   const printableRef = useRef(null);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Helper function to get shortName from showroom
   const getShowroomShortName = (showroomValue) => {
@@ -264,14 +262,6 @@ const DeNghiXuatHoaDon = () => {
 
   const handleBack = () => {
     navigate(-1);
-  };
-
-  const handleDownloadPdf = () => {
-    const el = printableRef.current || document.getElementById("printable-content");
-    if (!el) return;
-    setDownloadingPdf(true);
-    const name = soPhieu ? `de-nghi-xuat-hoa-don-${soPhieu}` : "de-nghi-xuat-hoa-don";
-    downloadElementAsPdf(el, name).then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false));
   };
 
   if (loading) {
@@ -605,13 +595,6 @@ const DeNghiXuatHoaDon = () => {
           className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
         >
           In Phiếu Đề Nghị
-        </button>
-        <button
-          onClick={handleDownloadPdf}
-          disabled={downloadingPdf}
-          className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
         </button>
       </div>
     </div>

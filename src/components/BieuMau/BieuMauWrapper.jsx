@@ -1,9 +1,8 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getBranchByShowroomName } from '../../data/branchData';
 import { formatCurrency, formatDate } from '../../utils/formatting';
-import { downloadElementAsPdf } from '../../utils/pdfExport';
 import { PrintStyles } from './PrintStyles';
 
 /**
@@ -17,7 +16,6 @@ export function BieuMauWrapper({
   const location = useLocation();
   const navigate = useNavigate();
   const printableRef = useRef(null);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const data = location.state || {};
   const branch = getBranchByShowroomName(data.showroom);
 
@@ -59,16 +57,6 @@ export function BieuMauWrapper({
 
   const handleBack = () => navigate(-1);
 
-  const handleDownloadPdf = () => {
-    const el = printableRef.current || document.getElementById('printable-content');
-    if (!el) return;
-    setDownloadingPdf(true);
-    const slug = (title || 'bieu-mau').replace(/\s+/g, '-').toLowerCase();
-    downloadElementAsPdf(el, slug)
-      .then(() => setDownloadingPdf(false))
-      .catch(() => setDownloadingPdf(false));
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 p-8" style={{ fontFamily: 'Times New Roman' }}>
       <PrintStyles />
@@ -89,13 +77,6 @@ export function BieuMauWrapper({
           </button>
           <button onClick={handlePrint} className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition">
             In {title}
-          </button>
-          <button
-            onClick={handleDownloadPdf}
-            disabled={downloadingPdf}
-            className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {downloadingPdf ? 'Đang tạo PDF...' : 'Tải PDF'}
           </button>
         </div>
       </div>

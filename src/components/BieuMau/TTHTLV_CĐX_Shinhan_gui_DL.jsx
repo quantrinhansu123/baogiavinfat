@@ -5,13 +5,11 @@ import { database } from "../../firebase/config";
 import { getBranchByShowroomName, getDefaultBranch } from "../../data/branchData";
 import { formatDate } from "../../utils/formatting";
 import vinfastLogo from "../../assets/vinfast.svg";
-import { downloadElementAsPdf } from "../../utils/pdfExport";
 
 const TTHTLV_CĐX_Shinhan_gui_DL = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const printableRef = useRef(null);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [loading, setLoading] = useState(true);
   const [branch, setBranch] = useState(null);
 
@@ -656,13 +654,6 @@ const TTHTLV_CĐX_Shinhan_gui_DL = () => {
             className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
           >
             In Thỏa thuận hỗ trợ lãi vay Shinhan
-          </button>
-          <button
-            onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "tthtlv-cdx-shinhan-gui-dl").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
-            disabled={downloadingPdf}
-            className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
           </button>
         </div>
       </div>

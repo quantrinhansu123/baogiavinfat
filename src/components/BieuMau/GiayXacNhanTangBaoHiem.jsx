@@ -8,13 +8,11 @@ import { ref, get } from "firebase/database";
 import { database } from "../../firebase/config";
 import { formatCurrency } from "../../utils/formatting";
 import { PrintStyles } from "./PrintStyles";
-import { downloadElementAsPdf } from "../../utils/pdfExport";
 
 const GiayXacNhanTangBaoHiem = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const printableRef = useRef(null);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [nganHangName, setNganHangName] = useState(
@@ -588,13 +586,6 @@ const GiayXacNhanTangBaoHiem = () => {
             className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
           >
             In Giấy Xác Nhận
-          </button>
-          <button
-            onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "giay-xac-nhan-tang-bao-hiem").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
-            disabled={downloadingPdf}
-            className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
           </button>
         </div>
       </div>

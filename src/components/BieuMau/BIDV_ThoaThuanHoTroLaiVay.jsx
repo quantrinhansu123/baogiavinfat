@@ -8,13 +8,11 @@ import {
 } from "../../data/branchData";
 import vinfastLogo from "../../assets/vinfast.svg";
 import { PrintStyles } from "./PrintStyles";
-import { downloadElementAsPdf } from "../../utils/pdfExport";
 
 const BIDV_ThoaThuanHoTroLaiVay = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const printableRef = useRef(null);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [branch, setBranch] = useState(null);
@@ -934,13 +932,6 @@ const BIDV_ThoaThuanHoTroLaiVay = () => {
           className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
         >
           In Thỏa Thuận
-        </button>
-        <button
-          onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "bidv-thoa-thuan-ho-tro-lai-vay").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
-          disabled={downloadingPdf}
-          className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {downloadingPdf ? "Đang tạo PDF..." : "Tải PDF"}
         </button>
       </div>
     </div>
