@@ -6,6 +6,7 @@ import 'react-toastify/dist/ReactToastify.css'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import ZaloFloatingButton from './components/ZaloFloatingButton'
+import { CarPriceDataProvider } from './contexts/CarPriceDataContext'
 
 // Import critical pages directly, lazy pages from LazyPages
 import {
@@ -15,6 +16,7 @@ import {
   Profile,
   Dashboard,
   CalculatorPage,
+  CalculatorConfigAdminPage,
   QuanLyKhachHangPage,
   ContractFormPage,
   HopDongPage,
@@ -72,6 +74,7 @@ const LazyRoute = ({ children }) => (
 function App() {
   return (
     <Router>
+      <CarPriceDataProvider>
       <div className="min-h-screen bg-gradient-to-b from-white to-slate-200 flex flex-col print:min-h-0 print:bg-white">
         <Header />
 
@@ -152,6 +155,11 @@ function App() {
             <Route path="/in-bao-gia-2" element={
               <ProtectedRoute>
                 <LazyRoute><Invoice2Page /></LazyRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/quan-tri-bang-gia" element={
+              <ProtectedRoute>
+                <LazyRoute><CalculatorConfigAdminPage /></LazyRoute>
               </ProtectedRoute>
             } />
 
@@ -314,6 +322,7 @@ function App() {
           theme="light"
         />
       </div>
+      </CarPriceDataProvider>
     </Router>
   )
 }

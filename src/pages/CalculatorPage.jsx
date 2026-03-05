@@ -25,13 +25,13 @@ import {
   quy_doi_2_nam_bhvc,
   thong_tin_ky_thuat_xe,
   danh_sach_xe,
-  carPriceData,
   uniqueNgoaiThatColors,
   uniqueNoiThatColors,
   getDataByKey,
   formatCurrency,
   getCarImageUrl,
 } from '../data/calculatorData';
+import { useCarPriceData } from '../contexts/CarPriceDataContext';
 
 // Import images
 import logoImage from '../assets/images/logo1.jpg';
@@ -69,51 +69,6 @@ const colorImageMap = {
   'green-grey': greenGreyColor,
 };
 
-// Get car image from carPriceData (same logic as HTML)
-const getCarImage = (model, version, exteriorColor) => {
-  if (!model || !version || !exteriorColor) {
-    // Return default image if no selection
-    return vf3Full;
-  }
-
-  if (!Array.isArray(carPriceData)) {
-    return vf3Full;
-  }
-
-  // Find exact match: model + trim + exterior_color
-  const exact = carPriceData.find(e => {
-    const m = String(e.model || '').trim();
-    const t = String(e.trim || '').trim();
-    const ext = String(e.exterior_color || '').trim();
-    return m === model && t === version && ext === exteriorColor;
-  });
-
-  if (exact && exact.car_image_url) {
-    const imageUrl = getCarImageUrl(exact.car_image_url);
-    if (imageUrl) return imageUrl;
-  }
-
-  // Fallback: find any image for this model/version combination
-  const fallback = carPriceData.find(e => {
-    const m = String(e.model || '').trim();
-    const t = String(e.trim || '').trim();
-    return m === model && t === version && e.car_image_url;
-  });
-
-  if (fallback && fallback.car_image_url) {
-    const imageUrl = getCarImageUrl(fallback.car_image_url);
-    if (imageUrl) return imageUrl;
-  }
-
-  // Final fallback to default images
-  if (model === 'VF 3') {
-    return vf3Full;
-  } else if (model === 'VF 5') {
-    return vf5Full;
-  }
-  return vf3Full;
-};
-
 const getInteriorImage = (model) => {
   if (model === 'VF 3') {
     return vf3Interior;
@@ -137,8 +92,36 @@ const enhancedInteriorColors = uniqueNoiThatColors.map(color => ({
   icon: color.icon || colorImageMap[color.code] || whiteColor,
 }));
 
+// Get car image from carPriceData (same logic as HTML) - uses data from context
+const getCarImage = (carPriceData, model, version, exteriorColor) => {
+  if (!model || !version || !exteriorColor) return vf3Full;
+  if (!Array.isArray(carPriceData)) return vf3Full;
+  const exact = carPriceData.find(e =>
+    String(e.model || '').trim() === model &&
+    String(e.trim || '').trim() === version &&
+    String(e.exterior_color || '').trim() === exteriorColor
+  );
+  if (exact?.car_image_url) {
+    const imageUrl = getCarImageUrl(exact.car_image_url);
+    if (imageUrl) return imageUrl;
+  }
+  const fallback = carPriceData.find(e =>
+    String(e.model || '').trim() === model &&
+    String(e.trim || '').trim() === version &&
+    e.car_image_url
+  );
+  if (fallback?.car_image_url) {
+    const imageUrl = getCarImageUrl(fallback.car_image_url);
+    if (imageUrl) return imageUrl;
+  }
+  if (model === 'VF 3') return vf3Full;
+  if (model === 'VF 5') return vf5Full;
+  return vf3Full;
+};
+
 export default function CalculatorPage() {
   const navigate = useNavigate();
+  const { carPriceData } = useCarPriceData();
 
   // Customer info
   const [customerName, setCustomerName] = useState('');
@@ -724,7 +707,7 @@ export default function CalculatorPage() {
       // For other models, maintain original order
       return 0;
     });
-  }, []);
+  }, [carPriceData]);
 
   // Get unique car models
   const carModels = useMemo(() => {
@@ -789,7 +772,7 @@ export default function CalculatorPage() {
     });
 
     return colorsInOrder;
-  }, [carModel, carVersion, interiorColor]);
+  }, [carModel, carVersion, interiorColor, carPriceData]);
 
   const availableInteriorColors = useMemo(() => {
     if (!carModel || !carVersion) return [];
@@ -802,8 +785,8 @@ export default function CalculatorPage() {
 
   // Get car image URL
   const carImageUrl = useMemo(() => {
-    return getCarImage(carModel, carVersion, exteriorColor);
-  }, [carModel, carVersion, exteriorColor]);
+    return getCarImage(carPriceData, carModel, carVersion, exteriorColor);
+  }, [carPriceData, carModel, carVersion, exteriorColor]);
 
   const interiorImageUrl = useMemo(() => {
     return getInteriorImage(carModel);

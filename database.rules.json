@@ -157,6 +157,38 @@
     "dailySummaries": {
       ".read": true,
       ".write": false
+    },
+
+    "calculatorConfig": {
+      ".read": true,
+      ".write": true,
+      "carPriceData": {
+        "$itemId": {
+          ".validate": "newData.hasChildren(['model', 'trim'])",
+          "model": { ".validate": "newData.isString()" },
+          "trim": { ".validate": "newData.isString()" },
+          "exterior_color": { ".validate": "newData.isString()" },
+          "interior_color": { ".validate": "newData.isString()" },
+          "price_vnd": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+          "car_image_url": { ".validate": "newData.isString()" }
+        }
+      },
+      "exteriorColors": {
+        "$itemId": {
+          ".validate": "newData.hasChildren(['code', 'name'])",
+          "code": { ".validate": "newData.isString()" },
+          "name": { ".validate": "newData.isString()" },
+          "icon": { ".validate": "newData.isString()" }
+        }
+      },
+      "interiorColors": {
+        "$itemId": {
+          ".validate": "newData.hasChildren(['code', 'name'])",
+          "code": { ".validate": "newData.isString()" },
+          "name": { ".validate": "newData.isString()" },
+          "icon": { ".validate": "newData.isString()" }
+        }
+      }
     }
   }
 }

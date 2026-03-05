@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, FileText, Briefcase, DollarSign, FileCheck, Car } from 'lucide-react';
+import { Users, FileText, Briefcase, DollarSign, FileCheck, Car, Settings } from 'lucide-react';
 import VinfastLogo from '../assets/vinfast.svg';
 
 export default function Menu() {
@@ -18,13 +18,13 @@ export default function Menu() {
     { to: '/quan-ly-khach-hang', label: 'Khách hàng', color: 'accent', icon: Briefcase, isExternal: false },
     { to: '/bao-gia', label: 'Báo giá', color: 'primary', icon: DollarSign, isExternal: false },
     { to: '/danh-sach-xe', label: 'Danh sách xe', color: 'secondary', icon: Car, isExternal: false },
+    { to: '/quan-tri-bang-gia', label: 'Quản trị bảng giá', color: 'accent', icon: Settings, isExternal: false, adminOnly: true },
   ];
 
-  // Filter out "Nhân sự" card if userRole is "user"
+  // Filter: ẩn Nhân sự với user, ẩn Quản trị bảng giá nếu không phải admin
   const cards = allCards.filter((card) => {
-    if (card.to === '/nhan-su' && userRole === 'user') {
-      return false;
-    }
+    if (card.to === '/nhan-su' && userRole === 'user') return false;
+    if (card.adminOnly && userRole !== 'admin') return false;
     return true;
   });
 
