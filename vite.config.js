@@ -28,10 +28,7 @@ export default defineConfig({
             // Don't separate it into vendor-ui as it causes useLayoutEffect issues
           }
 
-          // Feature chunks - group related components
-          if (id.includes('/components/BieuMau/')) {
-            return 'feature-bieumau'
-          }
+          // Feature chunks - BieuMau không tách riêng để tránh lỗi useLayoutEffect (chunk load trước vendor-react)
           if (id.includes('/pages/Calculator') || id.includes('/calculator/')) {
             return 'feature-calculator'
           }
