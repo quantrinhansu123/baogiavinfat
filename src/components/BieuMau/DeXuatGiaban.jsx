@@ -581,12 +581,27 @@ const DeXuatGiaban = () => {
             overflow: hidden !important;
             padding: 0 10mm 10mm !important;
             box-sizing: border-box !important;
+            font-size: 15px !important;
           }
-          /* Thu nhỏ nội dung vừa 1 trang A4, căn góc trên-trái */
+          /* Tăng font chữ và padding bảng khi in */
+          #printable-content.de-xuat-gia-ban-print .text-xs {
+            font-size: 13px !important;
+          }
+          #printable-content.de-xuat-gia-ban-print .text-sm {
+            font-size: 14px !important;
+          }
+          #printable-content.de-xuat-gia-ban-print .text-lg {
+            font-size: 18px !important;
+          }
+          #printable-content.de-xuat-gia-ban-print table.border-table td,
+          #printable-content.de-xuat-gia-ban-print table.border-table th {
+            padding: 8px 12px !important;
+          }
+          /* Phóng to nội dung vừa 1 trang A4, căn góc trên-trái */
           #printable-content.de-xuat-gia-ban-print .de-xuat-gia-ban-print-inner {
-            width: 128% !important;
+            width: 112% !important;
             max-width: none !important;
-            transform: scale(0.78) !important;
+            transform: scale(0.92) !important;
             transform-origin: top left !important;
           }
         }
@@ -1291,19 +1306,31 @@ const DeXuatGiaban = () => {
       </div>
 
       {/* Action Buttons */}
-      <div className="text-center mt-8 print:hidden flex flex-wrap justify-center gap-3">
-        <button
-          onClick={handleBack}
-          className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition"
-        >
-          Quay lại
-        </button>
-        <button
-          onClick={() => window.print()}
-          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
-        >
-          In Đề Xuất
-        </button>
+      <div className="text-center mt-8 print:hidden">
+        <p className="text-sm text-gray-500 mb-3">
+          Để không in ngày giờ và tên trang (đầu/chân trang), trong hộp thoại in hãy tắt &quot;Đầu trang và chân trang&quot;.
+        </p>
+        <div className="flex flex-wrap justify-center gap-3">
+          <button
+            onClick={handleBack}
+            className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition"
+          >
+            Quay lại
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
+          >
+            In Đề Xuất
+          </button>
+          <button
+            onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "de-xuat-gia-ban").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
+            disabled={downloadingPdf}
+            className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {downloadingPdf ? "Đang lưu PDF..." : "Lưu PDF"}
+          </button>
+        </div>
       </div>
     </div>
   );
