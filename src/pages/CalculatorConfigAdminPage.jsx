@@ -225,7 +225,7 @@ export default function CalculatorConfigAdminPage() {
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
         </div>
       ) : tab === 'carPrice' ? (
-        <CarPriceTable rows={rows} onEdit={openEdit} onDelete={deleteRow} />
+        <CarPriceTable rows={rows} onEdit={openEdit} onDelete={deleteRow} exteriorColors={fbExtRows || []} interiorColors={fbIntRows || []} />
       ) : (
         <ColorTable rows={rows} onEdit={openEdit} onDelete={deleteRow} type={tab} />
       )}
@@ -252,7 +252,16 @@ export default function CalculatorConfigAdminPage() {
 }
 
 /* ───── Car Price Table ───── */
-function CarPriceTable({ rows, onEdit, onDelete }) {
+function CarPriceTable({ rows, onEdit, onDelete, exteriorColors = [], interiorColors = [] }) {
+  const getExtColorName = (code) => {
+    const color = exteriorColors.find(c => c.code === code);
+    return color?.name || code;
+  };
+  const getIntColorName = (code) => {
+    const color = interiorColors.find(c => c.code === code);
+    return color?.name || code;
+  };
+
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
       <table className="min-w-full divide-y divide-slate-200">
@@ -280,8 +289,8 @@ function CarPriceTable({ rows, onEdit, onDelete }) {
               </td>
               <td className="px-3 py-2 text-sm font-medium text-slate-800">{row.model}</td>
               <td className="px-3 py-2 text-sm text-slate-800">{row.trim}</td>
-              <td className="px-3 py-2 text-sm text-slate-700">{row.exterior_color}</td>
-              <td className="px-3 py-2 text-sm text-slate-700">{row.interior_color}</td>
+              <td className="px-3 py-2 text-sm text-slate-700">{getExtColorName(row.exterior_color)}</td>
+              <td className="px-3 py-2 text-sm text-slate-700">{getIntColorName(row.interior_color)}</td>
               <td className="px-3 py-2 text-sm text-right font-medium text-slate-800">{formatCurrency(row.price_vnd || 0)}</td>
               <td className="px-3 py-2 text-xs text-slate-500 max-w-[160px] truncate" title={row.car_image_url || ''}>{row.car_image_url || '—'}</td>
               <td className="px-3 py-2 text-right whitespace-nowrap">

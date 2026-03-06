@@ -77,13 +77,13 @@ const DeXuatGiaban = () => {
   const [theoChinhSachKhung, setTheoChinhSachKhung] = useState("");
   const [deXuat, setDeXuat] = useState("");
   const [lyDo, setLyDo] = useState(
-    "(Lưu ý: Mức lương TVBH phụ thuộc vào chính sách của VINFAST, trường hợp tại thời điểm XHĐ chính sách VINFAST thay đổi, Cty sẽ xem xét điều chỉnh phù hợp)" 
+    "(Lưu ý: Mức lương TVBH phụ thuộc vào chính sách của VINFAST, trường hợp tại thời điểm XHĐ chính sách VINFAST thay đổi, Cty sẽ xem xét điều chỉnh phù hợp)"
   );
 
   // Helper function to get color name from color code
   const getColorName = (colorCode, isExterior = true) => {
     if (!colorCode) return colorCode || "";
-    const colorList = isExterior ? uniqueNgoaiThatColors : uniqueNoiThatColors; 
+    const colorList = isExterior ? uniqueNgoaiThatColors : uniqueNoiThatColors;
     // Check if it's already a name (contains Vietnamese characters or is lowercase)
     const foundByCode = colorList.find(
       (color) =>
@@ -109,7 +109,7 @@ const DeXuatGiaban = () => {
       if (location.state?.firebaseKey) {
         try {
           const contractId = location.state.firebaseKey;
-          const contractsRef = ref(database, `contracts/${contractId}`);        
+          const contractsRef = ref(database, `contracts/${contractId}`);
           const snapshot = await get(contractsRef);
           if (snapshot.exists()) {
             const contractData = snapshot.val();
@@ -119,7 +119,7 @@ const DeXuatGiaban = () => {
             }
           }
         } catch (error) {
-          console.error("Error loading showroom from contracts:", error);       
+          console.error("Error loading showroom from contracts:", error);
         }
       }
 
@@ -133,16 +133,16 @@ const DeXuatGiaban = () => {
           const snapshot = await get(contractRef);
           if (snapshot.exists()) {
             const contractData = snapshot.val();
-            console.log("Loaded from exportedContracts:", contractData);        
+            console.log("Loaded from exportedContracts:", contractData);
 
             // Load showroom nếu chưa có từ contracts
-            if (contractData.showroom && !showroomLoadedFromContracts) {        
+            if (contractData.showroom && !showroomLoadedFromContracts) {
               showroomName = contractData.showroom;
             }
 
             // Tư vấn bán hàng
             if (contractData.tvbh || contractData.TVBH) {
-              setTuVanBanHang(contractData.tvbh || contractData.TVBH || "");    
+              setTuVanBanHang(contractData.tvbh || contractData.TVBH || "");
             }
 
             // Khách hàng
@@ -153,9 +153,9 @@ const DeXuatGiaban = () => {
             ) {
               setKhachHang(
                 contractData.customerName ||
-                  contractData["Tên KH"] ||
-                  contractData["Tên Kh"] ||
-                  ""
+                contractData["Tên KH"] ||
+                contractData["Tên Kh"] ||
+                ""
               );
             }
 
@@ -167,9 +167,9 @@ const DeXuatGiaban = () => {
             ) {
               setSoHopDong(
                 contractData.vso ||
-                  contractData.VSO ||
-                  contractData.contractNumber ||
-                  ""
+                contractData.VSO ||
+                contractData.contractNumber ||
+                ""
               );
             }
 
@@ -191,8 +191,8 @@ const DeXuatGiaban = () => {
                 if (ngayHD.includes("-")) {
                   const date = new Date(ngayHD);
                   if (!isNaN(date.getTime())) {
-                    const day = String(date.getDate()).padStart(2, "0");        
-                    const month = String(date.getMonth() + 1).padStart(2, "0"); 
+                    const day = String(date.getDate()).padStart(2, "0");
+                    const month = String(date.getMonth() + 1).padStart(2, "0");
                     const year = date.getFullYear();
                     setNgayHopDong(`${day}/${month}/${year}`);
                   } else {
@@ -212,9 +212,9 @@ const DeXuatGiaban = () => {
             ) {
               setCccd(
                 contractData.cccd ||
-                  contractData.CCCD ||
-                  contractData.customerCCCD ||
-                  ""
+                contractData.CCCD ||
+                contractData.customerCCCD ||
+                ""
               );
             }
 
@@ -226,9 +226,9 @@ const DeXuatGiaban = () => {
             ) {
               setMaSoThue(
                 contractData.maSoThue ||
-                  contractData["Mã số thuế"] ||
-                  contractData["Mã Số Thuế"] ||
-                  ""
+                contractData["Mã số thuế"] ||
+                contractData["Mã Số Thuế"] ||
+                ""
               );
             }
 
@@ -240,9 +240,9 @@ const DeXuatGiaban = () => {
             ) {
               setDienThoai(
                 contractData.phone ||
-                  contractData["Số Điện Thoại"] ||
-                  contractData["Số điện thoại"] ||
-                  ""
+                contractData["Số Điện Thoại"] ||
+                contractData["Số điện thoại"] ||
+                ""
               );
             }
 
@@ -254,9 +254,9 @@ const DeXuatGiaban = () => {
             ) {
               setDiaChi(
                 contractData.address ||
-                  contractData["Địa Chỉ"] ||
-                  contractData["Địa chỉ"] ||
-                  ""
+                contractData["Địa Chỉ"] ||
+                contractData["Địa chỉ"] ||
+                ""
               );
             }
 
@@ -268,9 +268,9 @@ const DeXuatGiaban = () => {
             ) {
               setLoaiXe(
                 contractData.dongXe ||
-                  contractData.model ||
-                  contractData["Dòng xe"] ||
-                  ""
+                contractData.model ||
+                contractData["Dòng xe"] ||
+                ""
               );
             }
 
@@ -296,12 +296,12 @@ const DeXuatGiaban = () => {
 
               if (noiThatName && noiThatName !== noiThatCode) {
                 setMauXe(
-                  `${ngoaiThatName.toUpperCase()}/${noiThatName.toUpperCase()}` 
+                  `${ngoaiThatName.toUpperCase()}/${noiThatName.toUpperCase()}`
                 );
               } else if (noiThatCode) {
                 // Nếu có nội thất nhưng không tìm thấy tên, giữ nguyên
                 setMauXe(
-                  `${ngoaiThatName.toUpperCase()}/${noiThatCode.toUpperCase()}` 
+                  `${ngoaiThatName.toUpperCase()}/${noiThatCode.toUpperCase()}`
                 );
               } else {
                 setMauXe(ngoaiThatName.toUpperCase());
@@ -316,16 +316,16 @@ const DeXuatGiaban = () => {
             ) {
               setSoKhung(
                 contractData.soKhung ||
-                  contractData["Số Khung"] ||
-                  contractData.chassisNumber ||
-                  ""
+                contractData["Số Khung"] ||
+                contractData.chassisNumber ||
+                ""
               );
             }
 
             // Giá niêm yết
-            if (contractData.giaNiemYet || contractData["Giá Niêm Yết"]) {      
+            if (contractData.giaNiemYet || contractData["Giá Niêm Yết"]) {
               const gia =
-                contractData.giaNiemYet || contractData["Giá Niêm Yết"] || "";  
+                contractData.giaNiemYet || contractData["Giá Niêm Yết"] || "";
               if (gia) {
                 setGiaNiemYet(formatCurrency(gia.toString()));
               }
@@ -366,9 +366,9 @@ const DeXuatGiaban = () => {
             ) {
               setNganHang(
                 contractData.nganHang ||
-                  contractData.bank ||
-                  contractData["ngân hàng"] ||
-                  ""
+                contractData.bank ||
+                contractData["ngân hàng"] ||
+                ""
               );
             }
 
@@ -486,11 +486,11 @@ const DeXuatGiaban = () => {
         const stateData = location.state;
         setData(stateData);
 
-        if (stateData.customerName) setKhachHang(stateData.customerName);       
-        if (stateData.contractNumber) setSoHopDong(stateData.contractNumber);   
-        if (stateData.contractDate) setNgayHopDong(stateData.contractDate);     
-        if (stateData.customerAddress) setDiaChi(stateData.customerAddress);    
-        if (stateData.customerPhone) setDienThoai(stateData.customerPhone);     
+        if (stateData.customerName) setKhachHang(stateData.customerName);
+        if (stateData.contractNumber) setSoHopDong(stateData.contractNumber);
+        if (stateData.contractDate) setNgayHopDong(stateData.contractDate);
+        if (stateData.customerAddress) setDiaChi(stateData.customerAddress);
+        if (stateData.customerPhone) setDienThoai(stateData.customerPhone);
         if (stateData.customerCCCD) setCccd(stateData.customerCCCD);
         if (stateData.hieuxe) setLoaiXe(stateData.hieuxe);
         if (stateData.soKhung) setSoKhung(stateData.soKhung);
@@ -499,7 +499,7 @@ const DeXuatGiaban = () => {
 
         // Ưu đãi / Chính sách khuyến mãi từ location.state
         const stateUuDai =
-          stateData.uuDai || stateData["Ưu đãi"] || stateData["ưu đãi"] || "";  
+          stateData.uuDai || stateData["Ưu đãi"] || stateData["ưu đãi"] || "";
         if (stateUuDai) {
           let formattedUuDai = "";
           if (Array.isArray(stateUuDai)) {
@@ -549,7 +549,7 @@ const DeXuatGiaban = () => {
   if (loading) {
     return (
       <div
-        className="min-h-screen bg-gray-50 flex items-center justify-center"    
+        className="min-h-screen bg-gray-50 flex items-center justify-center"
         style={{ fontFamily: "Times New Roman" }}
       >
         <div className="text-center">
@@ -570,20 +570,20 @@ const DeXuatGiaban = () => {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 12mm 15mm;
+            margin: 8mm 10mm;
           }
-          /* Khung in đúng khổ A4: 210mm x 297mm */
+          /* Full trang A4: dùng hết diện tích in */
           #printable-content.de-xuat-gia-ban-print {
             width: 210mm !important;
             max-width: 210mm !important;
-            min-height: 297mm !important;
+            min-height: 281mm !important;
             height: auto !important;
             overflow: hidden !important;
-            padding: 0 10mm 10mm !important;
+            padding: 0 5mm 5mm !important;
             box-sizing: border-box !important;
             font-size: 15px !important;
           }
-          /* Tăng font chữ và padding bảng khi in */
+          /* Font và bảng rõ, full trang */
           #printable-content.de-xuat-gia-ban-print .text-xs {
             font-size: 13px !important;
           }
@@ -591,19 +591,43 @@ const DeXuatGiaban = () => {
             font-size: 14px !important;
           }
           #printable-content.de-xuat-gia-ban-print .text-lg {
-            font-size: 18px !important;
+            font-size: 19px !important;
           }
-          #printable-content.de-xuat-gia-ban-print table.border-table td,
+          #printable-content.de-xuat-gia-ban-print table.border-table td:not(.signature-empty-cell),
           #printable-content.de-xuat-gia-ban-print table.border-table th {
             padding: 8px 12px !important;
           }
-          /* Phóng to nội dung vừa 1 trang A4, căn góc trên-trái */
+          /* Không thu nhỏ: nội dung full 100% trang */
           #printable-content.de-xuat-gia-ban-print .de-xuat-gia-ban-print-inner {
-            width: 112% !important;
+            width: 100% !important;
             max-width: none !important;
-            transform: scale(0.92) !important;
+            transform: none !important;
             transform-origin: top left !important;
           }
+          /* Giảm chiều cao hàng tiêu đề chữ ký, giữ nguyên hàng ô trống dưới cùng */
+          #printable-content.de-xuat-gia-ban-print .signature-block {
+            min-height: 0 !important;
+            margin-top: 6px !important;
+          }
+          #printable-content.de-xuat-gia-ban-print .signature-block .signer-title {
+            margin-bottom: 4px !important;
+          }
+          #printable-content.de-xuat-gia-ban-print .signature-block td {
+            padding: 4px 8px !important;
+          }
+        }
+      `}</style>
+      <style>{`
+        /* Áp dụng cả màn hình: giảm độ rộng hàng tiêu đề chữ ký */
+        #printable-content.de-xuat-gia-ban-print .signature-block {
+          min-height: 0;
+          margin-top: 6px;
+        }
+        #printable-content.de-xuat-gia-ban-print .signature-block .signer-title {
+          margin-bottom: 4px;
+        }
+        #printable-content.de-xuat-gia-ban-print .signature-block td {
+          padding: 4px 8px;
         }
       `}</style>
       <div className="max-w-5xl mx-auto print:max-w-full">
@@ -613,694 +637,694 @@ const DeXuatGiaban = () => {
           id="printable-content"
         >
           <div className="de-xuat-gia-ban-print-inner">
-          <div className="flex items-start justify-between mb-4">
-            {/* Logo */}
-            <div className="w-16">
-              <img src={VinfastLogo} alt="VinFast Logo" className="w-16 h-16" />
+            <div className="flex items-start justify-between mb-4">
+              {/* Logo */}
+              <div className="w-16">
+                <img src={VinfastLogo} alt="VinFast Logo" className="w-16 h-16" />
+              </div>
+
+              {/* Company Info */}
+              <div className="flex-1 text-center">
+                <p className="font-bold text-sm">
+                  {branch ? (
+                    branch.shortName === "Thủ Đức"
+                      ? "CÔNG TY CPĐT VÀ TMDV Ô TÔ ĐÔNG SÀI GÒN"
+                      : `CN ${branch.shortName.toUpperCase()}-CÔNG TY CPĐT VÀ TMDV Ô TÔ ĐÔNG SÀI GÒN`
+                  ) : "[Chưa chọn showroom]"}
+                </p>
+                <h1 className="font-bold text-lg mt-2 uppercase">ĐỀ XUẤT GIÁ BÁN XE</h1>
+              </div>
+
+              {/* Date */}
+              <div className="w-48 text-right text-sm italic">
+                <p>
+                  Ngày{" "}
+                  <span className="print:hidden">
+                    <input
+                      type="text"
+                      value={ngay}
+                      onChange={(e) => setNgay(e.target.value)}
+                      className="border-b border-gray-400 px-1 w-6 text-center focus:outline-none focus:border-blue-500"
+                    />
+                  </span>
+                  <span className="hidden print:inline">{ngay}</span> tháng{" "}
+                  <span className="print:hidden">
+                    <input
+                      type="text"
+                      value={thang}
+                      onChange={(e) => setThang(e.target.value)}
+                      className="border-b border-gray-400 px-1 w-6 text-center focus:outline-none focus:border-blue-500"
+                    />
+                  </span>
+                  <span className="hidden print:inline">{thang}</span> Năm{" "}
+                  <span className="print:hidden">
+                    <input
+                      type="text"
+                      value={nam}
+                      onChange={(e) => setNam(e.target.value)}
+                      className="border-b border-gray-400 px-1 w-12 text-center focus:outline-none focus:border-blue-500"
+                    />
+                  </span>
+                  <span className="hidden print:inline">{nam}</span>
+                </p>
+              </div>
             </div>
 
-            {/* Company Info */}
-            <div className="flex-1 text-center">
-              <p className="font-bold text-sm">
-                {branch ? (
-                  branch.shortName === "Thủ Đức"
-                    ? "CÔNG TY CPĐT VÀ TMDV Ô TÔ ĐÔNG SÀI GÒN"
-                    : `CN ${branch.shortName.toUpperCase()}-CÔNG TY CPĐT VÀ TMDV Ô TÔ ĐÔNG SÀI GÒN`
-                ) : "[Chưa chọn showroom]"}
-              </p>
-              <h1 className="font-bold text-lg mt-2 uppercase">ĐỀ XUẤT GIÁ BÁN XE</h1>    
-            </div>
-
-            {/* Date */}
-            <div className="w-48 text-right text-sm italic">
-              <p>
-                Ngày{" "}
-                <span className="print:hidden">
-                  <input
-                    type="text"
-                    value={ngay}
-                    onChange={(e) => setNgay(e.target.value)}
-                    className="border-b border-gray-400 px-1 w-6 text-center focus:outline-none focus:border-blue-500"
-                  />
-                </span>
-                <span className="hidden print:inline">{ngay}</span> tháng{" "}  
-                <span className="print:hidden">
-                  <input
-                    type="text"
-                    value={thang}
-                    onChange={(e) => setThang(e.target.value)}
-                    className="border-b border-gray-400 px-1 w-6 text-center focus:outline-none focus:border-blue-500"
-                  />
-                </span>
-                <span className="hidden print:inline">{thang}</span> Năm{" "}   
-                <span className="print:hidden">
-                  <input
-                    type="text"
-                    value={nam}
-                    onChange={(e) => setNam(e.target.value)}
-                    className="border-b border-gray-400 px-1 w-12 text-center focus:outline-none focus:border-blue-500"
-                  />
-                </span>
-                <span className="hidden print:inline">{nam}</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Bảng 1: Thông tin khách hàng và hợp đồng */}
-          <div className="text-xs">
-            <table className="w-full border border-black border-table">
-              <tbody>
-                {/* Hàng 1: Tư vấn bán hàng và Số hợp đồng, Ngày hợp đồng */}
-                <tr className="border-b border-black">
-                  <td className="border-r border-black p-1 font-bold w-1/2">    
-                    TƯ VẤN BÁN HÀNG:{" "}
-                    <span className="print:hidden">
-                      <input
-                        type="text"
-                        value={tuVanBanHang}
-                        onChange={(e) => setTuVanBanHang(e.target.value)}       
-                        className="border-b border-gray-400 px-1 w-48 focus:outline-none focus:border-blue-500"
-                      />
-                    </span>
-                    <span className="hidden print:inline">{tuVanBanHang}</span> 
-                  </td>
-                  <td className="p-1 w-1/2">
-                    <div className="space-y-1">
-                      <div className="info-row grid-cols-[100px_1fr]">
-                        <strong className="info-label w-[100px]">Số Hợp đồng:</strong>{" "}
-                        <div className="info-value">
-                          <span className="print:hidden font-bold">
-                            <input
-                              type="text"
-                              value={soHopDong}
-                              onChange={(e) => setSoHopDong(e.target.value)}      
-                              className="border-b border-gray-400 px-1 w-40 font-bold focus:outline-none focus:border-blue-500"
-                            />
-                          </span>
-                          <span className="hidden print:inline font-bold">{soHopDong}</span>
+            {/* Bảng 1: Thông tin khách hàng và hợp đồng */}
+            <div className="text-xs">
+              <table className="w-full border border-black border-table">
+                <tbody>
+                  {/* Hàng 1: Tư vấn bán hàng và Số hợp đồng, Ngày hợp đồng */}
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black p-1 font-bold w-1/2">
+                      TƯ VẤN BÁN HÀNG:{" "}
+                      <span className="print:hidden">
+                        <input
+                          type="text"
+                          value={tuVanBanHang}
+                          onChange={(e) => setTuVanBanHang(e.target.value)}
+                          className="border-b border-gray-400 px-1 w-48 focus:outline-none focus:border-blue-500"
+                        />
+                      </span>
+                      <span className="hidden print:inline">{tuVanBanHang}</span>
+                    </td>
+                    <td className="p-1 w-1/2">
+                      <div className="space-y-1">
+                        <div className="info-row grid-cols-[100px_1fr]">
+                          <strong className="info-label w-[100px]">Số Hợp đồng:</strong>{" "}
+                          <div className="info-value">
+                            <span className="print:hidden font-bold">
+                              <input
+                                type="text"
+                                value={soHopDong}
+                                onChange={(e) => setSoHopDong(e.target.value)}
+                                className="border-b border-gray-400 px-1 w-40 font-bold focus:outline-none focus:border-blue-500"
+                              />
+                            </span>
+                            <span className="hidden print:inline font-bold">{soHopDong}</span>
+                          </div>
+                        </div>
+                        <div className="info-row grid-cols-[100px_1fr]">
+                          <strong className="info-label w-[100px]">Ngày Hợp đồng:</strong>{" "}
+                          <div className="info-value">
+                            <span className="print:hidden font-bold">
+                              <input
+                                type="text"
+                                value={ngayHopDong}
+                                onChange={(e) => setNgayHopDong(e.target.value)}
+                                className="border-b border-gray-400 px-1 w-32 focus:outline-none focus:border-blue-500"
+                              />
+                            </span>
+                            <span className="hidden print:inline font-bold">
+                              {ngayHopDong}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="info-row grid-cols-[100px_1fr]">
-                        <strong className="info-label w-[100px]">Ngày Hợp đồng:</strong>{" "}
+                    </td>
+                  </tr>
+
+                  {/* Hàng 2: Khách hàng và CCCD, Mã số thuế, Điện thoại */}
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black p-1 font-bold w-1/2">
+                      KHÁCH HÀNG (Cá nhân/ Cty):{" "}
+                      <span className="print:hidden">
+                        <input
+                          type="text"
+                          value={khachHang}
+                          onChange={(e) => setKhachHang(e.target.value)}
+                          className="border-b border-gray-400 px-1 w-48 focus:outline-none focus:border-blue-500"
+                        />
+                      </span>
+                      <span className="hidden print:inline">{khachHang}</span>
+                    </td>
+                    <td className="p-1 w-1/2">
+                      <div className="space-y-1">
+                        <div className="info-row grid-cols-[100px_1fr]">
+                          <strong className="info-label w-[100px]">CCCD (Cá nhân):</strong>{" "}
+                          <div className="info-value">
+                            <span className="print:hidden font-bold">
+                              <input
+                                type="text"
+                                value={cccd}
+                                onChange={(e) => setCccd(e.target.value)}
+                                className="border-b border-gray-400 px-1 w-40 focus:outline-none focus:border-blue-500"
+                              />
+                            </span>
+                            <span className="hidden print:inline font-bold">{cccd}</span>
+                          </div>
+                        </div>
+                        <div className="info-row grid-cols-[100px_1fr]">
+                          <strong className="info-label w-[100px]">Mã số thuế (Cty):</strong>{" "}
+                          <div className="info-value">
+                            <span className="print:hidden font-bold">
+                              <input
+                                type="text"
+                                value={maSoThue}
+                                onChange={(e) => setMaSoThue(e.target.value)}
+                                className="border-b border-gray-400 px-1 w-32 focus:outline-none focus:border-blue-500"
+                              />
+                            </span>
+                            <span className="hidden print:inline font-bold">{maSoThue}</span>
+                          </div>
+                        </div>
+                        <div className="info-row grid-cols-[100px_1fr]">
+                          <strong className="info-label w-[100px]">Điện thoại:</strong>{" "}
+                          <div className="info-value">
+                            <span className="print:hidden font-bold">
+                              <input
+                                type="text"
+                                value={dienThoai}
+                                onChange={(e) => setDienThoai(e.target.value)}
+                                className="border-b border-gray-400 px-1 w-40 focus:outline-none focus:border-blue-500"
+                              />
+                            </span>
+                            <span className="hidden print:inline font-bold">{dienThoai}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Hàng 3: Địa chỉ */}
+                  <tr className="border-b border-black">
+                    <td
+                      className="border-r border-black p-1 font-bold"
+                      colSpan={2}
+                    >
+                      ĐỊA CHỈ (địa chỉ khớp với thông tin Xuất hoá đơn):{" "}
+                      <span className="print:hidden">
+                        <input
+                          type="text"
+                          value={diaChi}
+                          onChange={(e) => setDiaChi(e.target.value)}
+                          className="border-b border-gray-400 px-1 w-[70%] focus:outline-none focus:border-blue-500"
+                        />
+                      </span>
+                      <span className="hidden print:inline">{diaChi}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Bảng 2: Thông tin xe, đối tượng khách hàng, giá bán, quà tặng, thanh toán */}
+            <div className="text-xs">
+              <table className="w-full border-x border-black border-table">
+                <tbody>
+                  {/* Thông tin xe */}
+                  <tr className="border-b border-black">
+                    <td
+                      className="border-r border-black p-1 font-bold align-middle text-center"
+                      rowSpan={4}
+                    >
+                      THÔNG TIN XE:
+                    </td>
+                    <td className="border-r border-black p-1 font-bold" colSpan={3}>
+                      <div className="info-row grid-cols-[120px_1fr]">
+                        <strong className="info-label w-[120px]">Loại xe:</strong>{" "}
                         <div className="info-value">
-                          <span className="print:hidden font-bold">
+                          <span className="print:hidden">
                             <input
                               type="text"
-                              value={ngayHopDong}
-                              onChange={(e) => setNgayHopDong(e.target.value)}    
+                              value={loaiXe}
+                              onChange={(e) => setLoaiXe(e.target.value)}
+                              className="border-b border-gray-400 px-1 w-64 focus:outline-none focus:border-blue-500"
+                            />
+                          </span>
+                          <span className="hidden print:inline">{loaiXe}</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black p-1 font-bold" colSpan={3}>
+                      <div className="info-row grid-cols-[120px_1fr]">
+                        <strong className="info-label w-[120px]">Màu xe (ngoại/nội):</strong>{" "}
+                        <div className="info-value">
+                          <span className="print:hidden">
+                            <input
+                              type="text"
+                              value={mauXe}
+                              onChange={(e) => setMauXe(e.target.value)}
+                              className="border-b border-gray-400 px-1 w-48 focus:outline-none focus:border-blue-500"
+                            />
+                          </span>
+                          <span className="hidden print:inline">{mauXe}</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black p-1" colSpan={3}>
+                      <div className="info-row grid-cols-[120px_1fr]">
+                        <strong className="info-label w-[120px]">Năm sản xuất:</strong>{" "}
+                        <div className="info-value">
+                          <span className="print:hidden">
+                            <input
+                              type="text"
+                              value={namSanXuat}
+                              onChange={(e) => setNamSanXuat(e.target.value)}
+                              className="border-b border-gray-400 font-bold px-1 w-24 focus:outline-none focus:border-blue-500"
+                            />
+                          </span>
+                          <span className="hidden print:inline font-bold">{namSanXuat}</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black p-1" colSpan={3}>
+                      <div className="info-row grid-cols-[120px_1fr]">
+                        <strong className="info-label w-[120px]">Số khung (VIN):</strong>{" "}
+                        <div className="info-value">
+                          <span className="print:hidden">
+                            <input
+                              type="text"
+                              value={soKhung}
+                              onChange={(e) => setSoKhung(e.target.value)}
+                              className="border-b border-gray-400 font-bold px-1 w-64 focus:outline-none focus:border-blue-500"
+                            />
+                          </span>
+                          <span className="hidden print:inline font-bold">{soKhung}</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Đối tượng khách hàng */}
+                  <tr className="border-b border-black">
+                    <td
+                      className="border-r border-black p-1 font-bold align-middle text-center"
+                      rowSpan={5}
+                    >
+                      ĐỐI TƯỢNG
+                      <br />
+                      KHÁCH HÀNG
+                    </td>
+                    <td className="border-r border-black font-bold p-1 w-32 ">
+                      1. Thông thường
+                    </td>
+                    <td className="border-r border-black p-1 text-center w-20 font-bold">
+                      <span className="print:hidden">
+                        <input
+                          type="text"
+                          value={thong}
+                          onChange={(e) => setThong(e.target.value)}
+                          className="border-b border-gray-400 px-1 w-16 text-center focus:outline-none focus:border-blue-500"
+                        />
+                      </span>
+                      <span className="hidden print:inline">{thong}</span>
+                    </td>
+                    <td className="p-1" rowSpan={5}>
+                      <strong className="ml-4">Chính sách ưu đãi theo đối tượng:</strong>
+                      <br />
+                      <span className="print:hidden ml-4">
+                        <textarea
+                          value={chinhSachKhuyenMai}
+                          onChange={(e) => setChinhSachKhuyenMai(e.target.value)}
+                          className="border border-gray-400 px-1 w-[95%] h-20 font-bold focus:outline-none focus:border-blue-500"
+                        />
+                      </span>
+                      <span className="hidden print:inline whitespace-pre-line font-bold ml-4">
+                        {chinhSachKhuyenMai}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr className="border-b border-black font-bold">
+                    <td className="border-r border-black p-1">2. Corporate</td>
+                    <td className="border-r border-black p-1 text-center">
+                      <span className="print:hidden">
+                        <input
+                          type="text"
+                          value={corporate}
+                          onChange={(e) => setCorporate(e.target.value)}
+                          className="border-b border-gray-400 px-1 w-16 text-center focus:outline-none focus:border-blue-500"
+                        />
+                      </span>
+                      <span className="hidden print:inline">{corporate}</span>
+                    </td>
+                  </tr>
+                  <tr className="border-b border-black font-bold">
+                    <td className="border-r border-black p-1">3. VinClub</td>
+                    <td className="border-r border-black p-1 text-center">
+                      <span className="print:hidden">
+                        <input
+                          type="text"
+                          value={vinClub}
+                          onChange={(e) => setVinClub(e.target.value)}
+                          className="border-b border-gray-400 px-1 w-16 text-center focus:outline-none focus:border-blue-500"
+                        />
+                      </span>
+                      <span className="hidden print:inline">{vinClub}</span>
+                    </td>
+                  </tr>
+                  <tr className="border-b border-black font-bold">
+                    <td className="border-r border-black p-1">4. Bán buôn</td>
+                    <td className="border-r border-black p-1 text-center">
+                      <span className="print:hidden">
+                        <input
+                          type="text"
+                          value={banBuon}
+                          onChange={(e) => setBanBuon(e.target.value)}
+                          className="border-b border-gray-400 px-1 w-16 text-center focus:outline-none focus:border-blue-500"
+                        />
+                      </span>
+                      <span className="hidden print:inline">{banBuon}</span>
+                    </td>
+                  </tr>
+                  <tr className="border-b border-black font-bold">
+                    <td className="border-r border-black p-1">5. Xăng -</td>
+                    <td className="border-r border-black p-1 text-center">
+                      <span className="print:hidden">
+                        <input
+                          type="text"
+                          value={xang}
+                          onChange={(e) => setXang(e.target.value)}
+                          className="border-b border-gray-400 px-1 w-16 text-center focus:outline-none focus:border-blue-500"
+                        />
+                      </span>
+                      <span className="hidden print:inline">{xang}</span>
+                    </td>
+                  </tr>
+
+                  {/* Giá bán */}
+                  <tr className="border-b border-black font-bold">
+                    <td
+                      className="border-r border-black p-1 font-bold align-middle w-32 text-center"
+                      rowSpan={3}
+                    >
+                      GIÁ BÁN:
+                    </td>
+                    <td className="border-r border-black p-1" colSpan={3}>
+                      <div className="info-row grid-cols-[150px_1fr]">
+                        <strong className="info-label w-[150px]">Giá niêm yết (VNĐ)</strong>{" "}
+                        <div className="info-value">
+                          <span className="print:hidden">
+                            <input
+                              type="text"
+                              value={giaNiemYet}
+                              onChange={(e) =>
+                                setGiaNiemYet(e.target.value.replace(/\D/g, ""))
+                              }
                               className="border-b border-gray-400 px-1 w-32 focus:outline-none focus:border-blue-500"
                             />
                           </span>
-                          <span className="hidden print:inline font-bold">        
-                            {ngayHopDong}
+                          <span className="hidden print:inline">
+                            {formatCurrency(giaNiemYet)} VNĐ
                           </span>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                </tr>
-
-                {/* Hàng 2: Khách hàng và CCCD, Mã số thuế, Điện thoại */}
-                <tr className="border-b border-black">
-                  <td className="border-r border-black p-1 font-bold w-1/2">    
-                    KHÁCH HÀNG (Cá nhân/ Cty):{" "}
-                    <span className="print:hidden">
-                      <input
-                        type="text"
-                        value={khachHang}
-                        onChange={(e) => setKhachHang(e.target.value)}
-                        className="border-b border-gray-400 px-1 w-48 focus:outline-none focus:border-blue-500"
-                      />
-                    </span>
-                    <span className="hidden print:inline">{khachHang}</span>    
-                  </td>
-                  <td className="p-1 w-1/2">
-                    <div className="space-y-1">
-                      <div className="info-row grid-cols-[100px_1fr]">
-                        <strong className="info-label w-[100px]">CCCD (Cá nhân):</strong>{" "}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-black font-bold">
+                    <td className="border-r border-black p-1" colSpan={3}>
+                      <div className="info-row grid-cols-[150px_1fr]">
+                        <strong className="info-label w-[150px]">Giảm giá (VNĐ)</strong>{" "}
                         <div className="info-value">
-                          <span className="print:hidden font-bold">
+                          <span className="print:hidden">
                             <input
                               type="text"
-                              value={cccd}
-                              onChange={(e) => setCccd(e.target.value)}
-                              className="border-b border-gray-400 px-1 w-40 focus:outline-none focus:border-blue-500"
-                            />
-                          </span>
-                          <span className="hidden print:inline font-bold">{cccd}</span>
-                        </div>
-                      </div>
-                      <div className="info-row grid-cols-[100px_1fr]">
-                        <strong className="info-label w-[100px]">Mã số thuế (Cty):</strong>{" "}
-                        <div className="info-value">
-                          <span className="print:hidden font-bold">
-                            <input
-                              type="text"
-                              value={maSoThue}
-                              onChange={(e) => setMaSoThue(e.target.value)}       
+                              value={giamGia}
+                              onChange={(e) =>
+                                setGiamGia(e.target.value.replace(/\D/g, ""))
+                              }
                               className="border-b border-gray-400 px-1 w-32 focus:outline-none focus:border-blue-500"
                             />
                           </span>
-                          <span className="hidden print:inline font-bold">{maSoThue}</span>
+                          <span className="hidden print:inline">
+                            {formatCurrency(giamGia)} VNĐ
+                          </span>
                         </div>
                       </div>
-                      <div className="info-row grid-cols-[100px_1fr]">
-                        <strong className="info-label w-[100px]">Điện thoại:</strong>{" "}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-black font-bold">
+                    <td className="border-r border-black p-1" colSpan={3}>
+                      <div className="info-row grid-cols-[150px_1fr]">
+                        <strong className="info-label w-[150px]">Giá bán hợp đồng (VNĐ)</strong>{" "}
                         <div className="info-value">
-                          <span className="print:hidden font-bold">
+                          <span className="print:hidden">
                             <input
                               type="text"
-                              value={dienThoai}
-                              onChange={(e) => setDienThoai(e.target.value)}      
-                              className="border-b border-gray-400 px-1 w-40 focus:outline-none focus:border-blue-500"
+                              value={giaBanHopDong}
+                              onChange={(e) =>
+                                setGiaBanHopDong(e.target.value.replace(/\D/g, ""))
+                              }
+                              className="border-b border-gray-400 px-1 w-32 focus:outline-none focus:border-blue-500"
                             />
                           </span>
-                          <span className="hidden print:inline font-bold">{dienThoai}</span>
+                          <span className="hidden print:inline">
+                            {formatCurrency(giaBanHopDong)} VNĐ
+                          </span>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
 
-                {/* Hàng 3: Địa chỉ */}
-                <tr className="border-b border-black">
-                  <td
-                    className="border-r border-black p-1 font-bold"
-                    colSpan={2}
-                  >
-                    ĐỊA CHỈ (địa chỉ khớp với thông tin Xuất hoá đơn):{" "}     
-                    <span className="print:hidden">
-                      <input
-                        type="text"
-                        value={diaChi}
-                        onChange={(e) => setDiaChi(e.target.value)}
-                        className="border-b border-gray-400 px-1 w-[70%] focus:outline-none focus:border-blue-500"
-                      />
-                    </span>
-                    <span className="hidden print:inline">{diaChi}</span>       
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                  {/* Diễn giải mức giảm */}
+                  <tr className="border-b border-black">
+                    <td className="p-1 italic text-xs" colSpan={4}>
+                      Diễn giải mức giảm (nếu nằm ngoài khung quy định):
+                    </td>
+                  </tr>
 
-          {/* Bảng 2: Thông tin xe, đối tượng khách hàng, giá bán, quà tặng, thanh toán */}
-          <div className="text-xs">
-            <table className="w-full border-x border-black border-table">
-              <tbody>
-                {/* Thông tin xe */}
-                <tr className="border-b border-black">
-                  <td
-                    className="border-r border-black p-1 font-bold align-middle text-center"
-                    rowSpan={4}
-                  >
-                    THÔNG TIN XE:
-                  </td>
-                  <td className="border-r border-black p-1 font-bold" colSpan={3}>
-                    <div className="info-row grid-cols-[120px_1fr]">
-                      <strong className="info-label w-[120px]">Loại xe:</strong>{" "}
-                      <div className="info-value">
-                        <span className="print:hidden">
-                          <input
-                            type="text"
-                            value={loaiXe}
-                            onChange={(e) => setLoaiXe(e.target.value)}
-                            className="border-b border-gray-400 px-1 w-64 focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline">{loaiXe}</span>       
+                  {/* Quà tặng */}
+                  <tr className="border-b border-black">
+                    <td
+                      className="border-r border-black p-1 font-bold align-middle text-center"
+                      rowSpan={2}
+                    >
+                      QUÀ TẶNG
+                    </td>
+                    <td className="border-r border-black p-1 font-bold" colSpan={3}>
+                      <div className="info-row grid-cols-[120px_1fr]">
+                        <strong className="info-label w-[120px]">Quà tặng theo xe:</strong>{" "}
+                        <div className="info-value">
+                          <span className="print:hidden">
+                            <input
+                              type="text"
+                              value={quaTangTheoXe}
+                              onChange={(e) => setQuaTangTheoXe(e.target.value)}
+                              className="border-b border-gray-400 px-1 w-[80%] focus:outline-none focus:border-blue-500"
+                            />
+                          </span>
+                          <span className="hidden print:inline">{quaTangTheoXe}</span>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                </tr>
-                <tr className="border-b border-black">
-                  <td className="border-r border-black p-1 font-bold" colSpan={3}>
-                    <div className="info-row grid-cols-[120px_1fr]">
-                      <strong className="info-label w-[120px]">Màu xe (ngoại/nội):</strong>{" "}    
-                      <div className="info-value">
-                        <span className="print:hidden">
-                          <input
-                            type="text"
-                            value={mauXe}
-                            onChange={(e) => setMauXe(e.target.value)}
-                            className="border-b border-gray-400 px-1 w-48 focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline">{mauXe}</span>        
+                    </td>
+                  </tr>
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black p-1 font-bold" colSpan={3}>
+                      <div className="info-row grid-cols-[120px_1fr]">
+                        <strong className="info-label w-[120px]">Quà tặng khác:</strong>{" "}
+                        <div className="info-value">
+                          <span className="print:hidden">
+                            <input
+                              type="text"
+                              value={quaTangKhac}
+                              onChange={(e) => setQuaTangKhac(e.target.value)}
+                              className="border-b border-gray-400 px-1 w-[80%] focus:outline-none focus:border-blue-500"
+                            />
+                          </span>
+                          <span className="hidden print:inline">{quaTangKhac}</span>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                </tr>
-                <tr className="border-b border-black">
-                  <td className="border-r border-black p-1" colSpan={3}>        
-                    <div className="info-row grid-cols-[120px_1fr]">
-                      <strong className="info-label w-[120px]">Năm sản xuất:</strong>{" "}
-                      <div className="info-value">
-                        <span className="print:hidden">
-                          <input
-                            type="text"
-                            value={namSanXuat}
-                            onChange={(e) => setNamSanXuat(e.target.value)}
-                            className="border-b border-gray-400 font-bold px-1 w-24 focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline font-bold">{namSanXuat}</span>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-                <tr className="border-b border-black">
-                  <td className="border-r border-black p-1" colSpan={3}>        
-                    <div className="info-row grid-cols-[120px_1fr]">
-                      <strong className="info-label w-[120px]">Số khung (VIN):</strong>{" "}
-                      <div className="info-value">
-                        <span className="print:hidden">
-                          <input
-                            type="text"
-                            value={soKhung}
-                            onChange={(e) => setSoKhung(e.target.value)}
-                            className="border-b border-gray-400 font-bold px-1 w-64 focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline font-bold">{soKhung}</span>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-                {/* Đối tượng khách hàng */}
-                <tr className="border-b border-black">
-                  <td
-                    className="border-r border-black p-1 font-bold align-middle text-center"
-                    rowSpan={5}
-                  >
-                    ĐỐI TƯỢNG
-                    <br />
-                    KHÁCH HÀNG
-                  </td>
-                  <td className="border-r border-black font-bold p-1 w-32 ">    
-                    1. Thông thường
-                  </td>
-                  <td className="border-r border-black p-1 text-center w-20 font-bold">
-                    <span className="print:hidden">
-                      <input
-                        type="text"
-                        value={thong}
-                        onChange={(e) => setThong(e.target.value)}
-                        className="border-b border-gray-400 px-1 w-16 text-center focus:outline-none focus:border-blue-500"
-                      />
-                    </span>
-                    <span className="hidden print:inline">{thong}</span>
-                  </td>
-                  <td className="p-1" rowSpan={5}>
-                    <strong className="ml-4">Chính sách ưu đãi theo đối tượng:</strong>
-                    <br />
-                    <span className="print:hidden ml-4">
-                      <textarea
-                        value={chinhSachKhuyenMai}
-                        onChange={(e) => setChinhSachKhuyenMai(e.target.value)} 
-                        className="border border-gray-400 px-1 w-[95%] h-20 font-bold focus:outline-none focus:border-blue-500"
-                      />
-                    </span>
-                    <span className="hidden print:inline whitespace-pre-line font-bold ml-4">
-                      {chinhSachKhuyenMai}
-                    </span>
-                  </td>
-                </tr>
-                <tr className="border-b border-black font-bold">
-                  <td className="border-r border-black p-1">2. Corporate</td>   
-                  <td className="border-r border-black p-1 text-center">        
-                    <span className="print:hidden">
-                      <input
-                        type="text"
-                        value={corporate}
-                        onChange={(e) => setCorporate(e.target.value)}
-                        className="border-b border-gray-400 px-1 w-16 text-center focus:outline-none focus:border-blue-500"
-                      />
-                    </span>
-                    <span className="hidden print:inline">{corporate}</span>    
-                  </td>
-                </tr>
-                <tr className="border-b border-black font-bold">
-                  <td className="border-r border-black p-1">3. VinClub</td>     
-                  <td className="border-r border-black p-1 text-center">        
-                    <span className="print:hidden">
-                      <input
-                        type="text"
-                        value={vinClub}
-                        onChange={(e) => setVinClub(e.target.value)}
-                        className="border-b border-gray-400 px-1 w-16 text-center focus:outline-none focus:border-blue-500"
-                      />
-                    </span>
-                    <span className="hidden print:inline">{vinClub}</span>      
-                  </td>
-                </tr>
-                <tr className="border-b border-black font-bold">
-                  <td className="border-r border-black p-1">4. Bán buôn</td>    
-                  <td className="border-r border-black p-1 text-center">        
-                    <span className="print:hidden">
-                      <input
-                        type="text"
-                        value={banBuon}
-                        onChange={(e) => setBanBuon(e.target.value)}
-                        className="border-b border-gray-400 px-1 w-16 text-center focus:outline-none focus:border-blue-500"
-                      />
-                    </span>
-                    <span className="hidden print:inline">{banBuon}</span>      
-                  </td>
-                </tr>
-                <tr className="border-b border-black font-bold">
-                  <td className="border-r border-black p-1">5. Xăng -</td>      
-                  <td className="border-r border-black p-1 text-center">        
-                    <span className="print:hidden">
-                      <input
-                        type="text"
-                        value={xang}
-                        onChange={(e) => setXang(e.target.value)}
-                        className="border-b border-gray-400 px-1 w-16 text-center focus:outline-none focus:border-blue-500"
-                      />
-                    </span>
-                    <span className="hidden print:inline">{xang}</span>
-                  </td>
-                </tr>
+            {/* Bảng 3: Thanh toán */}
+            <div className="text-xs">
+              <table className="w-full border-x border-b border-black border-table">
+                <tbody>
+                  {/* Thanh toán */}
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black p-1 font-bold w-32">
+                      THANH TOÁN
+                    </td>
+                    <td className="border-r border-black p-1 font-bold">
+                      <div className="info-row grid-cols-[60px_1fr]">
+                        <strong className="info-label w-[60px]">Trả thẳng:</strong>{" "}
+                        <div className="info-value print:whitespace-nowrap">
+                          <span className="print:hidden">
+                            <CurrencyInput
+                              value={traThang}
+                              onChange={(val) => setTraThang(val)}
+                              className="border-b border-gray-400 px-1 w-24 focus:outline-none focus:border-blue-500"
+                            />
+                          </span>
+                          <span className="hidden print:inline">
+                            {traThang ? `${formatCurrency(traThang)}` : ""}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="border-r border-black p-1 font-bold">
+                      <div className="info-row grid-cols-[60px_1fr]">
+                        <strong className="info-label w-[60px]">Trả góp:</strong>{" "}
+                        <div className="info-value print:whitespace-nowrap">
+                          <span className="print:hidden">
+                            <CurrencyInput
+                              value={traGop}
+                              onChange={(val) => setTraGop(val)}
+                              className="border-b border-gray-400 px-1 w-32 focus:outline-none focus:border-blue-500"
+                            />
+                          </span>
+                          <span className="hidden print:inline">
+                            {traGop ? `${formatCurrency(traGop)}` : ""}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-1 font-bold">
+                      <div className="info-row grid-cols-[40px_1fr]">
+                        <strong className="info-label w-[40px]">Bank:</strong>{" "}
+                        <div className="info-value print:whitespace-nowrap">
+                          <span className="print:hidden">
+                            <input
+                              type="text"
+                              value={nganHang}
+                              onChange={(e) => setNganHang(e.target.value)}
+                              className="border-b border-gray-400 px-1 w-24 focus:outline-none focus:border-blue-500"
+                            />
+                          </span>
+                          <span className="hidden print:inline">{nganHang}</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
 
-                {/* Giá bán */}
-                <tr className="border-b border-black font-bold">
-                  <td
-                    className="border-r border-black p-1 font-bold align-middle w-32 text-center"
-                    rowSpan={3}
-                  >
-                    GIÁ BÁN:
-                  </td>
-                  <td className="border-r border-black p-1" colSpan={3}>        
-                    <div className="info-row grid-cols-[150px_1fr]">
-                      <strong className="info-label w-[150px]">Giá niêm yết (VNĐ)</strong>{" "}
-                      <div className="info-value">
-                        <span className="print:hidden">
-                          <input
-                            type="text"
-                            value={giaNiemYet}
-                            onChange={(e) =>
-                              setGiaNiemYet(e.target.value.replace(/\D/g, ""))      
-                            }
-                            className="border-b border-gray-400 px-1 w-32 focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline">
-                          {formatCurrency(giaNiemYet)} VNĐ
-                        </span>
+                  {/* Số tiền đặt cọc */}
+                  <tr className="border-b border-black">
+                    <td
+                      className="border-r border-black p-1 font-bold"
+                      colSpan={2}
+                    >
+                      <div className="info-row grid-cols-[100px_1fr]">
+                        <span className="info-label w-[100px]">Số tiền Đặt cọc:</span>{" "}
+                        <div className="info-value">
+                          <span className="print:hidden">
+                            <input
+                              type="text"
+                              value={soTienDatCoc}
+                              onChange={(e) => setSoTienDatCoc(e.target.value)}
+                              className="border-b border-gray-400 px-1 w-[80%] focus:outline-none focus:border-blue-500"
+                            />
+                          </span>
+                          <span className="hidden print:inline">{soTienDatCoc}</span>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                </tr>
-                <tr className="border-b border-black font-bold">
-                  <td className="border-r border-black p-1" colSpan={3}>        
-                    <div className="info-row grid-cols-[150px_1fr]">
-                      <strong className="info-label w-[150px]">Giảm giá (VNĐ)</strong>{" "}
-                      <div className="info-value">
-                        <span className="print:hidden">
-                          <input
-                            type="text"
-                            value={giamGia}
-                            onChange={(e) =>
-                              setGiamGia(e.target.value.replace(/\D/g, ""))
-                            }
-                            className="border-b border-gray-400 px-1 w-32 focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline">
-                          {formatCurrency(giamGia)} VNĐ
-                        </span>
+                    </td>
+                    <td className="border-r border-black p-1" colSpan={2}>
+                      <div className="info-row grid-cols-[120px_1fr]">
+                        <strong className="info-label w-[120px]">Ngày dự kiến nhận xe:</strong>{" "}
+                        <div className="info-value">
+                          <span className="print:hidden">
+                            <input
+                              type="date"
+                              value={ngayDuKienNhanXe}
+                              onChange={(e) => setNgayDuKienNhanXe(e.target.value)}
+                              className="border-b border-gray-400 px-1 w-32 focus:outline-none focus:border-blue-500"
+                            />
+                          </span>
+                          <span className="hidden print:inline">
+                            {formatDate(ngayDuKienNhanXe)}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                </tr>
-                <tr className="border-b border-black font-bold">
-                  <td className="border-r border-black p-1" colSpan={3}>        
-                    <div className="info-row grid-cols-[150px_1fr]">
-                      <strong className="info-label w-[150px]">Giá bán hợp đồng (VNĐ)</strong>{" "}
-                      <div className="info-value">
-                        <span className="print:hidden">
-                          <input
-                            type="text"
-                            value={giaBanHopDong}
-                            onChange={(e) =>
-                              setGiaBanHopDong(e.target.value.replace(/\D/g, ""))   
-                            }
-                            className="border-b border-gray-400 px-1 w-32 focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline">
-                          {formatCurrency(giaBanHopDong)} VNĐ
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-                {/* Diễn giải mức giảm */}
-                <tr className="border-b border-black">
-                  <td className="p-1 italic text-xs" colSpan={4}>
-                    Diễn giải mức giảm (nếu nằm ngoài khung quy định):
-                  </td>
-                </tr>
+            {/* Bảng 4: Đề xuất lương TVBH và chữ ký */}
+            <div className="text-xs">
+              <table className="w-full border-x border-b border-black border-table">
+                <tbody>
+                  {/* Đề xuất lương TVBH */}
+                  <tr className="border-b border-black">
+                    <td
+                      className="border-r border-black p-1 font-bold"
+                      rowSpan={2}
+                    >
+                      Đề xuất Lương TVBH:
+                    </td>
+                    <td className="border-r border-black p-1" colSpan={3}>
+                      <div className="info-row grid-cols-[150px_1fr]">
+                        <strong className="info-label w-[150px]">Theo chính sách khung:</strong>{" "}
+                        <div className="info-value">
+                          <span className="print:hidden">
+                            <input
+                              type="text"
+                              value={theoChinhSachKhung}
+                              onChange={(e) => setTheoChinhSachKhung(e.target.value)}
+                              className="border-b border-gray-400 px-1 w-[80%] focus:outline-none focus:border-blue-500"
+                            />
+                          </span>
+                          <span className="hidden print:inline">
+                            {theoChinhSachKhung}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr className="border-b border-black">
+                    <td className="border-r border-black p-1" colSpan={3}>
+                      <div className="info-row grid-cols-[150px_1fr]">
+                        <strong className="info-label w-[150px]">Đề xuất:</strong>{" "}
+                        <div className="info-value">
+                          <span className="print:hidden">
+                            <input
+                              type="text"
+                              value={deXuat}
+                              onChange={(e) => setDeXuat(e.target.value)}
+                              className="border-b border-gray-400 px-1 w-[91%] focus:outline-none focus:border-blue-500"
+                            />
+                          </span>
+                          <span className="hidden print:inline">{deXuat}</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
 
-                {/* Quà tặng */}
-                <tr className="border-b border-black">
-                  <td
-                    className="border-r border-black p-1 font-bold align-middle text-center"
-                    rowSpan={2}
-                  >
-                    QUÀ TẶNG
-                  </td>
-                  <td className="border-r border-black p-1 font-bold" colSpan={3}>
-                    <div className="info-row grid-cols-[120px_1fr]">
-                      <strong className="info-label w-[120px]">Quà tặng theo xe:</strong>{" "}
-                      <div className="info-value">
-                        <span className="print:hidden">
-                          <input
-                            type="text"
-                            value={quaTangTheoXe}
-                            onChange={(e) => setQuaTangTheoXe(e.target.value)}      
-                            className="border-b border-gray-400 px-1 w-[80%] focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline">{quaTangTheoXe}</span>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-                <tr className="border-b border-black">
-                  <td className="border-r border-black p-1 font-bold" colSpan={3}>
-                    <div className="info-row grid-cols-[120px_1fr]">
-                      <strong className="info-label w-[120px]">Quà tặng khác:</strong>{" "}
-                      <div className="info-value">
-                        <span className="print:hidden">
-                          <input
-                            type="text"
-                            value={quaTangKhac}
-                            onChange={(e) => setQuaTangKhac(e.target.value)}        
-                            className="border-b border-gray-400 px-1 w-[80%] focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline">{quaTangKhac}</span>  
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                  {/* Lưu ý */}
+                  <tr className="border-b border-black">
+                    <td
+                      className="p-1 italic text-xs print:font-bold"
+                      colSpan={4}
+                    >
+                      {lyDo}
+                    </td>
+                  </tr>
 
-          {/* Bảng 3: Thanh toán */}
-          <div className="text-xs">
-            <table className="w-full border-x border-b border-black border-table">
-              <tbody>
-                {/* Thanh toán */}
-                <tr className="border-b border-black">
-                  <td className="border-r border-black p-1 font-bold w-32">     
-                    THANH TOÁN
-                  </td>
-                  <td className="border-r border-black p-1 font-bold">
-                    <div className="info-row grid-cols-[60px_1fr]">
-                      <strong className="info-label w-[60px]">Trả thẳng:</strong>{" "}
-                      <div className="info-value print:whitespace-nowrap">
-                        <span className="print:hidden">
-                          <CurrencyInput
-                            value={traThang}
-                            onChange={(val) => setTraThang(val)}
-                            className="border-b border-gray-400 px-1 w-24 focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline">
-                          {traThang ? `${formatCurrency(traThang)} vnđ` : ""}       
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="border-r border-black p-1 font-bold">
-                    <div className="info-row grid-cols-[60px_1fr]">
-                      <strong className="info-label w-[60px]">Trả góp:</strong>{" "}
-                      <div className="info-value print:whitespace-nowrap">
-                        <span className="print:hidden">
-                          <CurrencyInput
-                            value={traGop}
-                            onChange={(val) => setTraGop(val)}
-                            className="border-b border-gray-400 px-1 w-32 focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline">
-                          {traGop ? `${formatCurrency(traGop)} vnđ` : ""}
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-1 font-bold">
-                    <div className="info-row grid-cols-[40px_1fr]">
-                      <strong className="info-label w-[40px]">Bank:</strong>{" "}
-                      <div className="info-value print:whitespace-nowrap">
-                        <span className="print:hidden">
-                          <input
-                            type="text"
-                            value={nganHang}
-                            onChange={(e) => setNganHang(e.target.value)}
-                            className="border-b border-gray-400 px-1 w-24 focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline">{nganHang}</span>     
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-
-                {/* Số tiền đặt cọc */}
-                <tr className="border-b border-black">
-                  <td
-                    className="border-r border-black p-1 font-bold"
-                    colSpan={2}
-                  >
-                    <div className="info-row grid-cols-[100px_1fr]">
-                      <span className="info-label w-[100px]">Số tiền Đặt cọc:</span>{" "}
-                      <div className="info-value">
-                        <span className="print:hidden">
-                          <input
-                            type="text"
-                            value={soTienDatCoc}
-                            onChange={(e) => setSoTienDatCoc(e.target.value)}       
-                            className="border-b border-gray-400 px-1 w-[80%] focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline">{soTienDatCoc}</span> 
-                      </div>
-                    </div>
-                  </td>
-                  <td className="border-r border-black p-1" colSpan={2}>        
-                    <div className="info-row grid-cols-[120px_1fr]">
-                      <strong className="info-label w-[120px]">Ngày dự kiến nhận xe:</strong>{" "}
-                      <div className="info-value">
-                        <span className="print:hidden">
-                          <input
-                            type="date"
-                            value={ngayDuKienNhanXe}
-                            onChange={(e) => setNgayDuKienNhanXe(e.target.value)}   
-                            className="border-b border-gray-400 px-1 w-32 focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline">
-                          {formatDate(ngayDuKienNhanXe)}
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Bảng 4: Đề xuất lương TVBH và chữ ký */}
-          <div className="text-xs">
-            <table className="w-full border-x border-b border-black border-table">
-              <tbody>
-                {/* Đề xuất lương TVBH */}
-                <tr className="border-b border-black">
-                  <td
-                    className="border-r border-black p-1 font-bold"
-                    rowSpan={2}
-                  >
-                    Đề xuất Lương TVBH:
-                  </td>
-                  <td className="border-r border-black p-1" colSpan={3}>        
-                    <div className="info-row grid-cols-[150px_1fr]">
-                      <strong className="info-label w-[150px]">Theo chính sách khung:</strong>{" "}
-                      <div className="info-value">
-                        <span className="print:hidden">
-                          <input
-                            type="text"
-                            value={theoChinhSachKhung}
-                            onChange={(e) => setTheoChinhSachKhung(e.target.value)} 
-                            className="border-b border-gray-400 px-1 w-[80%] focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline">
-                          {theoChinhSachKhung}
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-                <tr className="border-b border-black">
-                  <td className="border-r border-black p-1" colSpan={3}>        
-                    <div className="info-row grid-cols-[150px_1fr]">
-                      <strong className="info-label w-[150px]">Đề xuất:</strong>{" "}
-                      <div className="info-value">
-                        <span className="print:hidden">
-                          <input
-                            type="text"
-                            value={deXuat}
-                            onChange={(e) => setDeXuat(e.target.value)}
-                            className="border-b border-gray-400 px-1 w-[91%] focus:outline-none focus:border-blue-500"
-                          />
-                        </span>
-                        <span className="hidden print:inline">{deXuat}</span>       
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-
-                {/* Lưu ý */}
-                <tr className="border-b border-black">
-                  <td
-                    className="p-1 italic text-xs print:font-bold"
-                    colSpan={4}
-                  >
-                    {lyDo}
-                  </td>
-                </tr>
-
-                {/* Signature row */}
-                <tr className="signature-block">
-                  <td className="border-r border-black p-2 text-center font-bold">
-                    <p className="signer-title">TƯ VẤN BÁN HÀNG</p>
-                  </td>
-                  <td className="border-r border-black p-2 text-center font-bold">
-                    <p className="signer-title">TP KINH DOANH</p>
-                  </td>
-                  <td className="border-r border-black p-2 text-center font-bold">
-                    <p className="signer-title">GĐ KINH DOANH</p>
-                  </td>
-                  <td className="p-2 text-center font-bold">
-                    <p className="signer-title">PHÊ DUYỆT</p>
-                  </td>      
-                </tr>
-                <tr>
-                  <td className="border-r border-black p-12"></td>
-                  <td className="border-r border-black p-12"></td>
-                  <td className="border-r border-black p-12"></td>
-                  <td className="p-12"></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                  {/* Signature row */}
+                  <tr className="signature-block">
+                    <td className="border-r border-black p-2 text-center font-bold">
+                      <p className="signer-title">TƯ VẤN BÁN HÀNG</p>
+                    </td>
+                    <td className="border-r border-black p-2 text-center font-bold">
+                      <p className="signer-title">TP KINH DOANH</p>
+                    </td>
+                    <td className="border-r border-black p-2 text-center font-bold">
+                      <p className="signer-title">GĐ KINH DOANH</p>
+                    </td>
+                    <td className="p-2 text-center font-bold">
+                      <p className="signer-title">PHÊ DUYỆT</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border-r border-black p-12 signature-empty-cell"></td>
+                    <td className="border-r border-black p-12 signature-empty-cell"></td>
+                    <td className="border-r border-black p-12 signature-empty-cell"></td>
+                    <td className="p-12 signature-empty-cell"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -1322,13 +1346,6 @@ const DeXuatGiaban = () => {
             className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
           >
             In Đề Xuất
-          </button>
-          <button
-            onClick={() => { setDownloadingPdf(true); downloadElementAsPdf(printableRef.current, "de-xuat-gia-ban").then(() => setDownloadingPdf(false)).catch(() => setDownloadingPdf(false)); }}
-            disabled={downloadingPdf}
-            className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {downloadingPdf ? "Đang lưu PDF..." : "Lưu PDF"}
           </button>
         </div>
       </div>

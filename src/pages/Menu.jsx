@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, FileText, Briefcase, DollarSign, FileCheck, Car, Settings } from 'lucide-react';
+import { Users, FileText, Briefcase, DollarSign, FileCheck, Car, Settings, Gift } from 'lucide-react';
 import VinfastLogo from '../assets/vinfast.svg';
 
 export default function Menu() {
@@ -12,13 +12,14 @@ export default function Menu() {
   }, []);
 
   const allCards = [
-    { to: '/nhan-su', label: 'Nhân sự', color: 'primary', icon: Users, isExternal: false },
-    { to: '/hop-dong', label: 'Hợp đồng', color: 'secondary', icon: FileText, isExternal: false },
-    { to: '/hop-dong-da-xuat', label: 'Hợp đồng đã xuất', color: 'accent', icon: FileCheck, isExternal: false },
-    { to: '/quan-ly-khach-hang', label: 'Khách hàng', color: 'accent', icon: Briefcase, isExternal: false },
-    { to: '/bao-gia', label: 'Báo giá', color: 'primary', icon: DollarSign, isExternal: false },
-    { to: '/danh-sach-xe', label: 'Danh sách xe', color: 'secondary', icon: Car, isExternal: false },
-    { to: '/quan-tri-bang-gia', label: 'Quản trị bảng giá', color: 'accent', icon: Settings, isExternal: false, adminOnly: true },
+    { to: '/nhan-su', label: 'Nhân sự', iconColor: 'text-blue-600', iconBg: 'bg-blue-100', hoverBg: 'group-hover:bg-blue-200', icon: Users, isExternal: false },
+    { to: '/hop-dong', label: 'Hợp đồng', iconColor: 'text-emerald-600', iconBg: 'bg-emerald-100', hoverBg: 'group-hover:bg-emerald-200', icon: FileText, isExternal: false },
+    { to: '/hop-dong-da-xuat', label: 'Hợp đồng đã xuất', iconColor: 'text-indigo-600', iconBg: 'bg-indigo-100', hoverBg: 'group-hover:bg-indigo-200', icon: FileCheck, isExternal: false },
+    { to: '/quan-ly-khach-hang', label: 'Khách hàng', iconColor: 'text-amber-600', iconBg: 'bg-amber-100', hoverBg: 'group-hover:bg-amber-200', icon: Briefcase, isExternal: false },
+    { to: '/bao-gia', label: 'Báo giá', iconColor: 'text-rose-600', iconBg: 'bg-rose-100', hoverBg: 'group-hover:bg-rose-200', icon: DollarSign, isExternal: false },
+    { to: '/them-chuong-trinh-uu-dai', label: 'Chương trình ưu đãi', iconColor: 'text-fuchsia-600', iconBg: 'bg-fuchsia-100', hoverBg: 'group-hover:bg-fuchsia-200', icon: Gift, isExternal: false },
+    { to: '/danh-sach-xe', label: 'Danh sách xe', iconColor: 'text-cyan-600', iconBg: 'bg-cyan-100', hoverBg: 'group-hover:bg-cyan-200', icon: Car, isExternal: false },
+    { to: '/quan-tri-bang-gia', label: 'Quản trị bảng giá', iconColor: 'text-slate-600', iconBg: 'bg-slate-100', hoverBg: 'group-hover:bg-slate-200', icon: Settings, isExternal: false, adminOnly: true },
   ];
 
   // Filter: ẩn Nhân sự với user, ẩn Quản trị bảng giá nếu không phải admin
@@ -59,8 +60,8 @@ export default function Menu() {
 
               {/* Content */}
               <div className="relative flex items-center gap-3 sm:gap-4">
-                <div className="p-1.5 sm:p-2 rounded-lg bg-slate-100 group-hover:bg-slate-200 transition-colors flex-shrink-0">
-                  <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-gray-700" strokeWidth={2} />
+                <div className={`p-1.5 sm:p-2 rounded-lg flex-shrink-0 transition-colors ${card.iconBg || 'bg-slate-100'} ${card.hoverBg || 'group-hover:bg-slate-200'}`}>
+                  <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${card.iconColor || 'text-gray-700'}`} strokeWidth={2} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-base sm:text-lg font-medium text-gray-900 truncate">{card.label}</h3>

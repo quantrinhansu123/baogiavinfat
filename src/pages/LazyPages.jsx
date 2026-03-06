@@ -26,6 +26,7 @@ export const NhanSuPage = lazy(() => import('./NhanSuPage'))
 export const DanhSachXePage = lazy(() => import('./DanhSachXePage'))
 export const Invoice2Page = lazy(() => import('./Invoice2Page'))
 export const CalculatorConfigAdminPage = lazy(() => import('./CalculatorConfigAdminPage'))
+export const PromotionsPage = lazy(() => import('./PromotionsPage'))
 
 // BieuMau components - all lazy loaded
 export const GiayXacNhan = lazy(() => import('../components/BieuMau/GiayXacNhan'))

@@ -318,32 +318,14 @@ const HopDongMuaBanXe = () => {
       .map((line) => line.trim())
       .filter((line) => line !== "");
 
-    if (newlineSplit.length > 1) {
-      // If there are multiple lines, use them
-      lines = newlineSplit;
-    } else {
-      // If single line, try splitting by commas
-      const singleLine = textStr.trim();
-      // Split by comma (with optional space after)
-      const commaSplit = singleLine
-        .split(/,\s*/)
-        .map((item) => item.trim())
-        .filter((item) => item !== "");
-
-      if (commaSplit.length > 1) {
-        lines = commaSplit;
-      } else {
-        // If no commas, use the whole line as one item
-        lines = [singleLine];
-      }
-    }
+    lines = newlineSplit;
 
     if (lines.length === 0) return "[---]";
 
     return (
       <div className="mt-2 space-y-1">
         {lines.map((line, index) => (
-          <div key={index}>- {line}</div>
+          <div key={index}>{line}</div>
         ))}
       </div>
     );
@@ -364,8 +346,8 @@ const HopDongMuaBanXe = () => {
       <div
         className="min-h-screen bg-gray-50 flex items-center justify-center"
         style={{ fontFamily: "Times New Roman" }}
-    >
-      <PrintStyles />
+      >
+        <PrintStyles />
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Đang tải dữ liệu...</p>
@@ -379,8 +361,8 @@ const HopDongMuaBanXe = () => {
       <div
         className="min-h-screen bg-gray-50 flex items-center justify-center"
         style={{ fontFamily: "Times New Roman" }}
-    >
-      <PrintStyles />
+      >
+        <PrintStyles />
         <div className="text-center">
           <p className="text-gray-600 mb-4">Không có dữ liệu hợp đồng</p>
           <button
@@ -917,7 +899,7 @@ const HopDongMuaBanXe = () => {
                     onChange={(e) => setUuDai(e.target.value)}
                     onBlur={() => setIsEditingUuDai(false)}
                     className="border-2 border-black px-2 py-1 text-sm font-normal w-full focus:outline-none focus:border-blue-500 resize-y min-h-[80px]"
-                    placeholder="Nhập các ưu đãi, phân cách bằng dấu phẩy (,) hoặc xuống dòng..."
+                    placeholder="Nhập các ưu đãi..."
                     rows={4}
                     autoFocus
                   />
@@ -932,36 +914,19 @@ const HopDongMuaBanXe = () => {
                           const textStr = String(uuDai);
                           if (!textStr.trim()) return null;
 
-                          let lines = [];
-                          const newlineSplit = textStr
+                          const lines = textStr
                             .split("\n")
                             .map((line) => line.trim())
                             .filter((line) => line !== "");
 
-                          if (newlineSplit.length > 1) {
-                            lines = newlineSplit;
-                          } else {
-                            const singleLine = textStr.trim();
-                            const commaSplit = singleLine
-                              .split(/,\s*/)
-                              .map((item) => item.trim())
-                              .filter((item) => item !== "");
-                            if (commaSplit.length > 1) {
-                              lines = commaSplit;
-                            } else {
-                              lines = [singleLine];
-                            }
-                          }
-
                           return lines.map((line, index) => (
-                            <div key={index}>- {line}</div>
+                            <div key={index}>{line}</div>
                           ));
                         })()}
                       </div>
                     ) : (
                       <span className="text-gray-400">
-                        Nhập các ưu đãi, phân cách bằng dấu phẩy (,) hoặc xuống
-                        dòng...
+                        Nhập các ưu đãi...
                       </span>
                     )}
                   </div>
@@ -1020,150 +985,150 @@ const HopDongMuaBanXe = () => {
                 {/* Trả thẳng section - show when no payment method selected or payment is trả thẳng */}
                 {(!paymentMethod || paymentMethod === "trả thẳng") && (
                   <>
-                <p className="pl-4">
-                  • <span className="underline">Thanh toán trả thẳng:</span>
-                </p>
-                <p className="pl-8">
-                  <strong>Đợt 2:</strong>{" "}
-                  {formatCurrency(data.contractPrice - data.deposit) || "[---]"}{" "}
-                  VNĐ{" "}
-                  <span className="italic">
-                    (bằng chữ:{" "}
-                    {vndToWords(data.contractPrice - data.deposit) || "[---]"})
-                  </span>{" "}
-                  Khách Hàng thanh toán trong vòng 07 (bảy) ngày làm việc kể từ
-                  ngày Bên Bán thông báo về việc Xe sẵn có để giao cho Khách
-                  Hàng.
-                </p>
+                    <p className="pl-4">
+                      • <span className="underline">Thanh toán trả thẳng:</span>
+                    </p>
+                    <p className="pl-8">
+                      <strong>Đợt 2:</strong>{" "}
+                      {formatCurrency(data.contractPrice - data.deposit) || "[---]"}{" "}
+                      VNĐ{" "}
+                      <span className="italic">
+                        (bằng chữ:{" "}
+                        {vndToWords(data.contractPrice - data.deposit) || "[---]"})
+                      </span>{" "}
+                      Khách Hàng thanh toán trong vòng 07 (bảy) ngày làm việc kể từ
+                      ngày Bên Bán thông báo về việc Xe sẵn có để giao cho Khách
+                      Hàng.
+                    </p>
                   </>
                 )}
                 {/* Trả góp section - show when no payment method selected or payment is trả góp */}
                 {(!paymentMethod || paymentMethod === "trả góp") && (
                   <>
-                <p className="pl-4">
-                  • <span className="underline">Thanh toán trả góp:</span>
-                </p>
-                <p className="pl-8">
-                  <strong>Đợt 2:</strong>{" "}
-                  <span className="print:hidden">
-                    <CurrencyInput
-                      value={soTienDot2}
-                      onChange={(val) => {
-                        setSoTienDot2(val);
-                        if (val) {
-                          setSoTienDot2BangChu(vndToWords(val));
-                        } else {
-                          setSoTienDot2BangChu("");
-                        }
-                      }}
-                      className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-auto focus:outline-none focus:border-blue-500"
-                      placeholder=""
-                    />
-                  </span>
-                  <span className="hidden print:inline">
-                    {soTienDot2 ? formatCurrency(soTienDot2) : "[---]"}
-                  </span>{" "}
-                  VNĐ{" "}
-                  <span className="italic">
-                    (bằng chữ:{" "}
-                    <span className="print:hidden">
-                      <input
-                        type="text"
-                        value={soTienDot2BangChu}
-                        onChange={(e) => setSoTienDot2BangChu(e.target.value)}
-                        className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-auto focus:outline-none focus:border-blue-500"
-                        placeholder=""
-                      />
-                    </span>
-                    <span className="hidden print:inline">
-                      {soTienDot2BangChu || "[---]"}
-                    </span>
-                    )
-                  </span>{" "}
-                  Khách Hàng thanh toán trong vòng 07 (bảy) ngày làm việc kể từ
-                  ngày Bên Bán thông báo về việc Xe sẵn có để giao cho Khách
-                  Hàng hoặc thanh toán theo thỏa thuận khác giữa Các Bên, Khách
-                  Hàng đồng thời bàn giao cho Bên Bán bản gốc Thông Báo Tín Dụng
-                  của ngân hàng cam kết cho Khách Hàng vay số tiền{" "}
-                  <span className="print:hidden">
-                    <CurrencyInput
-                      value={soTienVay}
-                      onChange={(val) => {
-                        setSoTienVay(val);
-                        if (val) {
-                          setSoTienVayBangChu(vndToWords(val));
-                        } else {
-                          setSoTienVayBangChu("");
-                        }
-                      }}
-                      className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-auto focus:outline-none focus:border-blue-500"
-                      placeholder=""
-                    />
-                  </span>
-                  <span className="hidden print:inline">
-                    {soTienVay ? formatCurrency(soTienVay) : "[---]"}
-                  </span>{" "}
-                  VNĐ{" "}
-                  <span className="italic">
-                    (bằng chữ:{" "}
-                    <span className="print:hidden">
-                      <input
-                        type="text"
-                        value={soTienVayBangChu}
-                        onChange={(e) => setSoTienVayBangChu(e.target.value)}
-                        className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-auto focus:outline-none focus:border-blue-500"
-                        placeholder=""
-                      />
-                    </span>
-                    <span className="hidden print:inline">
-                      {soTienVayBangChu || "[---]"}
-                    </span>
-                    )
-                  </span>{" "}
-                  để mua Xe.
-                </p>
-                <p className="pl-8">
-                  <strong>Đợt 3:</strong>{" "}
-                  <span className="print:hidden">
-                    <CurrencyInput
-                      value={soTienDot3}
-                      onChange={(val) => {
-                        setSoTienDot3(val);
-                        if (val) {
-                          setSoTienDot3BangChu(vndToWords(val));
-                        } else {
-                          setSoTienDot3BangChu("");
-                        }
-                      }}
-                      className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-auto focus:outline-none focus:border-blue-500"
-                      placeholder=""
-                    />
-                  </span>
-                  <span className="hidden print:inline">
-                    {soTienDot3 ? formatCurrency(soTienDot3) : "[---]"}
-                  </span>{" "}
-                  VNĐ{" "}
-                  <span className="italic">
-                    (bằng chữ:{" "}
-                    <span className="print:hidden">
-                      <input
-                        type="text"
-                        value={soTienDot3BangChu}
-                        onChange={(e) => setSoTienDot3BangChu(e.target.value)}
-                        className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-auto focus:outline-none focus:border-blue-500"
-                        placeholder=""
-                      />
-                    </span>
-                    <span className="hidden print:inline">
-                      {soTienDot3BangChu || "[---]"}
-                    </span>
-                    )
-                  </span>{" "}
-                  Số tiền này phải được ngân hàng cấp Thông Báo Tín Dụng thanh
-                  toán vào tài khoản của Bên Bán trong vòng 05 (năm) ngày làm
-                  việc kể từ ngày Bên Bán và Khách Hàng bàn giao giấy hẹn trả
-                  kết quả đăng ký Xe cho ngân hàng này.
-                </p>
+                    <p className="pl-4">
+                      • <span className="underline">Thanh toán trả góp:</span>
+                    </p>
+                    <p className="pl-8">
+                      <strong>Đợt 2:</strong>{" "}
+                      <span className="print:hidden">
+                        <CurrencyInput
+                          value={soTienDot2}
+                          onChange={(val) => {
+                            setSoTienDot2(val);
+                            if (val) {
+                              setSoTienDot2BangChu(vndToWords(val));
+                            } else {
+                              setSoTienDot2BangChu("");
+                            }
+                          }}
+                          className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-auto focus:outline-none focus:border-blue-500"
+                          placeholder=""
+                        />
+                      </span>
+                      <span className="hidden print:inline">
+                        {soTienDot2 ? formatCurrency(soTienDot2) : "[---]"}
+                      </span>{" "}
+                      VNĐ{" "}
+                      <span className="italic">
+                        (bằng chữ:{" "}
+                        <span className="print:hidden">
+                          <input
+                            type="text"
+                            value={soTienDot2BangChu}
+                            onChange={(e) => setSoTienDot2BangChu(e.target.value)}
+                            className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-auto focus:outline-none focus:border-blue-500"
+                            placeholder=""
+                          />
+                        </span>
+                        <span className="hidden print:inline">
+                          {soTienDot2BangChu || "[---]"}
+                        </span>
+                        )
+                      </span>{" "}
+                      Khách Hàng thanh toán trong vòng 07 (bảy) ngày làm việc kể từ
+                      ngày Bên Bán thông báo về việc Xe sẵn có để giao cho Khách
+                      Hàng hoặc thanh toán theo thỏa thuận khác giữa Các Bên, Khách
+                      Hàng đồng thời bàn giao cho Bên Bán bản gốc Thông Báo Tín Dụng
+                      của ngân hàng cam kết cho Khách Hàng vay số tiền{" "}
+                      <span className="print:hidden">
+                        <CurrencyInput
+                          value={soTienVay}
+                          onChange={(val) => {
+                            setSoTienVay(val);
+                            if (val) {
+                              setSoTienVayBangChu(vndToWords(val));
+                            } else {
+                              setSoTienVayBangChu("");
+                            }
+                          }}
+                          className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-auto focus:outline-none focus:border-blue-500"
+                          placeholder=""
+                        />
+                      </span>
+                      <span className="hidden print:inline">
+                        {soTienVay ? formatCurrency(soTienVay) : "[---]"}
+                      </span>{" "}
+                      VNĐ{" "}
+                      <span className="italic">
+                        (bằng chữ:{" "}
+                        <span className="print:hidden">
+                          <input
+                            type="text"
+                            value={soTienVayBangChu}
+                            onChange={(e) => setSoTienVayBangChu(e.target.value)}
+                            className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-auto focus:outline-none focus:border-blue-500"
+                            placeholder=""
+                          />
+                        </span>
+                        <span className="hidden print:inline">
+                          {soTienVayBangChu || "[---]"}
+                        </span>
+                        )
+                      </span>{" "}
+                      để mua Xe.
+                    </p>
+                    <p className="pl-8">
+                      <strong>Đợt 3:</strong>{" "}
+                      <span className="print:hidden">
+                        <CurrencyInput
+                          value={soTienDot3}
+                          onChange={(val) => {
+                            setSoTienDot3(val);
+                            if (val) {
+                              setSoTienDot3BangChu(vndToWords(val));
+                            } else {
+                              setSoTienDot3BangChu("");
+                            }
+                          }}
+                          className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-auto focus:outline-none focus:border-blue-500"
+                          placeholder=""
+                        />
+                      </span>
+                      <span className="hidden print:inline">
+                        {soTienDot3 ? formatCurrency(soTienDot3) : "[---]"}
+                      </span>{" "}
+                      VNĐ{" "}
+                      <span className="italic">
+                        (bằng chữ:{" "}
+                        <span className="print:hidden">
+                          <input
+                            type="text"
+                            value={soTienDot3BangChu}
+                            onChange={(e) => setSoTienDot3BangChu(e.target.value)}
+                            className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-auto focus:outline-none focus:border-blue-500"
+                            placeholder=""
+                          />
+                        </span>
+                        <span className="hidden print:inline">
+                          {soTienDot3BangChu || "[---]"}
+                        </span>
+                        )
+                      </span>{" "}
+                      Số tiền này phải được ngân hàng cấp Thông Báo Tín Dụng thanh
+                      toán vào tài khoản của Bên Bán trong vòng 05 (năm) ngày làm
+                      việc kể từ ngày Bên Bán và Khách Hàng bàn giao giấy hẹn trả
+                      kết quả đăng ký Xe cho ngân hàng này.
+                    </p>
                   </>
                 )}
               </div>
@@ -1487,7 +1452,7 @@ const HopDongMuaBanXe = () => {
         </button>
       </div>
 
-      
+
     </div>
   );
 };
