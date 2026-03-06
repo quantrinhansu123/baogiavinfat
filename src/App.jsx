@@ -5,7 +5,6 @@ import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import Header from './components/Header'
 import Footer from './components/Footer'
-import ZaloFloatingButton from './components/ZaloFloatingButton'
 import { CarPriceDataProvider } from './contexts/CarPriceDataContext'
 
 // Import critical pages directly, lazy pages from LazyPages
@@ -76,11 +75,11 @@ function App() {
   return (
     <Router>
       <CarPriceDataProvider>
-        <div className="min-h-screen bg-gradient-to-b from-white to-slate-200 flex flex-col print:min-h-0 print:bg-white">
+        <div className="min-h-screen min-w-0 overflow-x-hidden bg-gradient-to-b from-white to-slate-200 flex flex-col print:min-h-0 print:bg-white">
           <Header />
 
           {/* Routes */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0 overflow-x-hidden">
             <Routes>
               {/* Critical routes - no lazy loading needed */}
               <Route path="/dang-nhap" element={<Login />} />
@@ -310,9 +309,6 @@ function App() {
 
           {/* Footer */}
           <Footer />
-
-          {/* Zalo floating button */}
-          <ZaloFloatingButton />
 
           {/* Toast notifications */}
           <ToastContainer
