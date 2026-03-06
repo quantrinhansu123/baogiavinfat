@@ -75,11 +75,11 @@ function App() {
   return (
     <Router>
       <CarPriceDataProvider>
-        <div className="min-h-screen min-w-0 overflow-x-hidden bg-gradient-to-b from-white to-slate-200 flex flex-col print:min-h-0 print:bg-white">
+        <div className="min-h-screen min-h-screen-mobile min-w-0 max-w-[100vw] overflow-x-hidden bg-gradient-to-b from-white to-slate-200 flex flex-col print:min-h-0 print:bg-white">
           <Header />
 
           {/* Routes */}
-          <div className="flex-1 min-w-0 overflow-x-hidden">
+          <div className="flex-1 min-w-0 overflow-x-hidden px-3 xs:px-4 sm:px-4 md:px-6">
             <Routes>
               {/* Critical routes - no lazy loading needed */}
               <Route path="/dang-nhap" element={<Login />} />

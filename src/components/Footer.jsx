@@ -3,7 +3,7 @@ import React from 'react';
 const Footer = () => {
     return (
         <footer className="bg-primary-200 text-neutral-white mt-auto shadow-lg print:hidden">
-            <div className="max-w-7xl mx-auto px-4 py-6">
+            <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-4 md:px-6 py-4 sm:py-6">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     {/* Logo & Copyright */}
                     <div className="text-center md:text-left">
@@ -16,7 +16,7 @@ const Footer = () => {
                     </div>
 
                     {/* Quick Links */}
-                    <div className="flex gap-6 text-sm">
+                    <div className="flex flex-wrap justify-center gap-3 xs:gap-4 sm:gap-6 text-xs xs:text-sm">
                         <a
                             href="/dashboard"
                             className="text-neutral-white hover:text-secondary-600 transition-colors duration-200"

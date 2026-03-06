@@ -290,16 +290,16 @@ export default function Header() {
 
   return (
     <nav className="bg-primary-200 shadow-lg print:hidden">
-      <div className="mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div className="mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 max-w-[100vw]">
+        <div className="flex items-center justify-between h-14 xs:h-16 min-h-[44px]">
           {/* Logo */}
-          <div className="flex items-center space-x-2 sm:space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
             <img
               src={VinfastLogo}
               alt="Logo"
-              className="h-8 w-8 sm:h-10 sm:w-10 rounded-full shadow-md"
+              className="h-8 w-8 xs:h-9 xs:w-9 sm:h-10 sm:w-10 rounded-full shadow-md flex-shrink-0"
             />
-            <span className="text-neutral-white text-lg sm:text-xl font-bold">
+            <span className="text-neutral-white text-base xs:text-lg sm:text-xl font-bold truncate">
               Vinfast
             </span>
           </div>
@@ -736,8 +736,8 @@ export default function Header() {
 
       {/* Customer Info Modal */}
       {customerModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-2 sm:p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto m-2 sm:m-0">
+        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-2 sm:p-4">
+          <div className="modal-box bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto m-2 sm:m-0">
             <div className="bg-gradient-to-r from-primary-600 to-primary-400 px-4 sm:px-6 py-3 sm:py-4 rounded-t-lg sticky top-0 z-10 flex items-center justify-between">
               <h3 className="text-base sm:text-lg font-bold text-white truncate pr-2">Thông tin khách hàng</h3>
               <button

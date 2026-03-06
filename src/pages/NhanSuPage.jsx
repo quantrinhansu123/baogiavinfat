@@ -1029,8 +1029,8 @@ export default function NhanSuPage() {
 
       {/* Edit Modal */}
       {isModalOpen && editingUser && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-              <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[calc(100vh-2rem)] overflow-auto">
+            <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+              <div className="modal-box bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[calc(100vh-2rem)] overflow-auto">
                 {/* Modal Header */}
                 <div className="bg-gradient-to-r from-primary-600 to-primary-400 px-4 sm:px-6 py-3 sm:py-4 rounded-t-lg sticky top-0 z-10">
                   <h3 className="text-lg sm:text-xl font-bold text-white">
@@ -1363,8 +1363,8 @@ export default function NhanSuPage() {
 
       {/* Add User Modal */}
       {isAddModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-              <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[calc(100vh-2rem)] overflow-auto">
+            <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+              <div className="modal-box bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[calc(100vh-2rem)] overflow-auto">
                 <div className="bg-gradient-to-r from-primary-600 to-primary-400 px-4 sm:px-6 py-3 sm:py-4 rounded-t-lg sticky top-0 z-10">
                   <h3 className="text-lg sm:text-xl font-bold text-white">Thêm nhân sự mới</h3>
                 </div>
@@ -1596,8 +1596,8 @@ export default function NhanSuPage() {
 
       {/* Delete Confirmation Modal */}
       {deletingUser && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+              <div className="modal-box bg-white rounded-lg shadow-xl max-w-md w-full">
                 <div className="bg-gradient-to-r from-red-600 to-pink-600 px-4 sm:px-6 py-3 sm:py-4 rounded-t-lg">
                   <h3 className="text-lg sm:text-xl font-bold text-white">
                     ⚠️ Xác nhận xóa nhân sự

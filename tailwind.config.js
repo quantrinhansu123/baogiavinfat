@@ -2,7 +2,24 @@
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
+    screens: {
+      xs: "375px",
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1536px",
+    },
     extend: {
+      spacing: {
+        "safe-top": "env(safe-area-inset-top, 0px)",
+        "safe-bottom": "env(safe-area-inset-bottom, 0px)",
+        "safe-left": "env(safe-area-inset-left, 0px)",
+        "safe-right": "env(safe-area-inset-right, 0px)",
+      },
+      minHeight: {
+        "screen-mobile": "100dvh",
+      },
       colors: {
         // PRIMARY: XÁM METALLIC (từ logo "V")
         primary: {
@@ -28,6 +45,10 @@ export default {
           red: '#dc2626',
           silver: '#e5e7eb',
           success: '#10b981',
+        },
+        // neutral-white: dùng cho Header/Footer (text trên nền primary)
+        neutral: {
+          white: '#ffffff',
         },
       },
     },

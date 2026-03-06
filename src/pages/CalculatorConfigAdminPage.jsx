@@ -232,8 +232,8 @@ export default function CalculatorConfigAdminPage() {
 
       {/* Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={closeForm}>
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={closeForm}>
+          <div className="modal-box bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-semibold text-slate-900 mb-4">{editingId ? 'Chỉnh sửa' : 'Thêm mới'}</h2>
             {tab === 'carPrice' ? (
               <CarPriceForm form={form} setForm={setForm} />

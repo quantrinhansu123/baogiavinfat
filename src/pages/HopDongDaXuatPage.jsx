@@ -1627,8 +1627,8 @@ export default function HopDongDaXuatPage() {
 
           {/* Delete Confirmation Modal */}
           {deletingContract && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[calc(100vh-2rem)] overflow-auto">
+            <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+              <div className="modal-box bg-white rounded-lg shadow-xl max-w-md w-full max-h-[calc(100vh-2rem)] overflow-auto">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-red-600 to-pink-600 px-4 sm:px-6 py-3 sm:py-4 rounded-t-lg sticky top-0 z-10">
                   <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
@@ -1818,8 +1818,8 @@ export default function HopDongDaXuatPage() {
               };
 
               return (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
-                  <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full my-4 sm:my-8 max-h-[calc(100vh-2rem)] overflow-auto">
+                <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+                  <div className="modal-box bg-white rounded-lg shadow-xl max-w-4xl w-full my-4 sm:my-8 max-h-[calc(100vh-2rem)] overflow-auto">
                     <div className="px-4 sm:px-6 py-3 sm:py-4 border-b bg-gradient-to-r from-primary-600 to-primary-400 sticky top-0 z-10">
                       <div className="flex items-center justify-between">
                         <h3 className="text-base sm:text-lg font-bold text-white">
@@ -2230,8 +2230,8 @@ export default function HopDongDaXuatPage() {
 
           {/* Image Management Modal */}
           {isImageModalOpen && currentImageContract && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-              <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[calc(100vh-2rem)] overflow-auto">
+            <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+              <div className="modal-box bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[calc(100vh-2rem)] overflow-auto">
                 {/* Modal Header */}
                 <div className="bg-gradient-to-r from-primary-600 to-primary-400 px-4 sm:px-6 py-3 sm:py-4 rounded-t-lg sticky top-0 z-10">
                   <div className="flex items-center justify-between gap-2">

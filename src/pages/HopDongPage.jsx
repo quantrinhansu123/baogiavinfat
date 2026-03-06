@@ -1832,8 +1832,8 @@ export default function HopDongPage() {
 
       {/* Delete Confirmation Modal */}
       {deletingContract && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[calc(100vh-2rem)] overflow-auto">
+            <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+              <div className="modal-box bg-white rounded-lg shadow-xl max-w-md w-full max-h-[calc(100vh-2rem)] overflow-auto">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-red-600 to-pink-600 px-4 sm:px-6 py-3 sm:py-4 rounded-t-lg sticky top-0 z-10">
                   <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
@@ -1938,8 +1938,8 @@ export default function HopDongPage() {
 
       {/* Add Promotion Modal */}
       {isAddPromotionModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[calc(100vh-2rem)] overflow-auto">
+        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="modal-box bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[calc(100vh-2rem)] overflow-auto">
             {/* Header */}
             <div className="bg-gradient-to-r from-purple-600 to-purple-400 px-4 sm:px-6 py-3 sm:py-4 rounded-t-lg sticky top-0 z-10">
               <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
@@ -2343,8 +2343,8 @@ export default function HopDongPage() {
 
       {/* Delete Promotion Confirmation Modal */}
       {deletingPromotionId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="modal-box bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="bg-gradient-to-r from-red-600 to-pink-600 px-4 sm:px-6 py-3 sm:py-4 rounded-t-lg">
               <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -2389,8 +2389,8 @@ export default function HopDongPage() {
 
       {/* Export Confirmation Modal */}
       {isExportModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[calc(100vh-2rem)] overflow-auto">
+            <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+              <div className="modal-box bg-white rounded-lg shadow-xl max-w-md w-full max-h-[calc(100vh-2rem)] overflow-auto">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-primary-600 to-primary-400 px-4 sm:px-6 py-3 sm:py-4 rounded-t-lg sticky top-0 z-10">
                   <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">

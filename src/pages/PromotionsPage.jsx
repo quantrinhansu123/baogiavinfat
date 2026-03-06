@@ -501,8 +501,8 @@ export default function PromotionsPage() {
             </div>
 
             {deletingPromotionId && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+                <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="modal-box bg-white rounded-xl shadow-xl max-w-sm w-full p-3 xs:p-4 sm:p-6">
                         <h3 className="text-lg font-bold text-gray-900 mb-2">Xác nhận xóa</h3>
                         <p className="text-gray-600 mb-6">Bạn có chắc chắn muốn xóa ưu đãi này? Hành động này không thể hoàn tác.</p>
                         <div className="flex justify-end gap-3">
