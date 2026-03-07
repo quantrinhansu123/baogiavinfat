@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ref, get, update } from "firebase/database";
 import { database } from "../firebase/config";
-import { X, Edit, ArrowLeft, Image } from "lucide-react";
+import { X, Edit, ArrowLeft, Image, Printer } from "lucide-react";
 import { toast } from "react-toastify";
 import { carPriceData, uniqueNgoaiThatColors, uniqueNoiThatColors } from '../data/calculatorData';
 import { uploadImageToCloudinary } from '../config/cloudinary';
@@ -446,6 +446,93 @@ export default function EditHopDongDaXuatPage() {
       console.error("Error saving images:", err);
       toast.error("Lỗi khi lưu ảnh");
     }
+  };
+
+  // Handle print PhuLucHopDong
+  const handlePrintPhuLuc = () => {
+    const printData = {
+      id: contract.id,
+      firebaseKey: id,
+      stt: contract.stt,
+      createdAt: contract.ngayXhd,
+      ngayXhd: contract.ngayXhd,
+      TVBH: contract.tvbh,
+      vso: contract.vso,
+      contractNumber: contract.vso,
+      VSO: contract.vso,
+      customerName: contract.tenKh,
+      tenKh: contract.tenKh,
+      "Tên Kh": contract.tenKh,
+      phone: contract.soDienThoai,
+      soDienThoai: contract.soDienThoai,
+      "Số Điện Thoại": contract.soDienThoai,
+      email: contract.email,
+      Email: contract.email,
+      address: contract.diaChi,
+      diaChi: contract.diaChi,
+      "Địa Chỉ": contract.diaChi,
+      cccd: contract.cccd,
+      CCCD: contract.cccd,
+      issueDate: contract.ngayCap,
+      ngayCap: contract.ngayCap,
+      "Ngày Cấp": contract.ngayCap,
+      issuePlace: contract.noiCap,
+      noiCap: contract.noiCap,
+      "Nơi Cấp": contract.noiCap,
+      model: contract.dongXe,
+      dongXe: contract.dongXe,
+      "Dòng xe": contract.dongXe,
+      variant: contract.phienBan,
+      phienBan: contract.phienBan,
+      "Phiên Bản": contract.phienBan,
+      exterior: contract.ngoaiThat,
+      ngoaiThat: contract.ngoaiThat,
+      "Ngoại Thất": contract.ngoaiThat,
+      interior: contract.noiThat,
+      noiThat: contract.noiThat,
+      "Nội Thất": contract.noiThat,
+      contractPrice: contract.giaHopDong,
+      giaHopDong: contract.giaHopDong,
+      "Giá Hợp Đồng": contract.giaHopDong,
+      giaXuatHoaDon: contract.giaXuatHoaDon || contract.giaHopDong,
+      "Giá Xuất Hóa Đơn": contract.giaXuatHoaDon || contract.giaHopDong,
+      soTienVay: contract.soTienVay || "",
+      deposit: contract.soTienCoc,
+      soTienCoc: contract.soTienCoc || "",
+      tienDatCoc: contract.soTienCoc || "",
+      "Số tiền cọc": contract.soTienCoc || "",
+      "Tiền đặt cọc": contract.soTienCoc || "",
+      payment: contract.thanhToan || "",
+      thanhToan: contract.thanhToan || "",
+      bank: contract.nganHang || "",
+      nganHang: contract.nganHang || "",
+      "ngân hàng": contract.nganHang || "",
+      status: contract.tinhTrang,
+      tinhTrang: contract.tinhTrang,
+      "Tình Trạng": contract.tinhTrang,
+      soKhung: contract.soKhung,
+      "Số Khung": contract.soKhung,
+      chassisNumber: contract.soKhung,
+      soMay: contract.soMay,
+      "Số Máy": contract.soMay,
+      engineNumber: contract.soMay,
+      representativeName: contract.tvbh,
+      quaTang: contract.quaTang || "",
+      "Quà tặng": contract.quaTang || "",
+      quaTangKhac: contract.quaTangKhac || "",
+      "Quà tặng khác": contract.quaTangKhac || "",
+      giamGia: contract.giamGia || "",
+      "Giảm giá": contract.giamGia || "",
+      soTienPhaiThu: contract.soTienPhaiThu || contract.giamGia || "",
+      "Số tiền phải thu": contract.soTienPhaiThu || contract.giamGia || "",
+      showroom: contract.showroom || "",
+      Showroom: contract.showroom || "",
+      depositImage: depositImage || "",
+      "Ảnh chụp hình đặt cọc": depositImage || "",
+      counterpartImage: counterpartImage || "",
+      "Ảnh chụp đối ứng": counterpartImage || "",
+    };
+    navigate("/phu-luc-hop-dong", { state: printData });
   };
 
   // Save contract
@@ -1210,6 +1297,14 @@ export default function EditHopDongDaXuatPage() {
             >
               <X className="w-4 h-4" />
               <span>Hủy</span>
+            </button>
+            <button
+              onClick={handlePrintPhuLuc}
+              className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-sm hover:shadow-md text-sm sm:text-base"
+              aria-label="In Phụ Lục"
+            >
+              <Printer className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>In Phụ Lục</span>
             </button>
             <button
               onClick={handleSave}
