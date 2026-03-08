@@ -215,7 +215,9 @@ const GiayXacNhanThongTin = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-lg font-bold mb-2">GIẤY XÁC NHẬN THÔNG TIN</h1>
-          <p className="text-sm mb-8">Áp dụng đối với trường hợp cần xác nhận thông tin PTVT</p>
+          <p className="text-sm mb-2">Áp dụng đối với trường hợp cần xác nhận thông tin PTVT</p>
+          <p className="text-xs text-red-600 font-semibold print:hidden">CHO PHÉP SỬA TAY</p>
+          <p className="text-sm mb-8 hidden print:block text-red-600 font-semibold">CHO PHÉP SỬA TAY</p>
         </div>
 
         {/* Nội dung */}
@@ -247,13 +249,17 @@ const GiayXacNhanThongTin = () => {
                 <td className="border border-black px-2 py-1 text-center">1</td>
                 <td className="border border-black px-2 py-1">Số Loại (Model Code)</td>
                 <td className="border border-black px-2 py-1 text-center">
-                  <input
-                    type="text"
-                    value={thongTinHDMB}
-                    onChange={(e) => setThongTinHDMB(e.target.value)}
-                    className="w-full text-center text-sm px-1 py-1 bg-blue-50 border border-blue-300 rounded focus:outline-none focus:border-blue-500 focus:bg-white editable-field"
-                    placeholder="Nhập thông tin HĐMB"
-                  />
+                  <span className="print:hidden">
+                    <input
+                      type="text"
+                      value={thongTinHDMB}
+                      onChange={(e) => setThongTinHDMB(e.target.value)}
+                      className="w-full text-center text-sm px-1 py-1 bg-blue-50 border border-blue-300 rounded focus:outline-none focus:border-blue-500 focus:bg-white editable-field min-w-[80px]"
+                      placeholder="Nhập thông tin HĐMB"
+                      title="Có thể sửa tay"
+                    />
+                  </span>
+                  <span className="hidden print:inline">{thongTinHDMB || ""}</span>
                 </td>
                 <td className="border border-black px-2 py-1 text-center">
                   <input

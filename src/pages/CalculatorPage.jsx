@@ -1053,16 +1053,14 @@ export default function CalculatorPage() {
       }
     }
 
-    // Giá XHD = Giá niêm yết - fix discount - VinClub
-    const giaXuatHoaDon = Math.max(0, priceAfterBasicPromotions - vinClubDiscount);
+    // Giá XHD = giá sau khi áp dụng hết ưu đãi/chính sách (VinClub + Xăng đổi điện) = giá xuất hóa đơn chuẩn
+    const giaXuatHoaDon = Math.max(0, priceAfterBasicPromotions - vinClubDiscount - convertSupportDiscount);
 
-    // Amount before other discounts (for compatibility)
-    const amountBeforeVinClub = Math.max(0, priceAfterBasicPromotions - convertSupportDiscount - bhvc2 - premiumColor);
-
-    // Giá thanh toán thực tế = Giá XHD - PT51 (convertSupportDiscount)
-    const finalPayable = Math.max(0, giaXuatHoaDon - convertSupportDiscount);
+    // Giá thanh toán thực tế = Giá XHD (đã trừ hết ưu đãi trên hóa đơn)
+    const finalPayable = giaXuatHoaDon;
     const totalDiscount = totalPromotionDiscounts + (vinClubDiscount || 0) + (convertSupportDiscount || 0);
     const priceAfterDiscount = Math.max(0, basePrice - totalDiscount);
+    const amountBeforeVinClub = Math.max(0, priceAfterBasicPromotions - convertSupportDiscount - bhvc2 - premiumColor);
 
     // On-road costs
     const locationKey = locationMap[registrationLocation] || 'tinh_khac';
@@ -1208,6 +1206,8 @@ export default function CalculatorPage() {
 
   // Collect invoice data
   const collectInvoiceData = () => {
+    const num = (v) => (typeof v === 'number' && Number.isFinite(v)) ? v : Number(v) || 0;
+
     const data = {
       // Customer info
       customerName: customerName || 'QUÝ KHÁCH HÀNG',
@@ -1215,10 +1215,10 @@ export default function CalculatorPage() {
       customerType: customerType || 'ca_nhan',
       businessType: businessType || 'khong_kinh_doanh',
       provinceSatNhap: provinceSatNhap || '',
-      depositAmount: depositAmount || 0,
+      depositAmount: num(depositAmount),
       depositDate: depositDate || '',
       deliveryDate: deliveryDate || '',
-      gifts: gifts || [],
+      gifts: Array.isArray(gifts) ? gifts : [],
 
       // Car info
       carModel: carModel || '',
@@ -1231,42 +1231,50 @@ export default function CalculatorPage() {
       exteriorColorName: enhancedExteriorColors.find(c => c.code === exteriorColor)?.name || exteriorColor,
       interiorColorName: enhancedInteriorColors.find(c => c.code === interiorColor)?.name || interiorColor,
 
-      // Prices
-      carBasePrice: calculations.basePrice || 0,
-      carPriceAfterPromotions: calculations.priceAfterBasicPromotions || 0,
-      carTotal: calculations.finalPayable || 0,
-      priceFinalPayment: calculations.finalPayable || 0,
+      // Prices (ensure numbers for correct display on invoice)
+      carBasePrice: num(calculations.basePrice),
+      carPriceAfterPromotions: num(calculations.priceAfterBasicPromotions),
+      carTotal: num(calculations.finalPayable),
+      priceFinalPayment: num(calculations.finalPayable),
 
       // Discounts
-      vinClubDiscount: calculations.vinClubDiscount || 0,
-      convertSupportDiscount: calculations.convertSupportDiscount || 0,
-      premiumColorDiscount: calculations.premiumColorPotential || 0,
-      bhvc2Discount: calculations.bhvc2Potential || 0,
+      vinClubDiscount: num(calculations.vinClubDiscount),
+      convertSupportDiscount: num(calculations.convertSupportDiscount),
+      premiumColorDiscount: num(calculations.premiumColorPotential),
+      bhvc2Discount: num(calculations.bhvc2Potential),
 
-      // On-road costs
-      registrationLocation: getRegistrationLocationLabel(),
-      plateFee: calculations.plateFee || 0,
-      isPlateFeeManual: isPlateFeeManual || false,
-      liabilityInsurance: calculations.liabilityInsurance || 0,
-      isLiabilityInsuranceManual: isLiabilityInsuranceManual || false,
-      inspectionFee: calculations.inspectionFee || 0,
-      isInspectionFeeManual: isInspectionFeeManual || false,
-      roadFee: calculations.roadFee || 0,
-      isRoadFeeManual: isRoadFeeManual || false,
-      registrationFee: calculations.registrationFee || 0,
-      bodyInsurance: calculations.bodyInsurance || 0,
-      bodyInsuranceFee: bodyInsuranceFee || 0,
-      isBodyInsuranceManual: isBodyInsuranceManual || false,
-      totalOnRoadCost: calculations.totalOnRoadCost || 0,
+      // On-road costs (key for location, not label - Invoice2Page maps key to label)
+      registrationLocation: registrationLocation || 'hcm',
+      plateFee: num(calculations.plateFee),
+      isPlateFeeManual: Boolean(isPlateFeeManual),
+      liabilityInsurance: num(calculations.liabilityInsurance),
+      isLiabilityInsuranceManual: Boolean(isLiabilityInsuranceManual),
+      inspectionFee: num(calculations.inspectionFee),
+      isInspectionFeeManual: Boolean(isInspectionFeeManual),
+      roadFee: num(calculations.roadFee),
+      isRoadFeeManual: Boolean(isRoadFeeManual),
+      registrationFee: num(calculations.registrationFee),
+      bodyInsurance: num(calculations.bodyInsurance),
+      bodyInsuranceFee: num(bodyInsuranceFee),
+      isBodyInsuranceManual: Boolean(isBodyInsuranceManual),
+      totalOnRoadCost: num(calculations.totalOnRoadCost),
 
       // Loan info
-      hasLoan: loanToggle || false,
-      loanRatio: loanRatio || 0,
-      loanAmount: calculations.loanData?.loanAmount || 0,
-      downPayment: calculations.loanData?.downPayment || 0,
+      hasLoan: Boolean(loanToggle),
+      loanRatio: num(loanRatio),
+      loanAmount: num(calculations.loanData?.loanAmount),
+      downPayment: num(calculations.loanData?.downPayment),
 
-      // Detailed promotions for invoice display
-      selectedPromotions: selectedPromotions || [],
+      // Detailed promotions for invoice display (tính calculatedDiscount cho loại %)
+      selectedPromotions: Array.isArray(selectedPromotions)
+        ? selectedPromotions.map((p) => {
+            const base = num(calculations.basePrice) || 0;
+            const calculatedDiscount = p.type === 'percentage' || p.type === 'fixed'
+              ? applyPromotion(p, base)
+              : (p.calculatedDiscount != null ? num(p.calculatedDiscount) : num(p.value));
+            return { ...p, calculatedDiscount };
+          })
+        : [],
       promotionCheckboxes: {
         discount2,
         discount3,
@@ -1279,22 +1287,19 @@ export default function CalculatorPage() {
 
       // Calculated promotion values
       promotionDetails: {
-        basicDiscount: (calculations.basePrice || 0) - (calculations.priceAfterBasicPromotions || 0),
-        vinClubDiscount: calculations.vinClubDiscount || 0,
-        bhvc2Discount: calculations.bhvc2Potential || 0,
-        premiumColorDiscount: calculations.premiumColorPotential || 0,
-        convertSupportDiscount: calculations.convertSupportDiscount || 0,
+        basicDiscount: num((calculations.basePrice || 0) - (calculations.priceAfterBasicPromotions || 0)),
+        vinClubDiscount: num(calculations.vinClubDiscount),
+        bhvc2Discount: num(calculations.bhvc2Potential),
+        premiumColorDiscount: num(calculations.premiumColorPotential),
+        convertSupportDiscount: num(calculations.convertSupportDiscount),
       },
 
       // Final prices
-      // Giá XHD = Giá niêm yết - fix discount - VinClub
-      giaXuatHoaDon: calculations.giaXuatHoaDon || 0,
-      // Giá thanh toán thực tế = Giá XHD - các ưu đãi khác (BHVC2, màu, xăng điện)
-      giaThanhToanThucTe: calculations.finalPayable || 0,
-      tongChiPhiLanBanh: calculations.totalOnRoadCost || 0,
-      // Phase 7: Số tiền thanh toán đối ứng
-      tienVayTuGiaXHD: calculations.tienVayTuGiaXHD || 0,
-      soTienThanhToanDoiUng: calculations.soTienThanhToanDoiUng || 0,
+      giaXuatHoaDon: num(calculations.giaXuatHoaDon),
+      giaThanhToanThucTe: num(calculations.finalPayable),
+      tongChiPhiLanBanh: num(calculations.totalOnRoadCost),
+      tienVayTuGiaXHD: num(calculations.tienVayTuGiaXHD),
+      soTienThanhToanDoiUng: num(calculations.soTienThanhToanDoiUng),
     };
 
     // Save to localStorage
@@ -2031,13 +2036,6 @@ export default function CalculatorPage() {
                   )}
                 </div>
 
-                <div className="flex justify-between py-3 border-b border-gray-200">
-                  <span className="text-gray-600 font-medium">Giá xuất hóa đơn (Giá XHD)</span>
-                  <span className="text-gray-900 font-semibold">
-                    {formatCurrency(calculations.giaXuatHoaDon)}
-                  </span>
-                </div>
-
                 <div className="flex justify-between items-center py-3 border-b border-gray-200">
                   <label className="flex items-center gap-2 flex-1">
                     <input
@@ -2084,6 +2082,11 @@ export default function CalculatorPage() {
                     -{formatCurrency(calculations.premiumColorPotential)}
                   </span>
                 </div>
+              </div>
+
+              <div className="flex justify-between py-3 border-b border-gray-200">
+                <span className="text-gray-600 font-medium">Giá xuất hóa đơn (Giá XHD)</span>
+                <span className="text-gray-900 font-semibold">{formatCurrency(calculations.giaXuatHoaDon)}</span>
               </div>
 
               <div className="flex justify-between py-3 border-b border-gray-200">

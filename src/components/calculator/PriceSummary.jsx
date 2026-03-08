@@ -76,12 +76,13 @@ export function PriceSummary({
 
         {finalPayable !== undefined && finalPayable !== giaXuatHoaDon && (
           <div className="pt-2">
-            <PriceRow
-              label="Giá thanh toán thực tế"
-              value={finalPayable}
-              isBold
-              className="text-blue-600"
-            />
+            <div className="flex justify-between items-center py-2 font-semibold text-blue-600">
+              <span className="text-gray-700">
+                Giá thanh toán thực tế
+                <span className="block text-xs font-normal text-gray-500 mt-0.5">= Giá XHD − Phiếu thu 51</span>
+              </span>
+              <span>{formatCurrency(finalPayable)}</span>
+            </div>
           </div>
         )}
       </div>

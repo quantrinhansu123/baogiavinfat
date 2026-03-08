@@ -5,7 +5,11 @@ import {
   thong_tin_ky_thuat_xe,
   danh_sach_xe,
   formatCurrency,
+  uu_dai_vin_club,
+  getDataByKey,
 } from "../data/calculatorData";
+
+import logoImage from "../assets/images/logo.svg";
 
 // Format date helper
 const formatDate = (dateString) => {
@@ -17,9 +21,48 @@ const formatDate = (dateString) => {
   return `${day}/${month}/${year}`;
 };
 
+// Chuẩn hóa số từ localStorage (tránh string/formatted gây sai hiển thị)
+const toNum = (v) => {
+  if (v === undefined || v === null) return 0;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const s = String(v).replace(/\D/g, "");
+  return s ? parseInt(s, 10) : 0;
+};
+
+// Các key chứa giá trị số trên invoice
+const NUMERIC_KEYS = [
+  "depositAmount", "carBasePrice", "carPriceAfterPromotions", "carTotal", "priceFinalPayment",
+  "vinClubDiscount", "convertSupportDiscount", "premiumColorDiscount", "bhvc2Discount",
+  "plateFee", "liabilityInsurance", "inspectionFee", "roadFee", "registrationFee",
+  "bodyInsurance", "bodyInsuranceFee", "totalOnRoadCost",
+  "giaXuatHoaDon", "giaThanhToanThucTe", "tongChiPhiLanBanh",
+  "tienVayTuGiaXHD", "soTienThanhToanDoiUng",
+  "loanRatio", "loanAmount", "downPayment",
+];
+
+const normalizeInvoiceData = (data) => {
+  if (!data || typeof data !== "object") return data;
+  const out = { ...data };
+  NUMERIC_KEYS.forEach((key) => {
+    if (key in out && (typeof out[key] !== "number" || !Number.isFinite(out[key]))) {
+      out[key] = toNum(out[key]);
+    }
+  });
+  if (out.promotionDetails && typeof out.promotionDetails === "object") {
+    const pd = { ...out.promotionDetails };
+    ["basicDiscount", "vinClubDiscount", "bhvc2Discount", "premiumColorDiscount", "convertSupportDiscount"].forEach((k) => {
+      if (k in pd) pd[k] = toNum(pd[k]);
+    });
+    out.promotionDetails = pd;
+  }
+  return out;
+};
+
 export default function Invoice2Page() {
   const navigate = useNavigate();
   const [invoiceData, setInvoiceData] = useState(null);
+  // Checkbox "hiện trong bản in" cho từng dòng khuyến mãi (key => boolean)
+  const [printPromoChecked, setPrintPromoChecked] = useState({});
 
   useEffect(() => {
     // Get data from localStorage
@@ -27,7 +70,8 @@ export default function Invoice2Page() {
     if (savedData) {
       try {
         const data = JSON.parse(savedData);
-        setInvoiceData(data);
+        setInvoiceData(normalizeInvoiceData(data));
+        setPrintPromoChecked({}); // Mặc định mọi checkbox = hiện trong bản in (true)
       } catch (e) {
         console.error("Error loading saved invoice data:", e);
         navigate("/bao-gia");
@@ -43,6 +87,11 @@ export default function Invoice2Page() {
       window.print();
     }, 100);
   };
+
+  const setPromoPrintChecked = (key, value) => {
+    setPrintPromoChecked((prev) => ({ ...prev, [key]: value }));
+  };
+  const getPromoPrintChecked = (key) => printPromoChecked[key] !== false;
 
   if (!invoiceData) {
     return <div className="p-4">Đang tải dữ liệu...</div>;
@@ -100,10 +149,10 @@ export default function Invoice2Page() {
     );
   };
 
-  // Calculate payment schedule
+  // Calculate payment schedule (ensure numbers from localStorage)
   const totalAmount =
-    (invoiceData.carTotal || 0) + (invoiceData.totalOnRoadCost || 0);
-  const deposit = invoiceData.depositAmount || 0;
+    Number(invoiceData.carTotal || 0) + Number(invoiceData.totalOnRoadCost || 0);
+  const deposit = Number(invoiceData.depositAmount || 0);
   const remaining = totalAmount - deposit;
   const payment1 = Math.round(remaining * 0.4); // 40% khi xuất hóa đơn
   const payment2 = remaining - payment1; // Còn lại khi đăng ký
@@ -199,12 +248,37 @@ export default function Invoice2Page() {
             height: 10px !important;
           }
         }
+        .table-bordered td,
+        .table-bordered th {
+          border: 1px solid #111827;
+        }
       `}</style>
 
       <div className="max-w-4xl mx-auto">
-        <h2 className="text-center uppercase mb-3 bg-blue-50 text-blue-900 p-2 border border-blue-900 text-base font-bold">
-          BẢNG BÁO GIÁ CHI PHÍ MUA XE TẠM TÍNH
-        </h2>
+        {/* Header giống mẫu: logo trái, tiêu đề căn giữa, ngày phải - cùng một dòng */}
+        <table className="w-full border-collapse mb-3 text-sm bg-white">
+          <tbody>
+            <tr className="align-middle">
+              <td className="p-0 align-middle" style={{ width: "18%" }}>
+                <img
+                  src={logoImage}
+                  alt="VinFast"
+                  className="h-10 w-auto object-contain object-left print:h-9"
+                />
+              </td>
+              <td className="p-0 align-middle text-center" style={{ width: "64%" }}>
+                <span className="text-lg font-bold text-black uppercase print:text-base">
+                  BẢNG BÁO GIÁ CHI PHÍ MUA XE TẠM TÍNH
+                </span>
+              </td>
+              <td className="p-0 align-middle text-right text-gray-800" style={{ width: "18%" }}>
+                <span className="text-sm font-normal">
+                  {formatDate(invoiceData?.savedAt || new Date().toISOString())}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
         <table className="w-full border-collapse mb-0 text-sm bg-white">
           <tbody>
@@ -212,234 +286,299 @@ export default function Invoice2Page() {
               <td className="p-1" style={{ width: "15%" }}>
                 <strong>Kính Gửi:</strong>
               </td>
-              <td className="p-1" style={{ width: "35%" }}>
+              <td className="p-1" style={{ width: "50%" }}>
                 {(invoiceData.customerName || "QUÝ KHÁCH HÀNG").toUpperCase()}
               </td>
               <td className="p-1" style={{ width: "15%" }}>
-                <strong>Đóng Tên:</strong>
+                <strong>Nhu cầu:</strong>
               </td>
-              <td className="p-1" style={{ width: "35%" }}>
-                {getCustomerTypeLabel()}
+              <td className="p-1" style={{ width: "20%" }}>
+                {getBusinessTypeLabel()}
               </td>
             </tr>
             <tr>
               <td className="p-1" style={{ width: "15%" }}>
                 <strong>Địa Chỉ:</strong>
               </td>
-              <td className="p-1" style={{ width: "35%" }}>
+              <td className="p-1" colSpan="3">
                 {invoiceData.customerAddress || "Thành phố Hồ Chí Minh"}
-              </td>
-              <td className="p-1" style={{ width: "15%" }}>
-                <strong>Như Chủ:</strong>
-              </td>
-              <td className="p-1" style={{ width: "35%" }}>
-                {getBusinessTypeLabel()}
               </td>
             </tr>
           </tbody>
         </table>
 
-        <div className="bg-blue-50 text-blue-900 font-bold uppercase p-1 mt-3 mb-0 border border-gray-900 text-xs">
+        <div className="text-blue-900 font-bold uppercase p-1 mt-3 mb-0 text-xs">
           Thông tin sản phẩm
         </div>
-        <table className="w-full border-collapse mb-0 text-sm bg-white">
+        <table className="w-full border-collapse mb-0 text-sm bg-white table-bordered">
           <tbody>
             <tr>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "33%" }}
               >
                 <strong>Dòng xe</strong>
               </td>
-              <td className="border border-gray-900 p-1">
+              <td className="p-1">
                 {invoiceData.carModel || "VF 3"}
               </td>
             </tr>
             <tr>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "33%" }}
               >
                 <strong>Phiên bản</strong>
               </td>
-              <td className="border border-gray-900 p-1">
+              <td className="p-1">
                 {invoiceData.carVersion || "Base"}
               </td>
             </tr>
             <tr>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "33%" }}
               >
                 <strong>Ngoại thất</strong>
               </td>
-              <td className="border border-gray-900 p-1">
+              <td className="p-1">
                 {getExteriorColorName()}
               </td>
             </tr>
             <tr>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "33%" }}
               >
                 <strong>Nội thất</strong>
               </td>
-              <td className="border border-gray-900 p-1">
+              <td className="p-1">
                 {getInteriorColorName()}
               </td>
             </tr>
           </tbody>
         </table>
 
-        <div className="bg-blue-50 text-blue-900 font-bold uppercase p-1 mt-3 mb-0 border border-gray-900 text-xs">
+        <div className="text-blue-900 font-bold uppercase p-1 mt-3 mb-0 text-xs">
           Giá xe & Chương trình khuyến mãi
         </div>
-        <table className="w-full border-collapse mb-0 text-sm bg-white">
+        <table className="w-full border-collapse mb-0 text-sm bg-white table-bordered">
           <tbody>
             <tr>
-              <td className="border border-gray-900 p-1" style={{ width: "40%" }}>
+              <td className="p-1" style={{ width: "48%" }}>
                 <strong>Giá Xe Đã Bao Gồm VAT</strong>
               </td>
-              <td className="border border-gray-900 p-1 text-center" style={{ width: "8%" }}>
-                <input type="checkbox" checked readOnly className="w-3 h-3" />
+              <td className="p-1 text-center align-middle" style={{ width: "8%" }}>
+                <span className={getPromoPrintChecked("basePrice") ? "" : "print:hidden"}>
+                  <input
+                    type="checkbox"
+                    checked={getPromoPrintChecked("basePrice")}
+                    onChange={() => setPromoPrintChecked("basePrice", !getPromoPrintChecked("basePrice"))}
+                    className="w-3 h-3"
+                  />
+                </span>
               </td>
-              <td className="border border-gray-900 p-1 text-center" style={{ width: "12%" }}>
+              <td className="p-1 text-center" style={{ width: "12%" }}>
                 Kèm Pin
               </td>
-              <td className="border border-gray-900 p-1 text-right" style={{ width: "20%" }}>
+              <td className="p-1 text-right" style={{ width: "32%" }}>
                 <strong>{formatCurrency(invoiceData.carBasePrice || 0)}</strong>
               </td>
-              <td className="border border-gray-900 p-1" style={{ width: "20%" }}></td>
             </tr>
             {/* Selected promotions from Firebase */}
             {invoiceData.selectedPromotions && invoiceData.selectedPromotions.length > 0 && 
-              invoiceData.selectedPromotions.map((promo, index) => (
-                <tr key={promo.id || index}>
-                  <td className="border border-gray-900 p-1">{promo.name || promo.ten_chuong_trinh}</td>
-                  <td className="border border-gray-900 p-1 text-center">
-                    <input type="checkbox" checked readOnly className="w-3 h-3" />
-                  </td>
-                  <td className="border border-gray-900 p-1 text-center">
-                    {promo.type === 'percentage' ? `${promo.value || 0}%` : ''}
-                  </td>
-                  <td className="border border-gray-900 p-1 text-right">
-                    {formatCurrency(promo.calculatedDiscount || promo.value || 0)}
-                  </td>
-                  <td className="border border-gray-900 p-1"></td>
-                </tr>
-              ))
+              invoiceData.selectedPromotions.map((promo, index) => {
+                const key = `selectedPromo_${index}`;
+                return (
+                  <tr key={promo.id || index}>
+                    <td className="p-1">{promo.name || promo.ten_chuong_trinh}</td>
+                    <td className="p-1 text-center align-middle">
+                      <span className={getPromoPrintChecked(key) ? "" : "print:hidden"}>
+                        <input
+                          type="checkbox"
+                          checked={getPromoPrintChecked(key)}
+                          onChange={() => setPromoPrintChecked(key, !getPromoPrintChecked(key))}
+                          className="w-3 h-3"
+                        />
+                      </span>
+                    </td>
+                    <td className="p-1 text-center">
+                      {promo.type === 'percentage' ? `${promo.value || 0}%` : ''}
+                    </td>
+                    <td className="p-1 text-right">
+                      {formatCurrency(
+                        typeof promo.calculatedDiscount === 'number'
+                          ? promo.calculatedDiscount
+                          : promo.type === 'percentage'
+                            ? Math.round((Number(invoiceData.carBasePrice) || 0) * (Number(promo.value) || 0) / 100)
+                            : (promo.value || 0)
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             }
             {/* CS QDND&CAND - chỉ hiện nếu được chọn */}
             {invoiceData.promotionCheckboxes?.discount2 && (
               <tr>
-                <td className="border border-gray-900 p-1">CS QDND& CAND</td>
-                <td className="border border-gray-900 p-1 text-center">
-                  <input type="checkbox" checked readOnly className="w-3 h-3" />
+                <td className="p-1">CS QDND& CAND</td>
+                <td className="p-1 text-center align-middle">
+                  <span className={getPromoPrintChecked("discount2") ? "" : "print:hidden"}>
+                    <input
+                      type="checkbox"
+                      checked={getPromoPrintChecked("discount2")}
+                      onChange={() => setPromoPrintChecked("discount2", !getPromoPrintChecked("discount2"))}
+                      className="w-3 h-3"
+                    />
+                  </span>
                 </td>
-                <td className="border border-gray-900 p-1 text-center">0,00%</td>
-                <td className="border border-gray-900 p-1 text-right">0</td>
-                <td className="border border-gray-900 p-1"></td>
+                <td className="p-1 text-center">0,00%</td>
+                <td className="p-1 text-right">0</td>
               </tr>
             )}
             {/* Vin 2024 - chỉ hiện nếu được chọn */}
             {invoiceData.promotionCheckboxes?.discount3 && (
               <tr>
-                <td className="border border-gray-900 p-1">Vin 2024</td>
-                <td className="border border-gray-900 p-1 text-center">
-                  <input type="checkbox" checked readOnly className="w-3 h-3" />
+                <td className="p-1">Vin 2024</td>
+                <td className="p-1 text-center align-middle">
+                  <span className={getPromoPrintChecked("discount3") ? "" : "print:hidden"}>
+                    <input
+                      type="checkbox"
+                      checked={getPromoPrintChecked("discount3")}
+                      onChange={() => setPromoPrintChecked("discount3", !getPromoPrintChecked("discount3"))}
+                      className="w-3 h-3"
+                    />
+                  </span>
                 </td>
-                <td className="border border-gray-900 p-1 text-center"></td>
-                <td className="border border-gray-900 p-1 text-right">0</td>
-                <td className="border border-gray-900 p-1"></td>
+                <td className="p-1 text-center"></td>
+                <td className="p-1 text-right">0</td>
               </tr>
             )}
             {/* Hỗ trợ lãi Suất - chỉ hiện nếu được chọn */}
             {invoiceData.promotionCheckboxes?.hoTroLaiSuat && (
               <tr>
-                <td className="border border-gray-900 p-1">Hỗ trợ lãi Suất</td>
-                <td className="border border-gray-900 p-1 text-center">
-                  <input type="checkbox" checked readOnly className="w-3 h-3" />
+                <td className="p-1">Hỗ trợ lãi Suất</td>
+                <td className="p-1 text-center align-middle">
+                  <span className={getPromoPrintChecked("hoTroLaiSuat") ? "" : "print:hidden"}>
+                    <input
+                      type="checkbox"
+                      checked={getPromoPrintChecked("hoTroLaiSuat")}
+                      onChange={() => setPromoPrintChecked("hoTroLaiSuat", !getPromoPrintChecked("hoTroLaiSuat"))}
+                      className="w-3 h-3"
+                    />
+                  </span>
                 </td>
-                <td className="border border-gray-900 p-1 text-center"></td>
-                <td className="border border-gray-900 p-1 text-right"></td>
-                <td className="border border-gray-900 p-1"></td>
+                <td className="p-1 text-center"></td>
+                <td className="p-1 text-right"></td>
               </tr>
             )}
             {/* Quy đổi 2 năm bảo hiểm - chỉ hiện nếu được chọn */}
             {invoiceData.promotionCheckboxes?.discountBhvc2 && (
               <tr>
-                <td className="border border-gray-900 p-1">Quy đổi 2 năm bảo hiểm</td>
-                <td className="border border-gray-900 p-1 text-center">
-                  <input type="checkbox" checked readOnly className="w-3 h-3" />
+                <td className="p-1">Quy đổi 2 năm bảo hiểm</td>
+                <td className="p-1 text-center align-middle">
+                  <span className={getPromoPrintChecked("discountBhvc2") ? "" : "print:hidden"}>
+                    <input
+                      type="checkbox"
+                      checked={getPromoPrintChecked("discountBhvc2")}
+                      onChange={() => setPromoPrintChecked("discountBhvc2", !getPromoPrintChecked("discountBhvc2"))}
+                      className="w-3 h-3"
+                    />
+                  </span>
                 </td>
-                <td className="border border-gray-900 p-1 text-center"></td>
-                <td className="border border-gray-900 p-1 text-right">
+                <td className="p-1 text-center"></td>
+                <td className="p-1 text-right">
                   {formatCurrency(invoiceData.bhvc2Discount || 0)}
                 </td>
-                <td className="border border-gray-900 p-1"></td>
               </tr>
             )}
             {/* Miễn Phí Màu Nâng Cao - chỉ hiện nếu được chọn */}
             {invoiceData.promotionCheckboxes?.discountPremiumColor && (
               <tr>
-                <td className="border border-gray-900 p-1">Miễn Phí Màu Nâng Cao</td>
-                <td className="border border-gray-900 p-1 text-center">
-                  <input type="checkbox" checked readOnly className="w-3 h-3" />
+                <td className="p-1">Miễn Phí Màu Nâng Cao</td>
+                <td className="p-1 text-center align-middle">
+                  <span className={getPromoPrintChecked("discountPremiumColor") ? "" : "print:hidden"}>
+                    <input
+                      type="checkbox"
+                      checked={getPromoPrintChecked("discountPremiumColor")}
+                      onChange={() => setPromoPrintChecked("discountPremiumColor", !getPromoPrintChecked("discountPremiumColor"))}
+                      className="w-3 h-3"
+                    />
+                  </span>
                 </td>
-                <td className="border border-gray-900 p-1 text-center"></td>
-                <td className="border border-gray-900 p-1 text-right">
+                <td className="p-1 text-center"></td>
+                <td className="p-1 text-right">
                   {formatCurrency(invoiceData.premiumColorDiscount || 0)}
                 </td>
-                <td className="border border-gray-900 p-1"></td>
               </tr>
             )}
             {/* Xăng Đổi Điện - chỉ hiện nếu được chọn */}
             {invoiceData.promotionCheckboxes?.convertCheckbox && (
               <tr>
-                <td className="border border-gray-900 p-1">Xăng Đổi Điện</td>
-                <td className="border border-gray-900 p-1 text-center">
-                  <input type="checkbox" checked readOnly className="w-3 h-3" />
+                <td className="p-1">Xăng Đổi Điện</td>
+                <td className="p-1 text-center align-middle">
+                  <span className={getPromoPrintChecked("convertCheckbox") ? "" : "print:hidden"}>
+                    <input
+                      type="checkbox"
+                      checked={getPromoPrintChecked("convertCheckbox")}
+                      onChange={() => setPromoPrintChecked("convertCheckbox", !getPromoPrintChecked("convertCheckbox"))}
+                      className="w-3 h-3"
+                    />
+                  </span>
                 </td>
-                <td className="border border-gray-900 p-1 text-center"></td>
-                <td className="border border-gray-900 p-1 text-right">
+                <td className="p-1 text-center"></td>
+                <td className="p-1 text-right">
                   {formatCurrency(invoiceData.convertSupportDiscount || 0)}
                 </td>
-                <td className="border border-gray-900 p-1"></td>
               </tr>
             )}
             {/* Hạng thành viên VinClub - chỉ hiện nếu có chọn và không có hỗ trợ lãi suất */}
             {invoiceData.promotionCheckboxes?.vinClubVoucher && invoiceData.promotionCheckboxes.vinClubVoucher !== 'none' && !invoiceData.promotionCheckboxes?.hoTroLaiSuat && (
               <tr>
-                <td className="border border-gray-900 p-1">
+                <td className="p-1">
                   Hạng thành viên VinClub - {invoiceData.promotionCheckboxes.vinClubVoucher.charAt(0).toUpperCase() + invoiceData.promotionCheckboxes.vinClubVoucher.slice(1)}
                 </td>
-                <td className="border border-gray-900 p-1 text-center">
-                  <input type="checkbox" checked readOnly className="w-3 h-3" />
+                <td className="p-1 text-center align-middle">
+                  <span className={getPromoPrintChecked("vinClubVoucher") ? "" : "print:hidden"}>
+                    <input
+                      type="checkbox"
+                      checked={getPromoPrintChecked("vinClubVoucher")}
+                      onChange={() => setPromoPrintChecked("vinClubVoucher", !getPromoPrintChecked("vinClubVoucher"))}
+                      className="w-3 h-3"
+                    />
+                  </span>
                 </td>
-                <td className="border border-gray-900 p-1 text-center">
-                  {invoiceData.vinClubDiscount > 0 ? '0,50%' : ''}
+                <td className="p-1 text-center">
+                  {(() => {
+                    const vinClubData = getDataByKey(uu_dai_vin_club, 'hang', invoiceData.promotionCheckboxes.vinClubVoucher);
+                    const tyLe = vinClubData?.ty_le;
+                    if (vinClubData && typeof tyLe === 'number' && invoiceData.vinClubDiscount > 0) {
+                      const percent = tyLe * 100;
+                      return percent % 1 === 0 ? `${percent}%` : `${percent.toFixed(1).replace('.', ',')}%`;
+                    }
+                    return invoiceData.vinClubDiscount > 0 ? '0,5%' : '';
+                  })()}
                 </td>
-                <td className="border border-gray-900 p-1 text-right">
+                <td className="p-1 text-right">
                   {formatCurrency(invoiceData.vinClubDiscount || 0)}
                 </td>
-                <td className="border border-gray-900 p-1"></td>
               </tr>
             )}
             {/* Giá Xuất Hóa Đơn */}
             <tr className="bg-yellow-100">
-              <td className="border border-gray-900 p-1" colSpan="3">
+              <td className="p-1" colSpan="2">
                 <strong>Giá Xuất Hóa Đơn</strong>
               </td>
-              <td className="border border-gray-900 p-1 text-right" colSpan="2">
+              <td className="p-1 text-right" colSpan="2">
                 <strong>{formatCurrency(invoiceData.giaXuatHoaDon || invoiceData.priceFinalPayment || invoiceData.carTotal || 0)}</strong>
               </td>
             </tr>
             {/* Giá Thanh toán thực tế */}
             <tr className="bg-yellow-100">
-              <td className="border border-gray-900 p-1" colSpan="3">
+              <td className="p-1" colSpan="2">
                 <strong>Giá Thanh toán thực tế</strong>
               </td>
-              <td className="border border-gray-900 p-1 text-right" colSpan="2">
+              <td className="p-1 text-right" colSpan="2">
                 <strong>{formatCurrency(invoiceData.giaThanhToanThucTe || invoiceData.priceFinalPayment || invoiceData.carTotal || 0)}</strong>
               </td>
             </tr>
@@ -447,18 +586,18 @@ export default function Invoice2Page() {
             {invoiceData.hasLoan && (
               <>
                 <tr className="bg-red-50">
-                  <td className="border border-gray-900 p-1" colSpan="3">
+                  <td className="p-1" colSpan="2">
                     Tiền vay ngân hàng
                   </td>
-                  <td className="border border-gray-900 p-1 text-right text-red-600" colSpan="2">
+                  <td className="p-1 text-right text-red-600" colSpan="2">
                     <strong>-{formatCurrency(invoiceData.tienVayTuGiaXHD || 0)}</strong>
                   </td>
                 </tr>
                 <tr className="bg-green-100">
-                  <td className="border border-gray-900 p-1" colSpan="3">
+                  <td className="p-1" colSpan="2">
                     <strong>Số tiền thanh toán (đối ứng)</strong>
                   </td>
-                  <td className="border border-gray-900 p-1 text-right text-green-700" colSpan="2">
+                  <td className="p-1 text-right text-green-700" colSpan="2">
                     <strong>{formatCurrency(invoiceData.soTienThanhToanDoiUng || 0)}</strong>
                   </td>
                 </tr>
@@ -467,26 +606,35 @@ export default function Invoice2Page() {
           </tbody>
         </table>
 
-        <div className="bg-blue-50 text-blue-900 font-bold uppercase p-1 mt-3 mb-0 border border-gray-900 text-xs">
+        <div className="text-blue-900 font-bold uppercase p-1 mt-3 mb-0 text-xs">
           Chi phí lăn bánh
         </div>
-        <table className="w-full border-collapse mb-0 text-sm bg-white">
+        <table className="w-full border-collapse mb-0 text-sm bg-white table-bordered">
+          <thead>
+            <tr className="bg-gray-100">
+              <td className="p-1" style={{ width: "8%" }}><strong>STT</strong></td>
+              <td className="p-1" style={{ width: "32%" }}><strong>Hạng mục</strong></td>
+              <td className="p-1" style={{ width: "15%" }}><strong>Chi tiết</strong></td>
+              <td className="p-1 text-right" style={{ width: "18%" }}><strong>Số tiền</strong></td>
+              <td className="p-1 text-right" style={{ width: "27%" }}><strong>Loại chứng từ</strong></td>
+            </tr>
+          </thead>
           <tbody>
             <tr>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "8%" }}
               >
                 1
               </td>
               <td
-                className="border border-gray-900 p-1"
-                style={{ width: "40%" }}
+                className="p-1"
+                style={{ width: "32%" }}
               >
                 Lệ phí trước bạ
               </td>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "15%" }}
               >
                 {invoiceData.carModel && invoiceData.carModel.includes("VF")
@@ -494,192 +642,192 @@ export default function Invoice2Page() {
                   : "10%"}
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
-                style={{ width: "20%" }}
+                className="p-1 text-right"
+                style={{ width: "18%" }}
               >
                 Miễn Phí
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
-                style={{ width: "17%" }}
+                className="p-1 text-right"
+                style={{ width: "15%" }}
               >
                 Hóa đơn
               </td>
             </tr>
             <tr>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "8%" }}
               >
                 2
               </td>
               <td
-                className="border border-gray-900 p-1"
-                style={{ width: "40%" }}
+                className="p-1"
+                style={{ width: "32%" }}
               >
                 Phí 01 năm BH Dân sự
               </td>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "15%" }}
               ></td>
               <td
-                className="border border-gray-900 p-1 text-right"
-                style={{ width: "20%" }}
+                className="p-1 text-right"
+                style={{ width: "18%" }}
               >
                 {formatCurrency(invoiceData.liabilityInsurance || 0)}
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
-                style={{ width: "17%" }}
+                className="p-1 text-right"
+                style={{ width: "15%" }}
               >
                 Hóa đơn
               </td>
             </tr>
             <tr>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "8%" }}
               >
                 3
               </td>
               <td
-                className="border border-gray-900 p-1"
-                style={{ width: "40%" }}
+                className="p-1"
+                style={{ width: "32%" }}
               >
                 Phí cấp biển số
               </td>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "15%" }}
               >
                 {getRegistrationLocationLabel()}
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
-                style={{ width: "20%" }}
+                className="p-1 text-right"
+                style={{ width: "18%" }}
               >
                 {formatCurrency(invoiceData.plateFee || 0)}
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
-                style={{ width: "17%" }}
+                className="p-1 text-right"
+                style={{ width: "15%" }}
               >
                 Biên Lai
               </td>
             </tr>
             <tr>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "8%" }}
               >
                 4
               </td>
               <td
-                className="border border-gray-900 p-1"
-                style={{ width: "40%" }}
+                className="p-1"
+                style={{ width: "32%" }}
               >
                 Phí kiểm định
               </td>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "15%" }}
               ></td>
               <td
-                className="border border-gray-900 p-1 text-right"
-                style={{ width: "20%" }}
+                className="p-1 text-right"
+                style={{ width: "18%" }}
               >
                 {formatCurrency(invoiceData.inspectionFee || 0)}
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
-                style={{ width: "17%" }}
+                className="p-1 text-right"
+                style={{ width: "15%" }}
               >
                 Biên Lai
               </td>
             </tr>
             <tr>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "8%" }}
               >
                 5
               </td>
               <td
-                className="border border-gray-900 p-1"
-                style={{ width: "40%" }}
+                className="p-1"
+                style={{ width: "32%" }}
               >
                 Phí bảo trì đường bộ
               </td>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "15%" }}
               >
                 {getCustomerTypeLabel()}
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
-                style={{ width: "20%" }}
+                className="p-1 text-right"
+                style={{ width: "18%" }}
               >
                 {formatCurrency(invoiceData.roadFee || 0)}
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
-                style={{ width: "17%" }}
+                className="p-1 text-right"
+                style={{ width: "15%" }}
               >
                 Biên Lai
               </td>
             </tr>
             <tr>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "8%" }}
               >
                 6
               </td>
               <td
-                className="border border-gray-900 p-1"
-                style={{ width: "40%" }}
+                className="p-1"
+                style={{ width: "32%" }}
               >
                 Phí dịch vụ
               </td>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "15%" }}
               ></td>
               <td
-                className="border border-gray-900 p-1 text-right"
-                style={{ width: "20%" }}
+                className="p-1 text-right"
+                style={{ width: "18%" }}
               >
                 {formatCurrency(invoiceData.registrationFee || 0)}
               </td>
               <td
-                className="border border-gray-900 p-1"
-                style={{ width: "17%" }}
+                className="p-1"
+                style={{ width: "15%" }}
               ></td>
             </tr>
             <tr>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "8%" }}
               >
                 7
               </td>
               <td
-                className="border border-gray-900 p-1"
-                style={{ width: "40%" }}
+                className="p-1"
+                style={{ width: "32%" }}
               >
                 BHVC bao gồm Pin
               </td>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "15%" }}
               >
                 {getBusinessTypeLabel()}
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
-                style={{ width: "20%" }}
+                className="p-1 text-right"
+                style={{ width: "18%" }}
               >
                 {formatCurrency(
                   invoiceData.isBodyInsuranceManual 
@@ -688,41 +836,57 @@ export default function Invoice2Page() {
                 ) || formatCurrency(invoiceData.bodyInsurance || 0)}
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
-                style={{ width: "17%" }}
+                className="p-1 text-right"
+                style={{ width: "15%" }}
               >
                 Hóa Đơn
               </td>
             </tr>
+            <tr className="bg-blue-50 font-semibold">
+              <td className="p-1" colSpan="3">
+                Tổng
+              </td>
+              <td className="p-1 text-right">
+                {formatCurrency(
+                  (Number(invoiceData.liabilityInsurance) || 0) +
+                  (Number(invoiceData.plateFee) || 0) +
+                  (Number(invoiceData.inspectionFee) || 0) +
+                  (Number(invoiceData.roadFee) || 0) +
+                  (Number(invoiceData.registrationFee) || 0) +
+                  (Number(invoiceData.isBodyInsuranceManual ? invoiceData.bodyInsuranceFee : invoiceData.bodyInsurance) || 0)
+                )}
+              </td>
+              <td className="p-1"></td>
+            </tr>
           </tbody>
         </table>
 
-        <div className="bg-blue-50 text-blue-900 font-bold uppercase p-1 mt-3 mb-0 border border-gray-900 text-xs">
+        <div className="text-blue-900 font-bold uppercase p-1 mt-3 mb-0 text-xs">
           Tổng chi phí lăn bánh
         </div>
-        <table className="w-full border-collapse mb-0 text-sm bg-white">
+        <table className="w-full border-collapse mb-0 text-sm bg-white table-bordered">
           <tbody>
             <tr className="bg-blue-50">
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "8%" }}
               >
                 <strong>STT</strong>
               </td>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "40%" }}
               >
                 <strong>Hình thức</strong>
               </td>
               <td
-                className="border border-gray-900 p-1 text-center"
+                className="p-1 text-center"
                 style={{ width: "15%" }}
               >
                 <strong>%</strong>
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
+                className="p-1 text-right"
                 style={{ width: "37%" }}
               >
                 <strong>Số tiền</strong>
@@ -730,19 +894,19 @@ export default function Invoice2Page() {
             </tr>
             <tr>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "8%" }}
               >
                 1
               </td>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "40%" }}
               >
                 Ngân hàng
               </td>
               <td
-                className="border border-gray-900 p-1 text-center"
+                className="p-1 text-center"
                 style={{ width: "15%" }}
               >
                 {invoiceData.hasLoan && invoiceData.loanRatio
@@ -750,7 +914,7 @@ export default function Invoice2Page() {
                   : "0%"}
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
+                className="p-1 text-right"
                 style={{ width: "37%" }}
               >
                 {formatCurrency(invoiceData.loanAmount || 0)}
@@ -758,33 +922,33 @@ export default function Invoice2Page() {
             </tr>
             <tr>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "8%" }}
               >
                 2
               </td>
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "40%" }}
               >
                 Đối Ứng
               </td>
               <td
-                className="border border-gray-900 p-1 text-center"
+                className="p-1 text-center"
                 style={{ width: "15%" }}
               ></td>
               <td
-                className="border border-gray-900 p-1 text-right"
+                className="p-1 text-right"
                 style={{ width: "37%" }}
               >
                 {formatCurrency(invoiceData.downPayment || 0)}
               </td>
             </tr>
             <tr className="bg-blue-50">
-              <td className="border border-gray-900 p-1" colSpan="3">
+              <td className="p-1" colSpan="3">
                 <strong>Tổng</strong>
               </td>
-              <td className="border border-gray-900 p-1 text-right">
+              <td className="p-1 text-right">
                 <strong>
                   {formatCurrency(invoiceData.totalOnRoadCost || 0)}
                 </strong>
@@ -793,46 +957,46 @@ export default function Invoice2Page() {
           </tbody>
         </table>
 
-        <div className="bg-blue-50 text-blue-900 font-bold uppercase p-1 mt-3 mb-0 border border-gray-900 text-xs">
+        <div className="text-blue-900 font-bold uppercase p-1 mt-3 mb-0 text-xs">
           Phương thức thanh toán
         </div>
-        <table className="w-full border-collapse mb-0 text-sm bg-white">
+        <table className="w-full border-collapse mb-0 text-sm bg-white table-bordered">
           <tbody>
             <tr className="bg-blue-50">
               <td
-                className="border border-gray-900 p-1"
+                className="p-1"
                 style={{ width: "25%" }}
               >
                 <strong>Hình thức</strong>
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
+                className="p-1 text-right"
                 style={{ width: "25%" }}
               >
                 <strong>Đặt cọc</strong>
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
+                className="p-1 text-right"
                 style={{ width: "25%" }}
               >
                 <strong>Lần 1: Xuất hóa đơn</strong>
               </td>
               <td
-                className="border border-gray-900 p-1 text-right"
+                className="p-1 text-right"
                 style={{ width: "25%" }}
               >
                 <strong>Lần 2: Đăng ký</strong>
               </td>
             </tr>
             <tr>
-              <td className="border border-gray-900 p-1">Ngân hàng</td>
-              <td className="border border-gray-900 p-1 text-right">
+              <td className="p-1">Ngân hàng</td>
+              <td className="p-1 text-right">
                 {formatCurrency(deposit)}
               </td>
-              <td className="border border-gray-900 p-1 text-right">
+              <td className="p-1 text-right">
                 {formatCurrency(payment1)}
               </td>
-              <td className="border border-gray-900 p-1 text-right">
+              <td className="p-1 text-right">
                 {formatCurrency(payment2)}
               </td>
             </tr>
@@ -841,20 +1005,20 @@ export default function Invoice2Page() {
 
         {invoiceData.gifts && invoiceData.gifts.length > 0 && (
           <>
-            <div className="bg-blue-50 text-blue-900 font-bold uppercase p-1 mt-3 mb-0 border border-gray-900 text-xs">
+            <div className="text-blue-900 font-bold uppercase p-1 mt-3 mb-0 text-xs">
               Quà tặng
             </div>
-            <table className="w-full border-collapse mb-0 text-sm bg-white">
+            <table className="w-full border-collapse mb-0 text-sm bg-white table-bordered">
               <tbody>
                 {invoiceData.gifts.map((gift, index) => (
                   <tr key={index}>
                     <td
-                      className="border border-gray-900 p-1"
+                      className="p-1"
                       style={{ width: "33%" }}
                     >
                       {gift.name}
                     </td>
-                    <td className="border border-gray-900 p-1 text-right">
+                    <td className="p-1 text-right">
                       {gift.price || "Tặng"}
                     </td>
                   </tr>

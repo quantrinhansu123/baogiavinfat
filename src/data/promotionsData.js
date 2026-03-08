@@ -21,6 +21,8 @@ const seedDefaultPromotionsToFirebase = async () => {
         maxDiscount: promo.maxDiscount ?? 0,
         minPurchase: promo.minPurchase ?? 0,
         dongXe: promo.dongXe ?? [],
+        thoiGianApDung: promo.thoiGianApDung ?? null,
+        tinhTrang: promo.tinhTrang ?? 'Còn Hiệu Lực',
         createdAt: promo.createdAt || new Date().toISOString(),
         createdBy: promo.createdBy || 'system',
       });

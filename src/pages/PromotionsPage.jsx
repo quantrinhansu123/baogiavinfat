@@ -14,6 +14,26 @@ const normalizeDongXe = (val) => {
     return [];
 };
 
+/** Format date for display: yyyy-MM-dd -> dd/MM/yyyy, else return as-is */
+const formatEffectiveDateDisplay = (val) => {
+    if (!val) return '—';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        const [y, m, d] = val.split('-');
+        return `${d}/${m}/${y}`;
+    }
+    return val;
+};
+
+const DMS_OPTIONS = [
+    { value: '', label: 'Chọn DMS' },
+    { value: 'CTKM (Fix discount)', label: 'CTKM (Fix discount)' },
+    { value: 'Phiếu thu 51', label: 'Phiếu thu 51' },
+    { value: 'Chính sách', label: 'Chính sách' },
+];
+
+const DMS_ADD_OPTION_VALUE = '__add_dms__';
+const DMS_CUSTOM_STORAGE_KEY = 'promotionDmsCustomOptions';
+
 export default function PromotionsPage() {
     const navigate = useNavigate();
     const { carPriceData } = useCarPriceData();
@@ -23,6 +43,7 @@ export default function PromotionsPage() {
     const [loadingPromotions, setLoadingPromotions] = useState(false);
     const [isAddMode, setIsAddMode] = useState(false);
     const [newPromotionName, setNewPromotionName] = useState('');
+    const [newPromotionDms, setNewPromotionDms] = useState('');
     const [promotionType, setPromotionType] = useState('display');
     const [selectedDongXeList, setSelectedDongXeList] = useState([]);
     const [editingPromotionId, setEditingPromotionId] = useState(null);
@@ -32,11 +53,25 @@ export default function PromotionsPage() {
         value: 0,
         maxDiscount: 0,
         minPurchase: 0,
-        dongXe: []
+        dongXe: [],
+        dms: '',
+        thoiGianApDung: '', // dd/MM/yyyy
+        tinhTrang: 'Còn Hiệu Lực' // "Còn Hiệu Lực" | "Hết Hiệu Lực"
     });
     const [deletingPromotionId, setDeletingPromotionId] = useState(null);
     const [filterType, setFilterType] = useState('all');
     const [promotionSearchTerm, setPromotionSearchTerm] = useState('');
+
+    // DMS: danh sách DMS tùy chỉnh (thêm mới) + modal thêm DMS
+    const [customDmsOptions, setCustomDmsOptions] = useState(() => {
+        try {
+            const saved = localStorage.getItem(DMS_CUSTOM_STORAGE_KEY);
+            return saved ? JSON.parse(saved) : [];
+        } catch { return []; }
+    });
+    const [showAddDmsModal, setShowAddDmsModal] = useState(false);
+    const [newDmsInputValue, setNewDmsInputValue] = useState('');
+    const [addDmsContext, setAddDmsContext] = useState(null); // 'add' | 'edit'
 
     const userEmail = localStorage.getItem('userEmail') || '';
     const username = localStorage.getItem('username') || '';
@@ -54,6 +89,42 @@ export default function PromotionsPage() {
     useEffect(() => {
         loadPromotions();
     }, []);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(DMS_CUSTOM_STORAGE_KEY, JSON.stringify(customDmsOptions));
+        } catch (e) { /* ignore */ }
+    }, [customDmsOptions]);
+
+    const openAddDmsModal = (context) => {
+        setAddDmsContext(context);
+        setNewDmsInputValue('');
+        setShowAddDmsModal(true);
+    };
+
+    const handleAddDmsSubmit = () => {
+        const val = (newDmsInputValue || '').trim();
+        if (!val) {
+            toast.warning('Vui lòng nhập tên DMS.');
+            return;
+        }
+        const allValues = [...DMS_OPTIONS.map(o => o.value), ...customDmsOptions].filter(Boolean);
+        if (allValues.includes(val)) {
+            toast.info('DMS này đã có trong danh sách.');
+            if (addDmsContext === 'add') setNewPromotionDms(val);
+            if (addDmsContext === 'edit') setEditingPromotion(prev => ({ ...prev, dms: val }));
+            setShowAddDmsModal(false);
+            setAddDmsContext(null);
+            return;
+        }
+        setCustomDmsOptions(prev => [...prev, val]);
+        if (addDmsContext === 'add') setNewPromotionDms(val);
+        if (addDmsContext === 'edit') setEditingPromotion(prev => ({ ...prev, dms: val }));
+        setShowAddDmsModal(false);
+        setAddDmsContext(null);
+        setNewDmsInputValue('');
+        toast.success('Đã thêm DMS.');
+    };
 
     const loadPromotions = async () => {
         setLoadingPromotions(true);
@@ -80,6 +151,9 @@ export default function PromotionsPage() {
                         maxDiscount: typeof promotion.maxDiscount === 'number' ? promotion.maxDiscount : 0,
                         minPurchase: typeof promotion.minPurchase === 'number' ? promotion.minPurchase : 0,
                         dongXe: promotion.dongXe,
+                        dms: promotion.dms ?? '',
+                        thoiGianApDung: promotion.thoiGianApDung ?? '',
+                        tinhTrang: promotion.tinhTrang ?? 'Còn Hiệu Lực',
                         createdAt: promotion.createdAt || new Date().toISOString(),
                         createdBy: promotion.createdBy || 'system',
                         isHardcoded: !!promotion.isHardcoded
@@ -133,6 +207,9 @@ export default function PromotionsPage() {
                     'vf_3', 'vf_5', 'vf_6', 'vf_7', 'vf_8', 'vf_9',
                     'minio', 'herio', 'nerio', 'limo', 'ec', 'ec_nang_cao'
                 ],
+                dms: (newPromotionDms || '').trim() || null,
+                thoiGianApDung: (editingPromotion.thoiGianApDung || '').trim() || null,
+                tinhTrang: editingPromotion.tinhTrang || 'Còn Hiệu Lực',
                 createdAt: new Date().toISOString(),
                 createdBy: userEmail || username || "admin",
             };
@@ -140,10 +217,11 @@ export default function PromotionsPage() {
             await set(newPromotionRef, promotionData);
             toast.success("Thêm chương trình ưu đãi thành công!");
             setNewPromotionName('');
+            setNewPromotionDms('');
             setPromotionType('display');
             setSelectedDongXeList([]);
             setIsAddMode(false);
-            setEditingPromotion({ name: '', type: 'display', value: 0, maxDiscount: 0, minPurchase: 0, dongXe: [] });
+            setEditingPromotion({ name: '', type: 'display', value: 0, maxDiscount: 0, minPurchase: 0, dongXe: [], dms: '', thoiGianApDung: '', tinhTrang: 'Còn Hiệu Lực' });
             await loadPromotions();
         } catch (err) {
             console.error("Error adding promotion:", err);
@@ -160,13 +238,16 @@ export default function PromotionsPage() {
             value: promotion.value || 0,
             maxDiscount: promotion.maxDiscount || 0,
             minPurchase: promotion.minPurchase || 0,
-            dongXe: [...dongXe]
+            dongXe: [...dongXe],
+            dms: promotion.dms ?? '',
+            thoiGianApDung: promotion.thoiGianApDung ?? '',
+            tinhTrang: promotion.tinhTrang ?? 'Còn Hiệu Lực',
         });
     };
 
     const cancelEditPromotion = () => {
         setEditingPromotionId(null);
-        setEditingPromotion({ name: '', type: 'display', value: 0, maxDiscount: 0, minPurchase: 0, dongXe: [] });
+        setEditingPromotion({ name: '', type: 'display', value: 0, maxDiscount: 0, minPurchase: 0, dongXe: [], dms: '', thoiGianApDung: '', tinhTrang: 'Còn Hiệu Lực' });
     };
 
     const handleSaveEditPromotion = async () => {
@@ -188,6 +269,9 @@ export default function PromotionsPage() {
                 maxDiscount: editingPromotion.maxDiscount || 0,
                 minPurchase: editingPromotion.minPurchase || 0,
                 dongXe: editingPromotion.dongXe,
+                dms: (editingPromotion.dms || '').trim() || null,
+                thoiGianApDung: (editingPromotion.thoiGianApDung || '').trim() || null,
+                tinhTrang: editingPromotion.tinhTrang || 'Còn Hiệu Lực',
                 updatedAt: new Date().toISOString(),
                 updatedBy: userEmail || username || "admin",
             });
@@ -294,6 +378,32 @@ export default function PromotionsPage() {
 
                             <div className="mb-4">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    DMS
+                                </label>
+                                <select
+                                    value={newPromotionDms === DMS_ADD_OPTION_VALUE ? '' : newPromotionDms}
+                                    onChange={(e) => {
+                                        if (e.target.value === DMS_ADD_OPTION_VALUE) {
+                                            openAddDmsModal('add');
+                                            return;
+                                        }
+                                        setNewPromotionDms(e.target.value);
+                                    }}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white"
+                                >
+                                    {DMS_OPTIONS.map((opt) => (
+                                        <option key={opt.value || 'empty'} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                    {customDmsOptions.map((v) => (
+                                        <option key={v} value={v}>{v}</option>
+                                    ))}
+                                    <option disabled>──────────────</option>
+                                    <option value={DMS_ADD_OPTION_VALUE}>➕ Thêm DMS mới</option>
+                                </select>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Tên chương trình ưu đãi <span className="text-red-500">*</span>
                                 </label>
                                 <input
@@ -303,6 +413,35 @@ export default function PromotionsPage() {
                                     placeholder="Ví dụ: Chính sách MLTTVN 3..."
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                                 />
+                            </div>
+
+                            <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Thời Gian Áp Dụng</label>
+                                    <input
+                                        type="date"
+                                        value={(() => {
+                                            const v = editingPromotion.thoiGianApDung || '';
+                                            if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+                                            const p = v.split('/');
+                                            if (p.length === 3) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+                                            return '';
+                                        })()}
+                                        onChange={(e) => setEditingPromotion(prev => ({ ...prev, thoiGianApDung: e.target.value || '' }))}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Tình Trạng</label>
+                                    <select
+                                        value={editingPromotion.tinhTrang}
+                                        onChange={(e) => setEditingPromotion(prev => ({ ...prev, tinhTrang: e.target.value }))}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white"
+                                    >
+                                        <option value="Còn Hiệu Lực">Còn Hiệu Lực</option>
+                                        <option value="Hết Hiệu Lực">Hết Hiệu Lực</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div className="mb-4">
@@ -404,6 +543,32 @@ export default function PromotionsPage() {
                                         <div className="space-y-4">
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">DMS</label>
+                                                    <select
+                                                        value={(editingPromotion.dms ?? '') === DMS_ADD_OPTION_VALUE ? '' : (editingPromotion.dms ?? '')}
+                                                        onChange={(e) => {
+                                                            if (e.target.value === DMS_ADD_OPTION_VALUE) {
+                                                                openAddDmsModal('edit');
+                                                                return;
+                                                            }
+                                                            setEditingPromotion({ ...editingPromotion, dms: e.target.value });
+                                                        }}
+                                                        className="w-full px-3 py-2 border rounded-lg focus:ring-purple-500 bg-white"
+                                                    >
+                                                        {DMS_OPTIONS.map((opt) => (
+                                                            <option key={opt.value || 'empty'} value={opt.value}>{opt.label}</option>
+                                                        ))}
+                                                        {customDmsOptions.map((v) => (
+                                                            <option key={v} value={v}>{v}</option>
+                                                        ))}
+                                                        {editingPromotion.dms && !DMS_OPTIONS.some(o => o.value === (editingPromotion.dms ?? '')) && !customDmsOptions.includes(editingPromotion.dms) && (
+                                                            <option value={editingPromotion.dms}>{editingPromotion.dms} (giá trị hiện tại)</option>
+                                                        )}
+                                                        <option disabled>──────────────</option>
+                                                        <option value={DMS_ADD_OPTION_VALUE}>➕ Thêm DMS mới</option>
+                                                    </select>
+                                                </div>
+                                                <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Tên chương trình <span className="text-red-500">*</span></label>
                                                     <input
                                                         type="text"
@@ -422,6 +587,32 @@ export default function PromotionsPage() {
                                                         <option value="display">Chỉ hiển thị</option>
                                                         <option value="percentage">Giảm %</option>
                                                         <option value="fixed">Giảm tiền (VNĐ)</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Thời Gian Áp Dụng</label>
+                                                    <input
+                                                        type="date"
+                                                        value={(() => {
+                                                            const v = editingPromotion.thoiGianApDung || '';
+                                                            if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+                                                            const p = v.split('/');
+                                                            if (p.length === 3) return `${p[2]}-${String(p[1]).padStart(2,'0')}-${String(p[0]).padStart(2,'0')}`;
+                                                            return '';
+                                                        })()}
+                                                        onChange={(e) => setEditingPromotion(prev => ({ ...prev, thoiGianApDung: e.target.value || '' }))}
+                                                        className="w-full px-3 py-2 border rounded-lg focus:ring-purple-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Tình Trạng</label>
+                                                    <select
+                                                        value={editingPromotion.tinhTrang}
+                                                        onChange={(e) => setEditingPromotion(prev => ({ ...prev, tinhTrang: e.target.value }))}
+                                                        className="w-full px-3 py-2 border rounded-lg focus:ring-purple-500 bg-white"
+                                                    >
+                                                        <option value="Còn Hiệu Lực">Còn Hiệu Lực</option>
+                                                        <option value="Hết Hiệu Lực">Hết Hiệu Lực</option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -472,7 +663,10 @@ export default function PromotionsPage() {
                                     ) : (
                                         <div className="flex items-start justify-between">
                                             <div>
-                                                <div className="flex items-center gap-2 mb-1">
+                                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                    {promotion.dms && (
+                                                        <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded border border-slate-300">DMS: {promotion.dms}</span>
+                                                    )}
                                                     <h4 className="font-semibold text-gray-800">{promotion.name}</h4>
                                                     {promotion.type === 'fixed' && <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">Giảm {formatCurrency(promotion.value)}</span>}
                                                     {promotion.type === 'percentage' && <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded">Giảm {promotion.value}%</span>}
@@ -481,7 +675,11 @@ export default function PromotionsPage() {
                                                 <p className="text-sm text-gray-600 mb-1">
                                                     Áp dụng: {normalizeDongXe(promotion.dongXe).length > 0 ? normalizeDongXe(promotion.dongXe).map(c => dongXeCodeToName[c] || c).join(', ') : <span className="text-amber-600">Tất cả dòng xe</span>}
                                                 </p>
-                                                {promotion.createdAt && <p className="text-xs text-gray-400">Tạo lúc: {new Date(promotion.createdAt).toLocaleString('vi-VN')}</p>}
+                                                <div className="flex flex-wrap gap-x-4 gap-y-0 text-sm text-gray-600">
+                                                    <span><strong>Thời Gian Áp Dụng:</strong> {formatEffectiveDateDisplay(promotion.thoiGianApDung)}</span>
+                                                    <span><strong>Tình Trạng:</strong> {promotion.tinhTrang === 'Hết Hiệu Lực' ? <span className="text-red-600">Hết Hiệu Lực</span> : <span className="text-green-600">Còn Hiệu Lực</span>}</span>
+                                                </div>
+                                                {promotion.createdAt && <p className="text-xs text-gray-400 mt-1">Tạo lúc: {new Date(promotion.createdAt).toLocaleString('vi-VN')}</p>}
                                             </div>
                                             <div className="flex gap-2">
                                                 <button onClick={() => startEditPromotion(promotion)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Sửa">
@@ -508,6 +706,34 @@ export default function PromotionsPage() {
                         <div className="flex justify-end gap-3">
                             <button onClick={() => setDeletingPromotionId(null)} className="px-4 py-2 border rounded-lg hover:bg-gray-50 font-medium text-gray-700">Hủy</button>
                             <button onClick={handleDeletePromotion} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium">Xóa</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showAddDmsModal && (
+                <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="modal-box bg-white rounded-xl shadow-xl max-w-sm w-full p-4 sm:p-6">
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">Thêm DMS</h3>
+                        <p className="text-sm text-gray-600 mb-3">Nhập tên DMS mới. Giá trị sẽ được thêm vào danh sách và chọn cho form hiện tại.</p>
+                        <input
+                            type="text"
+                            value={newDmsInputValue}
+                            onChange={(e) => setNewDmsInputValue(e.target.value)}
+                            placeholder="Ví dụ: Phiếu thu 52"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 mb-4"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddDmsSubmit()}
+                        />
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => { setShowAddDmsModal(false); setAddDmsContext(null); setNewDmsInputValue(''); }}
+                                className="px-4 py-2 border rounded-lg hover:bg-gray-50 font-medium text-gray-700"
+                            >
+                                Hủy
+                            </button>
+                            <button onClick={handleAddDmsSubmit} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium flex items-center gap-1">
+                                <Check className="w-4 h-4" /> Thêm
+                            </button>
                         </div>
                     </div>
                 </div>
