@@ -537,9 +537,9 @@ const TT_HTLV_CĐX_TPB = () => {
         const stateData = location.state;
         if (!location.state.firebaseKey && !location.state.contractId) {
           setData(stateData);
-          if (stateData.customerName) setTenKH(stateData.customerName);
-          if (stateData.customerAddress) setDiaChiKH(stateData.customerAddress);
-          if (stateData.customerPhone) setDienThoaiKH(stateData.customerPhone);
+          if (stateData.customerName || stateData.tenKh) setTenKH(stateData.customerName || stateData.tenKh);
+          if (stateData.customerAddress || stateData.diaChi || stateData.address) setDiaChiKH(stateData.customerAddress || stateData.diaChi || stateData.address);
+          if (stateData.customerPhone || stateData.soDienThoai || stateData.phone) setDienThoaiKH(stateData.customerPhone || stateData.soDienThoai || stateData.phone);
           if (stateData.customerCCCD) setCmtndKH(stateData.customerCCCD);
           // Lấy số hợp đồng (ưu tiên VSO)
           if (stateData.vso || stateData.VSO || stateData.contractNumber) {
@@ -547,7 +547,7 @@ const TT_HTLV_CĐX_TPB = () => {
               stateData.vso || stateData.VSO || stateData.contractNumber || ""
             );
           }
-          if (stateData.hieuxe) setMauXe(stateData.hieuxe);
+          if (stateData.hieuxe || stateData.model || stateData.dongXe) setMauXe(stateData.hieuxe || stateData.model || stateData.dongXe);
           if (stateData.soKhung) setSoKhung(stateData.soKhung);
           if (stateData.soMay) setSoMay(stateData.soMay);
 

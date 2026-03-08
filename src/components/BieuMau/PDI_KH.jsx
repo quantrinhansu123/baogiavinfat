@@ -135,11 +135,11 @@ const PDI_KH = () => {
         if (stateData.customerName || stateData.tenKh) {
           setKhachHang(stateData.customerName || stateData.tenKh);
         }
-        if (stateData.customerAddress || stateData.diaChi) {
-          setDiaChi(stateData.customerAddress || stateData.diaChi);
+        if (stateData.customerAddress || stateData.diaChi || stateData.address) {
+          setDiaChi(stateData.customerAddress || stateData.diaChi || stateData.address);
         }
-        if (stateData.customerPhone || stateData.soDienThoai) {
-          setDienThoai(stateData.customerPhone || stateData.soDienThoai);
+        if (stateData.customerPhone || stateData.soDienThoai || stateData.phone) {
+          setDienThoai(stateData.customerPhone || stateData.soDienThoai || stateData.phone);
         }
         if (stateData.customerEmail || stateData.email) {
           setEmail(stateData.customerEmail || stateData.email);

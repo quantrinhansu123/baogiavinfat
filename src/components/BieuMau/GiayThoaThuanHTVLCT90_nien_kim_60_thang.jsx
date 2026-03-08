@@ -103,12 +103,12 @@ const GiayThoaThuanHTVLCT90_nien_kim_60_thang = () => {
         setData(stateData);
 
         // Auto-fill từ location.state
-        if (stateData.customerName) setOngBaKH(stateData.customerName);
-        if (stateData.customerAddress) setDiaChiKH(stateData.customerAddress);  
-        if (stateData.customerPhone) setDienThoaiKH(stateData.customerPhone);   
+        if (stateData.customerName || stateData.tenKh) setOngBaKH(stateData.customerName || stateData.tenKh);
+        if (stateData.customerAddress || stateData.diaChi || stateData.address) setDiaChiKH(stateData.customerAddress || stateData.diaChi || stateData.address);
+        if (stateData.customerPhone || stateData.soDienThoai || stateData.phone) setDienThoaiKH(stateData.customerPhone || stateData.soDienThoai || stateData.phone);   
         if (stateData.customerCCCD) setCanCuocKH(stateData.customerCCCD);       
-        if (stateData.contractNumber) setSoHopDong(stateData.contractNumber);   
-        if (stateData.hieuxe) setModel(stateData.hieuxe);
+        if (stateData.contractNumber || stateData.vso) setSoHopDong(stateData.contractNumber || stateData.vso);   
+        if (stateData.hieuxe || stateData.model || stateData.dongXe) setModel(stateData.hieuxe || stateData.model || stateData.dongXe);
         if (stateData.soKhung) setSoKhung(stateData.soKhung);
         if (stateData.soMay) setSoMay(stateData.soMay);
         if (stateData.totalPrice)

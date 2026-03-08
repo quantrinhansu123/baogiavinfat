@@ -130,7 +130,7 @@ const GiayDeNghiThanhToan = () => {
 
         const processedData = {
           customerName:
-            incoming.customerName || incoming["Tên KH"] || "Trần Thị B",
+            incoming.customerName || incoming.tenKh || incoming["Tên KH"] || "Trần Thị B",
           contractNumber: incoming.vso || "S00901-VSO-25-01-0041",
           createdAt: formatDateString(incoming.createdAt) || "28/06/2024",
           model: incoming.model || "VF8",

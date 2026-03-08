@@ -21,6 +21,8 @@ const PhuLucHopDong = () => {
   const [giamGia, setGiamGia] = useState("");
   const [bangChu, setBangChu] = useState("");
   const [ngayHopDong, setNgayHopDong] = useState("");
+  // Cho phép sửa tay số VSO tại hai vị trí trên phiên bản in
+  const [editableContractNumber, setEditableContractNumber] = useState("");
 
   // Auto-generate bangChu when giamGia changes
   const handleGiamGiaChange = (value) => {
@@ -109,6 +111,7 @@ const PhuLucHopDong = () => {
         showroom: incoming.showroom || branchInfo?.shortName || "",
       };
       setData(processedData);
+      setEditableContractNumber(processedData.contractNumber || "");
       setNgayHopDong(processedData.contractDate);
       
       // Load values for agreement section
@@ -153,8 +156,9 @@ const PhuLucHopDong = () => {
         deposit: "",
         counterpart: "",
         depositImage: "",
-        showroom: defaultBranch.shortName,
+        showroom: getDefaultBranch().shortName,
       });
+      setEditableContractNumber("S00901-VSO-25-09-0039");
     }
     };
     
@@ -250,9 +254,19 @@ const PhuLucHopDong = () => {
             <h2 className="text-xl font-bold uppercase mb-2">
               CHO HỢP ĐỒNG MUA BÁN XE
             </h2>
-            {data.contractNumber && (
-              <p className="text-xl font-semibold">SỐ: {data.contractNumber}</p>
-            )}
+            <p className="text-xl font-semibold">
+              SỐ:{" "}
+              <span className="print:hidden">
+                <input
+                  type="text"
+                  value={editableContractNumber}
+                  onChange={(e) => setEditableContractNumber(e.target.value)}
+                  className="border-b border-gray-400 px-2 py-1 font-semibold min-w-[200px] focus:outline-none focus:border-blue-500"
+                  placeholder="Nhập số VSO"
+                />
+              </span>
+              <span className="hidden print:inline">{editableContractNumber || data?.contractNumber || ""}</span>
+            </p>
           </div>
 
           {/* Parties Section */}
@@ -467,12 +481,19 @@ const PhuLucHopDong = () => {
 
           {/* Closing */}
           <div className="mb-3 text-sm">
-            <div className="flex items-start">
+            <div className="flex items-start flex-wrap">
               <span>
                 Phụ lục này không thể tách rời cho hợp đồng số:{" "}
-                <span className="font-semibold">
-                  {data.contractNumber || ""}
+                <span className="font-semibold print:hidden">
+                  <input
+                    type="text"
+                    value={editableContractNumber}
+                    onChange={(e) => setEditableContractNumber(e.target.value)}
+                    className="border-b border-gray-400 px-2 py-1 font-semibold min-w-[180px] focus:outline-none focus:border-blue-500"
+                    placeholder="Nhập số VSO"
+                  />
                 </span>
+                <span className="hidden print:inline font-semibold">{editableContractNumber || data?.contractNumber || ""}</span>
               </span>
               <span className="ml-2">và được lập thành 2 bản.</span>
             </div>

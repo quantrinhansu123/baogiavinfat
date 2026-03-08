@@ -54,9 +54,9 @@ const GiayXacNhan = () => {
       if (location.state) {
         const incoming = location.state;
         const processedData = {
-          customerName: incoming.customerName || incoming["Tên Kh"] || incoming["Tên KH"] || "",
-          phone: incoming.phone || incoming["Số Điện Thoại"] || "",
-          address: incoming.address || incoming["Địa Chỉ"] || "",
+          customerName: incoming.customerName || incoming.tenKh || incoming["Tên Kh"] || incoming["Tên KH"] || "",
+          phone: incoming.phone || incoming.soDienThoai || incoming["Số Điện Thoại"] || "",
+          address: incoming.address || incoming.diaChi || incoming["Địa Chỉ"] || "",
           cccd: incoming.cccd || incoming.CCCD || "",
           issueDate: incoming.issueDate || incoming.ngayCap || incoming["Ngày Cấp"] || "",
           issuePlace: incoming.issuePlace || incoming.noiCap || incoming["Nơi Cấp"] || "",

@@ -300,13 +300,13 @@ const GiayXacNhanSKSM = () => {
         // Auto-fill từ location.state nếu có (override database nếu cần)
         if (stateData.soKhung) setSoKhung(stateData.soKhung);
         if (stateData.soMay) setSoMay(stateData.soMay);
-        if (stateData.hieuxe) setHieuxe(stateData.hieuxe);
-        if (stateData.customerName) setCustomerName(stateData.customerName);
-        if (stateData.customerAddress)
-          setCustomerAddress(stateData.customerAddress);
+        if (stateData.hieuxe || stateData.model || stateData.dongXe) setHieuxe(stateData.hieuxe || stateData.model || stateData.dongXe);
+        if (stateData.customerName || stateData.tenKh) setCustomerName(stateData.customerName || stateData.tenKh);
+        if (stateData.customerAddress || stateData.diaChi || stateData.address)
+          setCustomerAddress(stateData.customerAddress || stateData.diaChi || stateData.address);
         if (stateData.customerCCCD) setCustomerCCCD(stateData.customerCCCD);
-        if (stateData.customerPhone) setCustomerPhone(stateData.customerPhone);
-        if (stateData.customerEmail) setCustomerEmail(stateData.customerEmail);
+        if (stateData.customerPhone || stateData.soDienThoai || stateData.phone) setCustomerPhone(stateData.customerPhone || stateData.soDienThoai || stateData.phone);
+        if (stateData.customerEmail || stateData.email) setCustomerEmail(stateData.customerEmail || stateData.email);
         if (stateData.contractPrice)
           setGiaTriKhaiBao(formatCurrency(stateData.contractPrice));
       } else {

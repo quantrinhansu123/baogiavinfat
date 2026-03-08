@@ -83,16 +83,16 @@ const GiayXacNhanTangBaoHiemVPBank = () => {
         setData(stateData);
 
         // Auto-fill từ location.state nếu có
-        if (stateData.customerName) {
-          setTenKhachHang(stateData.customerName);
-          setNguoiDuocBaoHiem(stateData.customerName);
+        if (stateData.customerName || stateData.tenKh) {
+          setTenKhachHang(stateData.customerName || stateData.tenKh);
+          setNguoiDuocBaoHiem(stateData.customerName || stateData.tenKh);
         }
-        if (stateData.contractNumber) setSoHopDong(stateData.contractNumber);
-        if (stateData.customerAddress) {
-          setDiaChi(stateData.customerAddress);
-          setDiaChiBH(stateData.customerAddress);
+        if (stateData.contractNumber || stateData.vso) setSoHopDong(stateData.contractNumber || stateData.vso);
+        if (stateData.customerAddress || stateData.diaChi || stateData.address) {
+          setDiaChi(stateData.customerAddress || stateData.diaChi || stateData.address);
+          setDiaChiBH(stateData.customerAddress || stateData.diaChi || stateData.address);
         }
-        if (stateData.hieuxe) setHieuXe(stateData.hieuxe);
+        if (stateData.hieuxe || stateData.model || stateData.dongXe) setHieuXe(stateData.hieuxe || stateData.model || stateData.dongXe);
         if (stateData.soKhung) setSoKhung(stateData.soKhung);
         if (stateData.soMay) setSoMay(stateData.soMay);
         if (stateData.contractPrice) {

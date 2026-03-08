@@ -486,13 +486,13 @@ const DeXuatGiaban = () => {
         const stateData = location.state;
         setData(stateData);
 
-        if (stateData.customerName) setKhachHang(stateData.customerName);
-        if (stateData.contractNumber) setSoHopDong(stateData.contractNumber);
+        if (stateData.customerName || stateData.tenKh) setKhachHang(stateData.customerName || stateData.tenKh);
+        if (stateData.contractNumber || stateData.vso) setSoHopDong(stateData.contractNumber || stateData.vso);
         if (stateData.contractDate) setNgayHopDong(stateData.contractDate);
-        if (stateData.customerAddress) setDiaChi(stateData.customerAddress);
-        if (stateData.customerPhone) setDienThoai(stateData.customerPhone);
+        if (stateData.customerAddress || stateData.diaChi || stateData.address) setDiaChi(stateData.customerAddress || stateData.diaChi || stateData.address);
+        if (stateData.customerPhone || stateData.soDienThoai || stateData.phone) setDienThoai(stateData.customerPhone || stateData.soDienThoai || stateData.phone);
         if (stateData.customerCCCD) setCccd(stateData.customerCCCD);
-        if (stateData.hieuxe) setLoaiXe(stateData.hieuxe);
+        if (stateData.hieuxe || stateData.model || stateData.dongXe) setLoaiXe(stateData.hieuxe || stateData.model || stateData.dongXe);
         if (stateData.soKhung) setSoKhung(stateData.soKhung);
         if (stateData.contractPrice)
           setGiaBanHopDong(formatCurrency(stateData.contractPrice));

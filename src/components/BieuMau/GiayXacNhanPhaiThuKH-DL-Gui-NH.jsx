@@ -153,6 +153,7 @@ const GiayXacNhanPhaiThuKH_DL_Gui_NH = () => {
         // Thông tin khách hàng
         const customerName =
           dataSource.customerName ||
+          dataSource.tenKh ||
           dataSource["Tên KH"] ||
           dataSource["Tên Kh"] ||
           "";

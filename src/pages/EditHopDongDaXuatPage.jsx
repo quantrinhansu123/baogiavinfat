@@ -1299,12 +1299,46 @@ export default function EditHopDongDaXuatPage() {
               <span>Hủy</span>
             </button>
             <button
-              onClick={handlePrintPhuLuc}
+              type="button"
+              onClick={() => {
+                const formatDateString = (val) => {
+                  if (!val) return "";
+                  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(val)) return val;
+                  const d = new Date(val);
+                  if (isNaN(d)) return val;
+                  const pad = (n) => String(n).padStart(2, "0");
+                  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+                };
+                navigate("/phu-luc-hop-dong", {
+                  state: {
+                    vso: contract.vso || "",
+                    contractNumber: contract.vso || "",
+                    firebaseKey: id,
+                    showroom: contract.showroom || "",
+                    createdAt: contract.ngayXhd,
+                    ngayXhd: formatDateString(contract.ngayXhd) || formatDateString(new Date()),
+                    customerName: contract.tenKh || "",
+                    tenKh: contract.tenKh || "",
+                    address: contract.diaChi || "",
+                    diaChi: contract.diaChi || "",
+                    cccd: contract.cccd || "",
+                    issueDate: contract.ngayCap,
+                    ngayCap: contract.ngayCap || "",
+                    issuePlace: contract.noiCap || "",
+                    noiCap: contract.noiCap || "",
+                    phone: contract.soDienThoai || "",
+                    soDienThoai: contract.soDienThoai || "",
+                    email: contract.email || "",
+                    quaTang: contract.quaTang || "",
+                    soTienPhaiThu: contract.soTienPhaiThu || "",
+                    giamGia: contract.giamGia || "",
+                  },
+                });
+              }}
               className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-sm hover:shadow-md text-sm sm:text-base"
-              aria-label="In Phụ Lục"
+              aria-label="In phụ lục hợp đồng"
             >
-              <Printer className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>In Phụ Lục</span>
+              <span>Phụ lục hợp đồng</span>
             </button>
             <button
               onClick={handleSave}

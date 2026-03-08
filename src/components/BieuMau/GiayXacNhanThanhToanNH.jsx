@@ -92,12 +92,12 @@ const GiayXacNhanThanhToanNH = () => {
         setData(stateData);
 
         // Auto-fill từ location.state nếu có
-        if (stateData.contractNumber) setHopDongSo(stateData.contractNumber);
+        if (stateData.contractNumber || stateData.vso) setHopDongSo(stateData.contractNumber || stateData.vso);
         if (stateData.contractDate) setNgayHopDong(stateData.contractDate);
-        if (stateData.customerName) setCustomerName(stateData.customerName);
+        if (stateData.customerName || stateData.tenKh) setCustomerName(stateData.customerName || stateData.tenKh);
         if (stateData.contractPrice)
           setGiaBan(formatCurrency(stateData.contractPrice));
-        if (stateData.hieuxe) setNhanHieu(stateData.hieuxe);
+        if (stateData.hieuxe || stateData.model || stateData.dongXe) setNhanHieu(stateData.hieuxe || stateData.model || stateData.dongXe);
       } else {
         // Default data structure
         setData({

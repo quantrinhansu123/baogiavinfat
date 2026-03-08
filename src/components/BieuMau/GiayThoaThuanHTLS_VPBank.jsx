@@ -466,14 +466,14 @@ const GiayThoaThuanHTLS_VPBank = () => {
 
         // Auto-fill từ location.state (chỉ khi không có firebaseKey hoặc muốn override)
         // Nếu có firebaseKey, data đã được load từ database, chỉ override khi cần
-        if (stateData.customerName) setOngBaKH(stateData.customerName);
-        if (stateData.customerAddress) setDiaChiKH(stateData.customerAddress);
-        if (stateData.customerPhone) setDienThoaiKH(stateData.customerPhone);
+        if (stateData.customerName || stateData.tenKh) setOngBaKH(stateData.customerName || stateData.tenKh);
+        if (stateData.customerAddress || stateData.diaChi || stateData.address) setDiaChiKH(stateData.customerAddress || stateData.diaChi || stateData.address);
+        if (stateData.customerPhone || stateData.soDienThoai || stateData.phone) setDienThoaiKH(stateData.customerPhone || stateData.soDienThoai || stateData.phone);
         if (stateData.customerCCCD) setCanCuocKH(stateData.customerCCCD);
-        if (stateData.contractNumber) setSoHopDong(stateData.contractNumber);
+        if (stateData.contractNumber || stateData.vso) setSoHopDong(stateData.contractNumber || stateData.vso);
         if (stateData.vso || stateData.VSO)
           setVso(stateData.vso || stateData.VSO || "");
-        if (stateData.hieuxe) setModel(stateData.hieuxe);
+        if (stateData.hieuxe || stateData.model || stateData.dongXe) setModel(stateData.hieuxe || stateData.model || stateData.dongXe);
         if (stateData.soKhung) setSoKhung(stateData.soKhung);
         if (stateData.soMay) setSoMay(stateData.soMay);
         if (stateData.totalPrice)

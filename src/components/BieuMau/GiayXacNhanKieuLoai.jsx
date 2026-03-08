@@ -182,14 +182,15 @@ const GiayXacNhanKieuLoai = () => {
         setData(stateData);
 
         // Auto-fill từ location.state nếu có (override database nếu cần)
-        if (stateData.contractNumber) setHopDongSo(stateData.contractNumber);
-        if (stateData.customerName) setCustomerName(stateData.customerName);
+        if (stateData.contractNumber || stateData.vso) setHopDongSo(stateData.contractNumber || stateData.vso);
+        if (stateData.customerName || stateData.tenKh) setCustomerName(stateData.customerName || stateData.tenKh);
         if (stateData.contractDate) setNgayKy(stateData.contractDate);
-        if (stateData.hieuxe) {
-          setSoLoai(stateData.hieuxe);
-          setThongTinHDMB(stateData.hieuxe);
-          setThongTinTBPD(stateData.hieuxe);
-          setThongTinGiayXN(stateData.hieuxe);
+        if (stateData.hieuxe || stateData.model || stateData.dongXe) {
+          const carModel = stateData.hieuxe || stateData.model || stateData.dongXe;
+          setSoLoai(carModel);
+          setThongTinHDMB(carModel);
+          setThongTinTBPD(carModel);
+          setThongTinGiayXN(carModel);
         }
       } else {
         // Default data structure

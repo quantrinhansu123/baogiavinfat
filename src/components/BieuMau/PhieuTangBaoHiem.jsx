@@ -80,9 +80,9 @@ const PhieuTangBaoHiem = () => {
         const newRows = [...tableRows];
         newRows[0] = {
           stt: "1",
-          tenKhachHang: stateData.customerName || "",
+          tenKhachHang: stateData.customerName || stateData.tenKh || "",
           soKhung: stateData.soKhung || "",
-          loaiXe: stateData.hieuxe || "",
+          loaiXe: stateData.hieuxe || stateData.model || stateData.dongXe || "",
           tnds: "",
           vcx: "",
           donViBaoHiem: "",

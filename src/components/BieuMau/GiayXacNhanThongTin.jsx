@@ -107,7 +107,7 @@ const GiayXacNhanThongTin = () => {
         const incoming = location.state;
         const processedData = {
           contractNumber: incoming.vso || "S00901-VSO-24-10-0042",
-          customerName: incoming.customerName || incoming["Tên KH"] || "BÙI THỊ KIM OANH",
+          customerName: incoming.customerName || incoming.tenKh || incoming["Tên KH"] || "BÙI THỊ KIM OANH",
           contractDate: incoming.contractDate || incoming.createdAt || "2022-10-08",
           model: incoming.model || incoming.dongXe || modelValue || "VINFAST VF5",
           variant: incoming.variant || "VF 5",
