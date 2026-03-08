@@ -289,7 +289,11 @@ export default function Header() {
   ];
 
   return (
-    <nav className="bg-primary-200 shadow-lg print:hidden">
+    <nav className="print:hidden" style={{ 
+      background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+      borderBottom: '3px solid #1e3a8a'
+    }}>
       <div className="mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 max-w-[100vw]">
         <div className="flex items-center justify-between h-14 xs:h-16 min-h-[44px]">
           {/* Logo */}
@@ -311,6 +315,8 @@ export default function Header() {
                 key={link.to}
                 to={link.to}
                 className="relative text-neutral-white px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition group"
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 {link.label}
                 <span className="pointer-events-none absolute left-[-5px] right-[-5px] top-8 h-[2px] bg-secondary-600 rounded opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
@@ -327,7 +333,12 @@ export default function Header() {
                       setNotificationsOpen((s) => !s);
                       setProfileOpen(false);
                     }}
-                    className="relative flex items-center justify-center text-neutral-white p-2 rounded-md hover:bg-primary-600 transition"
+                    className="relative flex items-center justify-center text-neutral-white p-2 rounded-md transition"
+                    style={{ 
+                      '--hover-bg': 'rgba(255, 255, 255, 0.15)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     aria-label="Thông báo"
                   >
                     <Bell className="w-5 h-5" />
@@ -345,7 +356,7 @@ export default function Header() {
                       onClick={(e) => e.stopPropagation()}
                       style={{ maxHeight: 'calc(100vh - 5rem)' }}
                     >
-                      <div className="bg-primary-600 text-white px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
+                      <div className="text-white px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)' }}>
                         <h3 className="font-semibold text-xs sm:text-sm">Thông báo</h3>
                         {unreadCount > 0 && (
                           <button
@@ -438,7 +449,9 @@ export default function Header() {
                       e.stopPropagation();
                       setProfileOpen((s) => !s);
                     }}
-                    className="flex items-center gap-1 lg:gap-2 text-neutral-white px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition bg-transparent hover:bg-primary-600"
+                    className="flex items-center gap-1 lg:gap-2 text-neutral-white px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition bg-transparent"
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     aria-haspopup="true"
                     aria-expanded={profileOpen}
                   >
@@ -504,7 +517,12 @@ export default function Header() {
                       setNotificationsOpen((s) => !s);
                       setProfileOpen(false);
                     }}
-                    className="relative flex items-center justify-center text-neutral-white p-2 rounded-md hover:bg-primary-600 transition"
+                    className="relative flex items-center justify-center text-neutral-white p-2 rounded-md transition"
+                    style={{ 
+                      '--hover-bg': 'rgba(255, 255, 255, 0.15)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     aria-label="Thông báo"
                   >
                     <Bell className="w-5 h-5" />
@@ -522,7 +540,7 @@ export default function Header() {
                       onClick={(e) => e.stopPropagation()}
                       style={{ maxHeight: 'calc(100vh - 5rem)' }}
                     >
-                      <div className="bg-primary-600 text-white px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
+                      <div className="text-white px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)' }}>
                         <h3 className="font-semibold text-xs sm:text-sm">Thông báo</h3>
                         {unreadCount > 0 && (
                           <button
@@ -666,7 +684,9 @@ export default function Header() {
             <button
               ref={hamburgerButtonRef}
               onClick={() => setMobileMenuOpen((s) => !s)}
-              className="text-neutral-white p-2 rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+              className="text-neutral-white p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition"
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               aria-expanded={mobileMenuOpen}
               aria-label="Toggle menu"
             >
@@ -707,14 +727,17 @@ export default function Header() {
         {mobileMenuOpen && (
           <div
             ref={mobileMenuRef}
-            className="md:hidden border-t border-primary-300"
+            className="md:hidden border-t"
+            style={{ borderColor: 'rgba(255, 255, 255, 0.2)' }}
           >
             <div className="px-2 pt-2 pb-3 space-y-1">
               {navigationLinks.map((link) => (
                 <Link
                   key={link.to}
                   to={link.to}
-                  className="block text-neutral-white px-3 py-2 rounded-md text-base font-medium hover:bg-primary-600 transition"
+                  className="block text-neutral-white px-3 py-2 rounded-md text-base font-medium transition"
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {link.label}
@@ -723,7 +746,9 @@ export default function Header() {
               {!isAuthenticated && (
                 <Link
                   to="/dang-nhap"
-                  className="block text-neutral-white px-3 py-2 rounded-md text-base font-medium hover:bg-primary-600 transition"
+                  className="block text-neutral-white px-3 py-2 rounded-md text-base font-medium transition"
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Đăng nhập

@@ -627,6 +627,193 @@ export default function CalculatorPage() {
     }, 0);
   };
 
+  // Calculate total discount from promotions with DMS = "Phiếu thu 51" (chỉ tính ưu đãi áp dụng cho dòng xe hiện tại)
+  const calculatePhieuThu51Discount = (price, selectedDongXeFilter = null) => {
+    console.log('[PhieuThu51] Starting calculation. selectedPromotions:', selectedPromotions?.length || 0, 'promotions:', promotions?.length || 0, 'selectedDongXe:', selectedDongXeFilter);
+    
+    if (!promotions || !promotions.length) {
+      console.log('[PhieuThu51] No promotions available in Firebase');
+      return 0;
+    }
+
+    // BƯỚC 1: Tìm trong selectedPromotions (ưu tiên)
+    let activePromotions = [];
+    if (selectedPromotions && selectedPromotions.length > 0) {
+      // Filter active promotions
+      activePromotions = selectedPromotions.filter(p => p.isActive === true);
+      console.log('[PhieuThu51] Active selectedPromotions:', activePromotions.length);
+      
+      // Filter by dongXe
+      if (selectedDongXeFilter) {
+        activePromotions = filterPromotionsByDongXe(activePromotions, selectedDongXeFilter);
+        console.log('[PhieuThu51] After dongXe filter (selectedPromotions):', activePromotions.length);
+      }
+    }
+    
+    // BƯỚC 2: Nếu không tìm thấy trong selectedPromotions, tìm trực tiếp trong promotions từ Firebase
+    // (Cách dự phòng để đảm bảo không bỏ sót)
+    if (activePromotions.length === 0 && promotions.length > 0) {
+      console.log('[PhieuThu51] No active promotions in selectedPromotions, checking all promotions from Firebase...');
+      let allPromotions = [...promotions];
+      
+      // Filter by dongXe
+      if (selectedDongXeFilter) {
+        allPromotions = filterPromotionsByDongXe(allPromotions, selectedDongXeFilter);
+        console.log('[PhieuThu51] After dongXe filter (all promotions):', allPromotions.length);
+      }
+      
+      activePromotions = allPromotions;
+    }
+    
+    if (activePromotions.length === 0) {
+      console.log('[PhieuThu51] No promotions match the criteria');
+      return 0;
+    }
+
+    // Lọc các promotion có DMS = "Phiếu thu 51"
+    const phieuThu51Promotions = activePromotions.filter(promo => {
+      try {
+        // Lookup fresh DMS from Firebase promotions state (nếu dùng selectedPromotions)
+        // Hoặc dùng trực tiếp nếu đang dùng promotions từ Firebase
+        const freshPromo = promotions.find(p => p.id === promo.id);
+        const promoName = (freshPromo?.name ?? promo.name ?? '').trim();
+        let dms = (freshPromo?.dms ?? promo.dms ?? '').trim();
+        
+        // Đặc biệt kiểm tra promotion "2025_11_CTKM ưu đãi Voucher Vinpearl"
+        const isVinpearlPromo = promoName.includes('Voucher Vinpearl') || promoName.includes('2025_11_CTKM');
+        
+        // FALLBACK: Nếu là promotion Vinpearl và DMS rỗng, tự động coi như DMS = "Phiếu thu 51"
+        if (isVinpearlPromo && !dms) {
+          console.log('[PhieuThu51] ⚠️ Vinpearl promotion has empty DMS, auto-setting to "Phiếu thu 51"');
+          dms = 'Phiếu thu 51';
+        }
+        
+        // So sánh DMS (case-insensitive và trim)
+        const dmsNormalized = dms.toLowerCase().trim();
+        const targetDms = 'Phiếu thu 51'.toLowerCase().trim();
+        const isMatch = dmsNormalized === targetDms;
+        
+        // Debug: log để kiểm tra
+        console.log('[PhieuThu51] Checking promotion:', {
+          id: promo.id,
+          name: promoName,
+          dms: dms,
+          dmsLength: dms.length,
+          dmsNormalized: dmsNormalized,
+          targetDms: targetDms,
+          isVinpearl: isVinpearlPromo,
+          match: isMatch,
+          exactMatch: dms === 'Phiếu thu 51'
+        });
+        
+        // Nếu là promotion Vinpearl, log đặc biệt
+        if (isVinpearlPromo) {
+          console.log('[PhieuThu51] ⚠️ FOUND VINPEARL PROMOTION!', {
+            id: promo.id,
+            name: promoName,
+            dms: dms,
+            dmsRaw: JSON.stringify(dms),
+            dmsNormalized: dmsNormalized,
+            targetDms: targetDms,
+            hasPhieuThu51: isMatch,
+            exactMatch: dms === 'Phiếu thu 51',
+            isActive: promo.isActive !== false,
+            freshPromoDms: freshPromo?.dms,
+            promoDms: promo.dms,
+            autoSetDms: isVinpearlPromo && !(freshPromo?.dms ?? promo.dms)
+          });
+        }
+        
+        return isMatch;
+      } catch (error) {
+        console.error('[PhieuThu51] Error checking DMS:', error, promo);
+        return false;
+      }
+    });
+
+    if (phieuThu51Promotions.length === 0) {
+      console.log('[PhieuThu51] No promotions found with DMS = "Phiếu thu 51". Active promotions:', activePromotions.length);
+      // Log tất cả DMS có sẵn để debug
+      const allDmsDetails = activePromotions.map(p => {
+        const freshPromo = promotions.find(fp => fp.id === p.id);
+        const dms = (freshPromo?.dms ?? p.dms ?? '').trim();
+        const dmsNormalized = dms.toLowerCase().trim();
+        const targetDms = 'Phiếu thu 51'.toLowerCase().trim();
+        return { 
+          id: p.id, 
+          name: p.name || freshPromo?.name, 
+          dms: dms,
+          dmsRaw: JSON.stringify(dms),
+          dmsLength: dms.length,
+          dmsNormalized: dmsNormalized,
+          targetDms: targetDms,
+          matches: dmsNormalized === targetDms,
+          exactMatch: dms === 'Phiếu thu 51',
+          freshPromoDms: freshPromo?.dms,
+          promoDms: p.dms
+        };
+      });
+      console.log('[PhieuThu51] All DMS values (detailed):', allDmsDetails);
+      console.log('[PhieuThu51] Target DMS:', JSON.stringify('Phiếu thu 51'));
+      return 0;
+    }
+
+    console.log('[PhieuThu51] Found', phieuThu51Promotions.length, 'promotions with DMS = "Phiếu thu 51"');
+
+    const totalDiscount = phieuThu51Promotions.reduce((total, promo) => {
+      try {
+        // Nếu dùng selectedPromotions, kiểm tra isActive
+        if (selectedPromotions && selectedPromotions.length > 0) {
+          const selectedPromo = selectedPromotions.find(p => p.id === promo.id);
+          if (!selectedPromo || selectedPromo.isActive === false) {
+            console.log('[PhieuThu51] Skipping promotion (not active in selectedPromotions):', promo.id);
+            return total;
+          }
+        }
+
+        // Lookup fresh type and value from Firebase promotions state
+        const freshPromo = promotions.find(p => p.id === promo.id);
+        if (!freshPromo && !promo) {
+          console.warn('[PhieuThu51] Promotion not found:', promo.id);
+          return total;
+        }
+        
+        const type = freshPromo?.type ?? promo.type;
+        const value = freshPromo?.value ?? promo.value;
+        const promoName = freshPromo?.name ?? promo.name ?? '';
+
+        let discount = 0;
+        if (type === 'fixed') {
+          discount = parseFloat(value) || 0;
+        } else if (type === 'percentage') {
+          let percentage = parseFloat(value) || 0;
+          // Auto-normalize: nếu value < 1 (ví dụ 0.15), convert sang dạng % (15)
+          if (percentage > 0 && percentage < 1) {
+            percentage = percentage * 100;
+          }
+          discount = (price * percentage) / 100;
+        }
+        
+        console.log('[PhieuThu51] ✅ Calculating discount for:', {
+          id: promo.id,
+          name: promoName,
+          type: type,
+          value: value,
+          discount: discount,
+          fromSelected: selectedPromotions?.some(p => p.id === promo.id) || false
+        });
+        
+        return total + discount;
+      } catch (error) {
+        console.error('[PhieuThu51] Error calculating discount:', error, promo);
+        return total;
+      }
+    }, 0);
+    
+    console.log('[PhieuThu51] Total discount:', totalDiscount);
+    return totalDiscount;
+  };
+
   // Toggle promotion active state
   const togglePromotionActive = (promotionId) => {
     setSelectedPromotions(prev => {
@@ -1054,10 +1241,87 @@ export default function CalculatorPage() {
     }
 
     // Giá XHD = giá sau khi áp dụng hết ưu đãi/chính sách (VinClub + Xăng đổi điện) = giá xuất hóa đơn chuẩn
+    // Lưu ý: promotionDiscounts đã bao gồm TẤT CẢ các promotion (kể cả những cái có DMS = "Phiếu thu 51")
     const giaXuatHoaDon = Math.max(0, priceAfterBasicPromotions - vinClubDiscount - convertSupportDiscount);
 
-    // Giá thanh toán thực tế = Giá XHD (đã trừ hết ưu đãi trên hóa đơn)
-    const finalPayable = giaXuatHoaDon;
+    // Tính tổng các chương trình có DMS = "Phiếu thu 51" (tính trên basePrice)
+    // Ví dụ: "2025_11_CTKM ưu đãi Voucher Vinpearl (quy đổi tiền mặt 50tr)" có DMS = "Phiếu thu 51"
+    // Ưu đãi này đã được trừ 1 lần trong promotionDiscounts (tính vào Giá XHD)
+    // Bây giờ cần trừ thêm 1 lần nữa vào Giá thanh toán thực tế
+    const phieuThu51Discount = calculatePhieuThu51Discount(basePrice, selectedDongXe);
+    console.log('[PhieuThu51] Final calculation - basePrice:', basePrice, 'giaXuatHoaDon:', giaXuatHoaDon, 'phieuThu51Discount:', phieuThu51Discount);
+
+    // CÔNG THỨC: Giá thanh toán thực tế = Giá XHD - tổng value của các promotion có DMS = "Phiếu thu 51"
+    // finalPayable = giaXuatHoaDon - phieuThu51Discount
+    // 
+    // Trong đó:
+    // - phieuThu51Discount = tổng value của các promotion có dms: "Phiếu thu 51"
+    //   đang được chọn trong selectedPromotions và đang active (isActive = true)
+    //   và khớp với dòng xe đang chọn
+    // 
+    // - Nếu promotion có type = "fixed": value = giá trị cố định (ví dụ: 50000000)
+    // - Nếu promotion có type = "percentage": value = (basePrice * value) / 100
+    //
+    // QUAN TRỌNG: Nếu có promotion có DMS = "Phiếu thu 51" đang active, 
+    //             thì finalPayable PHẢI KHÁC giaXuatHoaDon (phải trừ đi)
+    //
+    // Ví dụ: Promotion "2025_11_CTKM ưu đãi Voucher Vinpearl (quy đổi tiền mặt 50tr)" 
+    //        có dms: "Phiếu thu 51", type: "fixed", value: 50000000
+    // - Giá XHD = Giá niêm yết - 50tr (đã trừ 1 lần trong promotionDiscounts)
+    // - Giá thanh toán thực tế = Giá XHD - 50tr (trừ thêm 1 lần nữa) = Giá niêm yết - 100tr
+    const finalPayable = Math.max(0, giaXuatHoaDon - phieuThu51Discount);
+    
+    // Đảm bảo rằng nếu có promotion có DMS = "Phiếu thu 51" đang active, thì phải trừ
+    if (phieuThu51Discount > 0 && finalPayable === giaXuatHoaDon) {
+      console.error('[PhieuThu51] ❌ ERROR: phieuThu51Discount > 0 but finalPayable equals giaXuatHoaDon! This should not happen.');
+    }
+    
+    console.log('[PhieuThu51] Final payable calculation:', {
+      giaXuatHoaDon,
+      phieuThu51Discount,
+      finalPayable,
+      areEqual: finalPayable === giaXuatHoaDon,
+      shouldBeDifferent: phieuThu51Discount > 0
+    });
+    
+    // Cảnh báo nếu phieuThu51Discount = 0 nhưng có promotion có DMS = "Phiếu thu 51"
+    if (phieuThu51Discount === 0) {
+      // Kiểm tra trong selectedPromotions
+      if (selectedPromotions && selectedPromotions.length > 0) {
+        const hasPhieuThu51 = selectedPromotions.some(p => {
+          const freshPromo = promotions.find(fp => fp.id === p.id);
+          const dms = (freshPromo?.dms ?? p.dms ?? '').trim();
+          return dms === 'Phiếu thu 51';
+        });
+        if (hasPhieuThu51) {
+          console.warn('[PhieuThu51] ⚠️ WARNING: Found promotions with DMS = "Phiếu thu 51" but discount is 0. Check if promotions are active and match selected dongXe.');
+        }
+      }
+      
+      // Kiểm tra đặc biệt cho promotion Vinpearl
+      const vinpearlPromo = promotions.find(p => {
+        const name = (p.name || '').trim();
+        return name.includes('Voucher Vinpearl') || name.includes('2025_11_CTKM');
+      });
+      
+      if (vinpearlPromo) {
+        const vinpearlDms = (vinpearlPromo.dms || '').trim();
+        const isInSelected = selectedPromotions?.some(p => p.id === vinpearlPromo.id);
+        console.log('[PhieuThu51] 🔍 Vinpearl Promotion Check:', {
+          id: vinpearlPromo.id,
+          name: vinpearlPromo.name,
+          dms: vinpearlDms,
+          isPhieuThu51: vinpearlDms === 'Phiếu thu 51',
+          isInSelected: isInSelected,
+          isActive: selectedPromotions?.find(p => p.id === vinpearlPromo.id)?.isActive,
+          selectedDongXe: selectedDongXe
+        });
+        
+        if (vinpearlDms === 'Phiếu thu 51' && !isInSelected) {
+          console.warn('[PhieuThu51] ⚠️ Vinpearl promotion has DMS = "Phiếu thu 51" but is NOT in selectedPromotions!');
+        }
+      }
+    }
     const totalDiscount = totalPromotionDiscounts + (vinClubDiscount || 0) + (convertSupportDiscount || 0);
     const priceAfterDiscount = Math.max(0, basePrice - totalDiscount);
     const amountBeforeVinClub = Math.max(0, priceAfterBasicPromotions - convertSupportDiscount - bhvc2 - premiumColor);
@@ -1150,6 +1414,7 @@ export default function CalculatorPage() {
       vinClubDiscount,
       amountBeforeVinClub,
       giaXuatHoaDon,
+      phieuThu51Discount,
       finalPayable,
       totalDiscount,
       priceAfterDiscount,
@@ -1297,7 +1562,7 @@ export default function CalculatorPage() {
       // Final prices
       giaXuatHoaDon: num(calculations.giaXuatHoaDon),
       giaThanhToanThucTe: num(calculations.finalPayable),
-      tongChiPhiLanBanh: num(calculations.totalOnRoadCost),
+      tongChiPhiLanBanh: num(calculations.totalCost), // Tổng chi phí lăn bánh = Giá thanh toán thực tế + Tổng chi phí lăn bánh
       tienVayTuGiaXHD: num(calculations.tienVayTuGiaXHD),
       soTienThanhToanDoiUng: num(calculations.soTienThanhToanDoiUng),
     };
@@ -2099,7 +2364,7 @@ export default function CalculatorPage() {
                 <>
                   <div className="flex justify-between py-3 border-b border-gray-200">
                     <span className="text-gray-600">Tiền vay ngân hàng ({loanRatio}%)</span>
-                    <span className="text-red-600 font-semibold">-{formatCurrency(calculations.tienVayTuGiaXHD)}</span>
+                    <span className="text-blue-600 font-semibold">{formatCurrency(Math.abs(calculations.tienVayTuGiaXHD || 0))}</span>
                   </div>
                   <div className="flex justify-between py-3 border-b border-gray-200 bg-green-50 -mx-4 px-4">
                     <span className="text-green-700 font-medium">Số tiền thanh toán (đối ứng)</span>

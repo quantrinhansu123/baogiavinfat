@@ -60,6 +60,7 @@ export default function PromotionsPage() {
     });
     const [deletingPromotionId, setDeletingPromotionId] = useState(null);
     const [filterType, setFilterType] = useState('all');
+    const [filterDms, setFilterDms] = useState('all');
     const [promotionSearchTerm, setPromotionSearchTerm] = useState('');
 
     // DMS: danh sách DMS tùy chỉnh (thêm mới) + modal thêm DMS
@@ -301,6 +302,11 @@ export default function PromotionsPage() {
 
     const filteredPromotions = promotions
         .filter(p => filterType === 'all' || p.type === filterType)
+        .filter(p => {
+            if (filterDms === 'all') return true;
+            const promotionDms = (p.dms || '').trim();
+            return promotionDms === filterDms;
+        })
         .filter(p => !promotionSearchTerm.trim() || (p.name || '').toLowerCase().includes(promotionSearchTerm.trim().toLowerCase()));
 
     return (
@@ -497,23 +503,43 @@ export default function PromotionsPage() {
 
                     {/* Controls */}
                     <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-                        <div className="flex space-x-2">
-                            <button
-                                onClick={() => setFilterType('all')}
-                                className={`px-3 py-1.5 text-sm rounded-lg border ${filterType === 'all' ? 'bg-purple-100 border-purple-500 text-purple-700' : 'border-gray-300'}`}
-                            >Tất cả</button>
-                            <button
-                                onClick={() => setFilterType('display')}
-                                className={`px-3 py-1.5 text-sm rounded-lg border ${filterType === 'display' ? 'bg-purple-100 border-purple-500 text-purple-700' : 'border-gray-300'}`}
-                            >Chỉ hiển thị</button>
-                            <button
-                                onClick={() => setFilterType('percentage')}
-                                className={`px-3 py-1.5 text-sm rounded-lg border ${filterType === 'percentage' ? 'bg-purple-100 border-purple-500 text-purple-700' : 'border-gray-300'}`}
-                            >Giảm %</button>
-                            <button
-                                onClick={() => setFilterType('fixed')}
-                                className={`px-3 py-1.5 text-sm rounded-lg border ${filterType === 'fixed' ? 'bg-purple-100 border-purple-500 text-purple-700' : 'border-gray-300'}`}
-                            >Giảm tiền</button>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex space-x-2">
+                                <button
+                                    onClick={() => setFilterType('all')}
+                                    className={`px-3 py-1.5 text-sm rounded-lg border ${filterType === 'all' ? 'bg-purple-100 border-purple-500 text-purple-700' : 'border-gray-300'}`}
+                                >Tất cả</button>
+                                <button
+                                    onClick={() => setFilterType('display')}
+                                    className={`px-3 py-1.5 text-sm rounded-lg border ${filterType === 'display' ? 'bg-purple-100 border-purple-500 text-purple-700' : 'border-gray-300'}`}
+                                >Chỉ hiển thị</button>
+                                <button
+                                    onClick={() => setFilterType('percentage')}
+                                    className={`px-3 py-1.5 text-sm rounded-lg border ${filterType === 'percentage' ? 'bg-purple-100 border-purple-500 text-purple-700' : 'border-gray-300'}`}
+                                >Giảm %</button>
+                                <button
+                                    onClick={() => setFilterType('fixed')}
+                                    className={`px-3 py-1.5 text-sm rounded-lg border ${filterType === 'fixed' ? 'bg-purple-100 border-purple-500 text-purple-700' : 'border-gray-300'}`}
+                                >Giảm tiền</button>
+                            </div>
+                            
+                            {/* DMS Filter */}
+                            <div className="flex items-center gap-2">
+                                <label className="text-sm text-gray-700 font-medium">DMS:</label>
+                                <select
+                                    value={filterDms}
+                                    onChange={(e) => setFilterDms(e.target.value)}
+                                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 bg-white"
+                                >
+                                    <option value="all">Tất cả DMS</option>
+                                    {DMS_OPTIONS.filter(opt => opt.value).map((opt) => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                    {customDmsOptions.map((dms) => (
+                                        <option key={dms} value={dms}>{dms}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         <div className="flex items-center gap-2">
