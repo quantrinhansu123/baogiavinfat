@@ -360,6 +360,9 @@ export default function HopDongDaXuatPage() {
       "Quà tặng": c.quaTang || c["Quà tặng"] || c["quà tặng"] || "",
       "Quà tặng khác": c.quaTangKhac || c["Quà tặng khác"] || c["quà tặng khác"] || "",
       "Giảm giá": c.giamGia || c["Giảm giá"] || c["giảm giá"] || "",
+      uuDai: c.uuDai || c["Ưu đãi"] || c["ưu đãi"] || "",
+      "Ưu đãi": c.uuDai || c["Ưu đãi"] || c["ưu đãi"] || "",
+      "ưu đãi": c.uuDai || c["Ưu đãi"] || c["ưu đãi"] || "",
     });
 
     const loadFromFirebase = async () => {
@@ -1546,6 +1549,9 @@ export default function HopDongDaXuatPage() {
                                     "Số tiền phải thu": contract.soTienPhaiThu || contract["Số tiền phải thu"] || contract.giamGia || contract["Giảm giá"] || "",
                                     showroom: contract.showroom || contract.Showroom || contract["Showroom"] || "",
                                     Showroom: contract.showroom || contract.Showroom || contract["Showroom"] || "",
+                                    uuDai: contract.uuDai || contract["Ưu đãi"] || contract["ưu đãi"] || "",
+                                    "Ưu đãi": contract.uuDai || contract["Ưu đãi"] || contract["ưu đãi"] || "",
+                                    "ưu đãi": contract.uuDai || contract["Ưu đãi"] || contract["ưu đãi"] || "",
                                   };
                                   setPrintContract(printData);
                                   // Load bankLoanFile from contract if exists

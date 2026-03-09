@@ -48,6 +48,27 @@ export function PrintStyles() {
         overflow-wrap: anywhere;
       }
 
+      /* No wrap for comma-separated text */
+      .no-wrap-comma {
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+      }
+
+      /* Policy content formatting */
+      .policy-content {
+        line-height: 1.5 !important;
+        text-align: left !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+      }
+      @media print {
+        .policy-content {
+          line-height: 1.4 !important;
+        }
+      }
+
       /* List formatting */
       .list-item {
         display: flex;
@@ -96,6 +117,25 @@ export function PrintStyles() {
           font-family: 'Times New Roman', serif !important;
         }
         table { page-break-inside: avoid; }
+        .no-wrap-comma {
+          white-space: nowrap !important;
+          word-break: keep-all !important;
+        }
+        td .no-wrap-comma {
+          white-space: nowrap !important;
+          word-break: keep-all !important;
+        }
+        .no-wrap-comma span[style*="white-space: nowrap"] {
+          white-space: nowrap !important;
+          display: inline !important;
+        }
+        td .no-wrap-comma span {
+          white-space: nowrap !important;
+        }
+        .no-wrap-comma span[style*="white-space: nowrap"] {
+          white-space: nowrap !important;
+          display: inline !important;
+        }
       }
     `}</style>
   );

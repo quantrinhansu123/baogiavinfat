@@ -80,6 +80,34 @@ const DeXuatGiaban = () => {
     "(Lưu ý: Mức lương TVBH phụ thuộc vào chính sách của VINFAST, trường hợp tại thời điểm XHĐ chính sách VINFAST thay đổi, Cty sẽ xem xét điều chỉnh phù hợp)"
   );
 
+  // Helper function to format text with non-breaking commas
+  // This function processes data that has already been formatted by the load logic
+  // Newlines (\n) are used to separate programs (each program on a new line)
+  // Commas within a line should not break lines
+  // Colons (:) should not break lines either
+  const formatTextWithNonBreakingCommas = (text) => {
+    if (!text) return text;
+    
+    // Split by newline to separate programs (Enter = new program/new line)
+    const programs = text.split('\n').map(p => p.trim()).filter(p => p);
+    
+    // Process each program: don't split by colon, just replace commas with non-breaking space
+    return programs.map((program, programIndex) => {
+      // Remove -CTKM: prefix if present
+      let cleanProgram = program.replace(/^-CTKM:\s*/i, '');
+      
+      // Replace commas with comma + non-breaking space (don't split by colon)
+      const formattedProgram = cleanProgram.replace(/,/g, ',\u00A0');
+      
+      return (
+        <React.Fragment key={programIndex}>
+          {formattedProgram}
+          {programIndex < programs.length - 1 && <br />}
+        </React.Fragment>
+      );
+    });
+  };
+
   // Helper function to get color name from color code
   const getColorName = (colorCode, isExterior = true) => {
     if (!colorCode) return colorCode || "";
@@ -503,21 +531,19 @@ const DeXuatGiaban = () => {
         if (stateUuDai) {
           let formattedUuDai = "";
           if (Array.isArray(stateUuDai)) {
+            // Join array items with comma and space
             formattedUuDai = stateUuDai
               .filter((item) => item && item.trim())
-              .map((item) => `-CTKM: ${item.trim()}`)
-              .join("\n");
+              .map((item) => {
+                const trimmed = item.trim();
+                // Add -CTKM: prefix if not already present
+                return trimmed.startsWith("-CTKM:") ? trimmed : `-CTKM: ${trimmed}`;
+              })
+              .join(", ");
           } else if (typeof stateUuDai === "string") {
-            if (stateUuDai.includes(",")) {
-              formattedUuDai = stateUuDai
-                .split(",")
-                .map((item) => item.trim())
-                .filter((item) => item)
-                .map((item) => `-CTKM: ${item}`)
-                .join("\n");
-            } else {
-              formattedUuDai = `-CTKM: ${stateUuDai.trim()}`;
-            }
+            // Keep newlines as they are (newlines = line breaks in print)
+            // Don't add -CTKM: prefix, keep original format
+            formattedUuDai = stateUuDai.trim();
           }
           if (formattedUuDai) {
             setChinhSachKhuyenMai(formattedUuDai);
@@ -937,18 +963,19 @@ const DeXuatGiaban = () => {
                       <span className="hidden print:inline">{thong}</span>
                     </td>
                     <td className="p-1" rowSpan={5}>
-                      <strong className="ml-4">Chính sách ưu đãi theo đối tượng:</strong>
-                      <br />
-                      <span className="print:hidden ml-4">
-                        <textarea
-                          value={chinhSachKhuyenMai}
-                          onChange={(e) => setChinhSachKhuyenMai(e.target.value)}
-                          className="border border-gray-400 px-1 w-[95%] h-20 font-bold focus:outline-none focus:border-blue-500"
-                        />
-                      </span>
-                      <span className="hidden print:inline whitespace-pre-line font-bold ml-4">
-                        {chinhSachKhuyenMai}
-                      </span>
+                      <div className="flex flex-col h-full">
+                        <strong className="ml-4 mb-2">Chính sách ưu đãi theo đối tượng:</strong>
+                        <span className="print:hidden ml-4">
+                          <textarea
+                            value={chinhSachKhuyenMai}
+                            onChange={(e) => setChinhSachKhuyenMai(e.target.value)}
+                            className="border border-gray-400 px-1 w-[95%] h-20 font-bold focus:outline-none focus:border-blue-500"
+                          />
+                        </span>
+                        <div className="hidden print:inline font-bold ml-4 mt-1 leading-relaxed policy-content">
+                          {formatTextWithNonBreakingCommas(chinhSachKhuyenMai)}
+                        </div>
+                      </div>
                     </td>
                   </tr>
                   <tr className="border-b border-black font-bold">
