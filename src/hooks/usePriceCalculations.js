@@ -161,7 +161,8 @@ export function usePriceCalculations({
     const inspectionFeeAuto = phi_kiem_dinh;
     const inspectionFee = isInspectionFeeManual ? inspectionFeeValue : inspectionFeeAuto;
 
-    const bhvcRate = 0.014;
+    // BHVC bao gồm Pin = Giá XHD × 1,45%
+    const bhvcRate = 0.0145;
     const bodyInsurance = isBodyInsuranceManual ? bodyInsuranceFee : Math.round(giaXuatHoaDon * bhvcRate);
     const registrationFeeValue = Number(registrationFee) || 0;
 

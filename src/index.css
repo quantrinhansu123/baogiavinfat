@@ -26,6 +26,14 @@ body {
   padding-right: env(safe-area-inset-right, 0);
 }
 
+/* In: bỏ hai cột mờ hai bên lề (nền xám), ép nền trắng toàn trang */
+@media print {
+  html, body {
+    background: #fff !important;
+    background-color: #fff !important;
+  }
+}
+
 /* Utility: contain layout for narrow viewports */
 @layer utilities {
   .contain-strict {

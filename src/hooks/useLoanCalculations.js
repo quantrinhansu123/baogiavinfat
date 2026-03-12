@@ -25,7 +25,7 @@ export function useLoanCalculations(totalCost = 0, giaXuatHoaDon = 0) {
         totalInterest: 0,
         monthlyPayment: 0,
         tienVayTuGiaXHD: 0,
-        soTienThanhToanDoiUng: safeGiaXuatHoaDon,
+        soTienThanhToanDoiUng: safeTotalCost,
       };
     }
 
@@ -54,9 +54,9 @@ export function useLoanCalculations(totalCost = 0, giaXuatHoaDon = 0) {
     const totalPayment = monthlyPayment * loanTerm;
     const totalInterest = totalPayment - loanAmount;
 
-    // Số tiền thanh toán đối ứng = Giá XHD - Tiền vay (dựa trên Giá XHD)
+    // Số tiền thanh toán đối ứng = TỔNG CHI PHÍ - Tiền vay ngân hàng (Tiền vay tính theo % Giá XHD)
     const tienVayTuGiaXHD = Math.round(safeGiaXuatHoaDon * loanRatioDecimal);
-    const soTienThanhToanDoiUng = Math.max(0, safeGiaXuatHoaDon - tienVayTuGiaXHD);
+    const soTienThanhToanDoiUng = Math.max(0, safeTotalCost - tienVayTuGiaXHD);
 
     return {
       downPayment: Math.round(downPayment),

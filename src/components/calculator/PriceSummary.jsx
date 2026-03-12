@@ -8,6 +8,7 @@ export function PriceSummary({
   promotionDiscounts,
   vinClubDiscount,
   convertSupportDiscount,
+  quanDoiCongAnDiscount,
   bhvc2Discount,
   premiumColorDiscount,
   giaXuatHoaDon,
@@ -24,7 +25,7 @@ export function PriceSummary({
   );
 
   const totalDiscount = promotionDiscounts + (vinClubDiscount || 0) +
-    (convertSupportDiscount || 0) + (bhvc2Discount || 0) + (premiumColorDiscount || 0);
+    (convertSupportDiscount || 0) + (quanDoiCongAnDiscount || 0) + (bhvc2Discount || 0) + (premiumColorDiscount || 0);
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -45,6 +46,10 @@ export function PriceSummary({
 
         {showDetails && convertSupportDiscount > 0 && (
           <PriceRow label="Hỗ trợ đổi xe" value={convertSupportDiscount} isDiscount />
+        )}
+
+        {showDetails && quanDoiCongAnDiscount > 0 && (
+          <PriceRow label="Quân Đội & Công An" value={quanDoiCongAnDiscount} isDiscount />
         )}
 
         {showDetails && bhvc2Discount > 0 && (

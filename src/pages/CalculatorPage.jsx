@@ -181,6 +181,7 @@ export default function CalculatorPage() {
   const [discountBhvc2, setDiscountBhvc2] = useState(false);
   const [discountPremiumColor, setDiscountPremiumColor] = useState(false);
   const [convertCheckbox, setConvertCheckbox] = useState(false);
+  const [quanDoiCongAnCheckbox, setQuanDoiCongAnCheckbox] = useState(false);
   const [vinClubVoucher, setVinClubVoucher] = useState('none');
   const [hoTroLaiSuat, setHoTroLaiSuat] = useState(false); // Hỗ trợ lãi suất - nếu chọn thì không được hưởng VinClub
 
@@ -1230,6 +1231,11 @@ export default function CalculatorPage() {
 
     const priceAfterBasicPromotions = Math.max(0, basePrice - totalPromotionDiscounts);
 
+    // Quân Đội & Công An: 5% Giá sau ưu đãi
+    const quanDoiCongAnDiscount = quanDoiCongAnCheckbox
+      ? Math.round(priceAfterBasicPromotions * 0.05)
+      : 0;
+
     // VinClub discount - tính trên (Giá niêm yết - fix discount)
     // Công thức: VinClub = (Giá niêm yết - fix discount) * % VinClub
     let vinClubDiscount = 0;
@@ -1240,9 +1246,9 @@ export default function CalculatorPage() {
       }
     }
 
-    // Giá XHD = giá sau khi áp dụng hết ưu đãi/chính sách (VinClub + Xăng đổi điện) = giá xuất hóa đơn chuẩn
+    // Giá XHD = giá sau khi áp dụng hết ưu đãi/chính sách (VinClub + Xăng đổi điện + Quân Đội & Công An) = giá xuất hóa đơn chuẩn
     // Lưu ý: promotionDiscounts đã bao gồm TẤT CẢ các promotion (kể cả những cái có DMS = "Phiếu thu 51")
-    const giaXuatHoaDon = Math.max(0, priceAfterBasicPromotions - vinClubDiscount - convertSupportDiscount);
+    const giaXuatHoaDon = Math.max(0, priceAfterBasicPromotions - vinClubDiscount - convertSupportDiscount - quanDoiCongAnDiscount);
 
     // Tính tổng các chương trình có DMS = "Phiếu thu 51" (tính trên basePrice)
     // Ví dụ: "2025_11_CTKM ưu đãi Voucher Vinpearl (quy đổi tiền mặt 50tr)" có DMS = "Phiếu thu 51"
@@ -1322,9 +1328,9 @@ export default function CalculatorPage() {
         }
       }
     }
-    const totalDiscount = totalPromotionDiscounts + (vinClubDiscount || 0) + (convertSupportDiscount || 0);
+    const totalDiscount = totalPromotionDiscounts + (vinClubDiscount || 0) + (convertSupportDiscount || 0) + (quanDoiCongAnDiscount || 0);
     const priceAfterDiscount = Math.max(0, basePrice - totalDiscount);
-    const amountBeforeVinClub = Math.max(0, priceAfterBasicPromotions - convertSupportDiscount - bhvc2 - premiumColor);
+    const amountBeforeVinClub = Math.max(0, priceAfterBasicPromotions - convertSupportDiscount - quanDoiCongAnDiscount - bhvc2 - premiumColor);
 
     // On-road costs
     const locationKey = locationMap[registrationLocation] || 'tinh_khac';
@@ -1344,8 +1350,8 @@ export default function CalculatorPage() {
 
     const inspectionFeeAuto = phi_kiem_dinh;
     const inspectionFee = isInspectionFeeManual ? inspectionFeeValue : inspectionFeeAuto;
-    const bhvcRate = 0.014;
-    // BHVC tính trên Giá XHD
+    // BHVC bao gồm Pin = Giá XHD × 1,45%
+    const bhvcRate = 0.0145;
     const bodyInsurance = isBodyInsuranceManual ? bodyInsuranceFee : Math.round(giaXuatHoaDon * bhvcRate);
     const registrationFeeValue = Number(registrationFee) || 0;
 
@@ -1395,9 +1401,9 @@ export default function CalculatorPage() {
       };
     }
 
-    // Phase 7: Số tiền thanh toán đối ứng (phần xe) = Giá XHD - Tiền vay
+    // Phase 7: Số tiền thanh toán đối ứng = TỔNG CHI PHÍ - Tiền vay ngân hàng
     let tienVayTuGiaXHD = loanData.loanAmount || 0;
-    let soTienThanhToanDoiUng = Math.max(0, giaXuatHoaDon - tienVayTuGiaXHD);
+    let soTienThanhToanDoiUng = Math.max(0, totalCost - tienVayTuGiaXHD);
 
     return {
       basePrice,
@@ -1407,6 +1413,7 @@ export default function CalculatorPage() {
       promotionDiscountTotal: totalPromotionDiscounts,
       priceAfterBasicPromotions,
       convertSupportDiscount,
+      quanDoiCongAnDiscount,
       bhvc2,
       bhvc2Potential,
       premiumColor,
@@ -1445,6 +1452,7 @@ export default function CalculatorPage() {
     discountBhvc2,
     discountPremiumColor,
     convertCheckbox,
+    quanDoiCongAnCheckbox,
     vinClubVoucher,
     hoTroLaiSuat,
     customerType,
@@ -1505,6 +1513,7 @@ export default function CalculatorPage() {
       // Discounts
       vinClubDiscount: num(calculations.vinClubDiscount),
       convertSupportDiscount: num(calculations.convertSupportDiscount),
+      quanDoiCongAnDiscount: num(calculations.quanDoiCongAnDiscount),
       premiumColorDiscount: num(calculations.premiumColorPotential),
       bhvc2Discount: num(calculations.bhvc2Potential),
 
@@ -1546,6 +1555,7 @@ export default function CalculatorPage() {
         discountBhvc2,
         discountPremiumColor,
         convertCheckbox,
+        quanDoiCongAnCheckbox,
         vinClubVoucher,
         hoTroLaiSuat,
       },
@@ -1557,6 +1567,7 @@ export default function CalculatorPage() {
         bhvc2Discount: num(calculations.bhvc2Potential),
         premiumColorDiscount: num(calculations.premiumColorPotential),
         convertSupportDiscount: num(calculations.convertSupportDiscount),
+        quanDoiCongAnDiscount: num(calculations.quanDoiCongAnDiscount),
       },
 
       // Final prices
@@ -2316,6 +2327,21 @@ export default function CalculatorPage() {
                   </span>
                 </div>
 
+                <div className="flex justify-between items-center py-3 border-b border-gray-200">
+                  <label className="flex items-center gap-2 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={quanDoiCongAnCheckbox}
+                      onChange={(e) => setQuanDoiCongAnCheckbox(e.target.checked)}
+                      className="w-5 h-5 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">Quân Đội & Công An (giảm 5% giá sau ưu đãi)</span>
+                  </label>
+                  <span className="text-red-600 font-semibold">
+                    -{formatCurrency(calculations.quanDoiCongAnDiscount)}
+                  </span>
+                </div>
+
                 {(carModel === 'VF 3' || carModel === 'VF 5') && (
                   <div className="flex justify-between items-center py-3 border-b border-gray-200">
                     <label className="flex items-center gap-2 flex-1">
@@ -2358,20 +2384,6 @@ export default function CalculatorPage() {
                 <span className="text-gray-600 font-medium">Giá thanh toán thực tế</span>
                 <span className="text-gray-900 font-semibold">{formatCurrency(calculations.finalPayable)}</span>
               </div>
-
-              {/* Phase 7: Số tiền thanh toán đối ứng (chỉ hiển thị khi có vay) */}
-              {loanToggle && (
-                <>
-                  <div className="flex justify-between py-3 border-b border-gray-200">
-                    <span className="text-gray-600">Tiền vay ngân hàng ({loanRatio}%)</span>
-                    <span className="text-blue-600 font-semibold">{formatCurrency(Math.abs(calculations.tienVayTuGiaXHD || 0))}</span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-gray-200 bg-green-50 -mx-4 px-4">
-                    <span className="text-green-700 font-medium">Số tiền thanh toán (đối ứng)</span>
-                    <span className="text-green-700 font-bold">{formatCurrency(calculations.soTienThanhToanDoiUng)}</span>
-                  </div>
-                </>
-              )}
 
               <div className="mt-5">
                 <div className="text-sm font-semibold text-gray-600 mb-3">Chi phí lăn bánh dự tính</div>
@@ -2519,9 +2531,8 @@ export default function CalculatorPage() {
                       />
                       <button
                         onClick={() => {
-                          setIsBodyInsuranceManual(false); // Reset về chế độ tự động
-                          // BHVC tính trên Giá XHD
-                          const calculatedBodyInsurance = Math.round(calculations.giaXuatHoaDon * 0.014);
+                          setIsBodyInsuranceManual(false); // Reset về chế độ tự động (BHVC = Giá XHD × 1,45%)
+                          const calculatedBodyInsurance = Math.round(calculations.giaXuatHoaDon * 0.0145);
                           setBodyInsuranceFee(calculatedBodyInsurance);
                         }}
                         className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"
@@ -2538,6 +2549,20 @@ export default function CalculatorPage() {
                 <span className="text-xl font-bold text-blue-600">TỔNG CHI PHÍ</span>
                 <span className="text-xl font-bold text-blue-600">{formatCurrency(calculations.totalCost)}</span>
               </div>
+
+              {/* Phase 7: Số tiền thanh toán đối ứng (chỉ hiển thị khi có vay) */}
+              {loanToggle && (
+                <>
+                  <div className="flex justify-between py-3 border-b border-gray-200">
+                    <span className="text-gray-600">Tiền vay ngân hàng ({loanRatio}%)</span>
+                    <span className="text-blue-600 font-semibold">{formatCurrency(Math.abs(calculations.tienVayTuGiaXHD || 0))}</span>
+                  </div>
+                  <div className="flex justify-between py-3 border-b border-gray-200 bg-green-50 -mx-4 px-4">
+                    <span className="text-green-700 font-medium">Số tiền thanh toán (đối ứng)</span>
+                    <span className="text-green-700 font-bold">{formatCurrency(calculations.soTienThanhToanDoiUng)}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

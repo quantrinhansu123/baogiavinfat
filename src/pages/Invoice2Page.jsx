@@ -2,13 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Download, Copy, Check } from "lucide-react";
 import html2pdf from "html2pdf.js";
-import {
-  thong_tin_ky_thuat_xe,
-  danh_sach_xe,
-  formatCurrency,
-  uu_dai_vin_club,
-  getDataByKey,
-} from "../data/calculatorData";
+import { formatCurrency } from "../data/calculatorData";
 
 import logoImage from "../assets/images/logo.svg";
 
@@ -33,7 +27,7 @@ const toNum = (v) => {
 // Các key chứa giá trị số trên invoice
 const NUMERIC_KEYS = [
   "depositAmount", "carBasePrice", "carPriceAfterPromotions", "carTotal", "priceFinalPayment",
-  "vinClubDiscount", "convertSupportDiscount", "premiumColorDiscount", "bhvc2Discount",
+  "vinClubDiscount", "convertSupportDiscount", "quanDoiCongAnDiscount", "premiumColorDiscount", "bhvc2Discount",
   "plateFee", "liabilityInsurance", "inspectionFee", "roadFee", "registrationFee",
   "bodyInsurance", "bodyInsuranceFee", "totalOnRoadCost",
   "giaXuatHoaDon", "giaThanhToanThucTe", "tongChiPhiLanBanh",
@@ -51,7 +45,7 @@ const normalizeInvoiceData = (data) => {
   });
   if (out.promotionDetails && typeof out.promotionDetails === "object") {
     const pd = { ...out.promotionDetails };
-    ["basicDiscount", "vinClubDiscount", "bhvc2Discount", "premiumColorDiscount", "convertSupportDiscount"].forEach((k) => {
+    ["basicDiscount", "vinClubDiscount", "bhvc2Discount", "premiumColorDiscount", "convertSupportDiscount", "quanDoiCongAnDiscount"].forEach((k) => {
       if (k in pd) pd[k] = toNum(pd[k]);
     });
     out.promotionDetails = pd;
@@ -471,13 +465,13 @@ export default function Invoice2Page() {
     );
   };
 
-  // Calculate payment schedule (ensure numbers from localStorage)
-  const totalAmount =
-    Number(invoiceData.carTotal || 0) + Number(invoiceData.totalOnRoadCost || 0);
+  // Calculate payment schedule: Lần 1 = Giá thanh toán thực tế - Đặt cọc - Tiền vay; Lần 2 = Tổng chi phí lăn bánh
   const deposit = Number(invoiceData.depositAmount || 0);
-  const remaining = totalAmount - deposit;
-  const payment1 = Math.round(remaining * 0.4); // 40% khi xuất hóa đơn
-  const payment2 = remaining - payment1; // Còn lại khi đăng ký
+  const giaThanhToanThucTe = Number(invoiceData.giaThanhToanThucTe || invoiceData.priceFinalPayment || invoiceData.carTotal || 0);
+  const tienVayNganHang = Number(invoiceData.loanAmount || invoiceData.tienVayTuGiaXHD || 0);
+  const tongChiPhiLanBanh = Number(invoiceData.totalOnRoadCost || 0);
+  const payment1 = Math.max(0, Math.round(giaThanhToanThucTe - deposit - tienVayNganHang)); // Lần 1: Xuất hóa đơn
+  const payment2 = tongChiPhiLanBanh; // Lần 2: Đăng ký = Tổng chi phí lăn bánh
 
   // Get current date for footer
   const today = new Date();
@@ -485,9 +479,21 @@ export default function Invoice2Page() {
   const month = String(today.getMonth() + 1).padStart(2, "0");
   const year = today.getFullYear();
 
+  const totalOnRoadFees =
+    (Number(invoiceData.liabilityInsurance) || 0) +
+    (Number(invoiceData.plateFee) || 0) +
+    (Number(invoiceData.inspectionFee) || 0) +
+    (Number(invoiceData.roadFee) || 0) +
+    (Number(invoiceData.registrationFee) || 0) +
+    (Number(invoiceData.isBodyInsuranceManual ? invoiceData.bodyInsuranceFee : invoiceData.bodyInsurance) || 0);
+  const grandTotal = invoiceData.hasLoan
+    ? (Number(invoiceData.loanAmount) || 0) + (Number(invoiceData.soTienThanhToanDoiUng) || 0) + totalOnRoadFees
+    : (Number(invoiceData.giaThanhToanThucTe) || Number(invoiceData.priceFinalPayment) || Number(invoiceData.carTotal) || 0) + totalOnRoadFees;
+  const cashDiscount = (Number(invoiceData.giaXuatHoaDon) || Number(invoiceData.priceFinalPayment) || Number(invoiceData.carTotal) || 0) -
+    (Number(invoiceData.giaThanhToanThucTe) || Number(invoiceData.priceFinalPayment) || Number(invoiceData.carTotal) || 0);
+
   return (
-    <div className="min-h-screen bg-white p-4 print:p-0 print:min-h-0" ref={invoiceRef}>
-      {/* Back Button - Hidden when printing */}
+    <div className="bao-gia-page min-h-screen bg-white p-4 print:p-0 print:min-h-0" ref={invoiceRef}>
       <div className="no-print mb-4">
         <button
           onClick={() => navigate(-1)}
@@ -499,1069 +505,417 @@ export default function Invoice2Page() {
         </button>
       </div>
       <style>{`
+        /* ========== SCREEN STYLES ========== */
+        .bao-gia-page {
+          font-family: 'Roboto', 'Arial', 'Helvetica', sans-serif;
+        }
+        .bao-gia-wrap {
+          max-width: 210mm;
+          margin: 0 auto;
+          padding: 8mm 10mm;
+        }
+        .section-bar {
+          background: #1a365d;
+          color: #fff;
+          padding: 6px 10px;
+          font-weight: 700;
+          font-size: 10pt;
+          text-transform: uppercase;
+          margin-top: 10px;
+          margin-bottom: 0;
+        }
+        .row-highlight-yellow { background: #fef9c3; }
+        .row-highlight-orange { background: #fed7aa; }
+        .total-bar {
+          background: #1a365d;
+          color: #fff;
+          padding: 8px 10px;
+          font-weight: 700;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .total-bar .amount { font-size: 14pt; }
+        table.bao-gia-table {
+          border-collapse: collapse;
+          width: 100%;
+          margin-bottom: 6px;
+          border: 1px solid #333;
+        }
+        .bao-gia-table td, .bao-gia-table th {
+          border: 0.5px solid #333;
+          padding: 5px 8px;
+          vertical-align: middle;
+          font-size: 10pt;
+        }
+        .bao-gia-table thead tr { background: #e2e8f0; }
+        .text-right-num { text-align: right; }
+        .header-logo-img { height: 40px; }
+        .header-title-txt { font-size: 16px; font-weight: 700; }
+        /* Khu vực ký tên: không có đường kẻ, khoảng trống lớn để ký, không bị ngắt trang */
+        .signature-block {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .signature-instruction {
+          margin-top: 3rem;
+          padding-top: 0.25rem;
+        }
+
+        /* ========== PRINT STYLES ========== */
         @media print {
           @page {
             size: A4;
-            margin: 6mm 8mm;
+            margin: 15mm;
+          }
+          /* Bỏ cột mờ hai bên lề: ép nền trắng toàn trang */
+          html, body {
+            background: #fff !important;
+            background-color: #fff !important;
+          }
+          /* Buộc trình duyệt giữ màu nền khi in */
+          body, .bao-gia-page, .bao-gia-wrap,
+          .section-bar, .row-highlight-yellow, .row-highlight-orange, .total-bar,
+          .bao-gia-table thead tr {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           body {
-            padding: 0;
-            margin: 0;
-            font-size: 9pt !important;
-            line-height: 1.3 !important;
+            padding: 0 !important;
+            margin: 0 !important;
             font-family: 'Arial', 'Helvetica', sans-serif !important;
+            font-size: 9pt !important;
+            line-height: 1.25 !important;
+            background: #fff !important;
           }
           .no-print {
             display: none !important;
           }
-          h2, .section-title {
-            page-break-after: avoid;
+          .bao-gia-page {
+            min-height: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
           }
-          table {
-            page-break-inside: avoid;
-          }
-          .section-title {
-            margin-top: 4px !important;
-            margin-bottom: 3px !important;
-            padding: 3px 4px !important;
-            background-color: #f0f7ff !important;
-            border-left: 3px solid #1e40af !important;
-          }
-          .max-w-4xl {
+          .bao-gia-wrap {
             max-width: 100% !important;
             padding: 0 !important;
+            margin: 0 !important;
           }
-          td, th {
-            padding: 3px 5px !important;
+          /* Thanh tiêu đề section - xanh đậm, giữ màu */
+          .section-bar {
+            background: #1a365d !important;
+            color: #fff !important;
+            padding: 4px 8px !important;
+            font-weight: 700 !important;
             font-size: 9pt !important;
-            line-height: 1.3 !important;
+            text-transform: uppercase !important;
+            margin-top: 6px !important;
+            margin-bottom: 0 !important;
+          }
+          /* Dòng giá xuất hóa đơn - vàng */
+          .row-highlight-yellow {
+            background: #fef9c3 !important;
+          }
+          /* Dòng giá thanh toán thực tế - cam */
+          .row-highlight-orange {
+            background: #fed7aa !important;
+          }
+          /* Thanh tổng chi phí - xanh đậm */
+          .total-bar {
+            background: #1a365d !important;
+            color: #fff !important;
+            padding: 5px 8px !important;
+            font-weight: 700 !important;
+          }
+          .total-bar .amount { font-size: 11pt !important; }
+          /* Bảng: giữ border khi in */
+          table.bao-gia-table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+            margin-bottom: 3px !important;
+            page-break-inside: avoid !important;
+            border: 1px solid #000 !important;
+          }
+          .bao-gia-table td, .bao-gia-table th {
+            border: 0.5px solid #000 !important;
+            padding: 2px 5px !important;
+            font-size: 8pt !important;
             vertical-align: middle !important;
           }
-          table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-            margin-bottom: 4px !important;
+          .bao-gia-table thead tr {
+            background: #1a365d !important;
+            color: #fff !important;
           }
-          .table-bordered {
-            border: 1px solid #4a5568 !important;
+          .bao-gia-table thead th {
+            color: #fff !important;
+            font-weight: 700 !important;
           }
-          .table-bordered td,
-          .table-bordered th {
-            border: 0.5px solid #718096 !important;
-          }
-          .p-1 {
-            padding: 3px 5px !important;
-          }
-          .p-2 {
-            padding: 4px !important;
-          }
-          .mb-0, .mb-3, .mt-3 {
-            margin: 2px 0 !important;
-          }
-          .my-4 {
-            margin: 4px 0 !important;
-          }
-          img {
-            max-width: 100% !important;
-            height: auto !important;
-          }
-          .mt-2, .mt-4, .mt-5 {
-            margin-top: 3px !important;
-          }
-          h2 {
-            font-size: 11pt !important;
-            padding: 2px !important;
-            margin-bottom: 3px !important;
-          }
-          .text-sm {
-            font-size: 9pt !important;
-          }
-          .text-xs {
-            font-size: 8pt !important;
-          }
-          .text-base {
-            font-size: 10pt !important;
-          }
-          footer {
+          .text-right-num { text-align: right !important; }
+          .header-row { border-bottom: none !important; }
+          .header-logo-img { height: 28px !important; }
+          .header-title-txt { font-size: 11pt !important; font-weight: 700 !important; }
+          .invoice-footer {
             margin-top: 6px !important;
             padding-top: 4px !important;
-            border-top: 1px solid #cbd5e0 !important;
+            border-top: 1px solid #333 !important;
           }
-          input[type="checkbox"] {
-            width: 10px !important;
-            height: 10px !important;
+          .signature-block {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
-          .mb-3 {
-            margin-bottom: 3px !important;
+          .signature-instruction {
+            margin-top: 2.5rem !important;
+            padding-top: 0.25rem !important;
           }
-          strong {
-            font-weight: 600 !important;
-            color: #1a202c !important;
-          }
-          .header-logo {
-            height: 35px !important;
-            filter: brightness(0) invert(1) !important;
-          }
-          .header-title {
-            font-size: 13pt !important;
-            letter-spacing: 0.8px !important;
-            font-weight: 700 !important;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
-          }
-          .header-container {
-            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%) !important;
-            border-bottom: 3px solid #1e3a8a !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-          }
-          .header-date {
-            color: #ffffff !important;
-            font-weight: 600 !important;
-            font-size: 9pt !important;
-          }
-        }
-        /* Screen styles */
-        .table-bordered {
-          border: 1px solid #cbd5e0;
-        }
-        .table-bordered td,
-        .table-bordered th {
-          border: 0.5px solid #e2e8f0;
-        }
-        .section-title {
-          background-color: #eff6ff;
-          border-left: 3px solid #3b82f6;
-          padding: 6px 8px;
-          margin-top: 12px;
-          margin-bottom: 6px;
-          font-weight: 600;
-          color: #1e40af;
-        }
-        table {
-          border-collapse: collapse;
-          margin-bottom: 8px;
-        }
-        td, th {
-          padding: 6px 8px;
-          vertical-align: middle;
-        }
-        .header-container {
-          background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%);
-          border-bottom: 3px solid #1e3a8a;
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-          border-radius: 4px 4px 0 0;
-        }
-        .header-logo {
-          height: 40px;
-          filter: brightness(0) invert(1);
-        }
-        .header-title {
-          font-size: 18px;
-          letter-spacing: 1px;
-          font-weight: 700;
-          color: #ffffff;
-          text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        .header-date {
-          color: #ffffff;
-          font-weight: 600;
-          font-size: 13px;
+          /* Thu nhỏ khoảng cách để fit 1 trang A4 */
+          .bao-gia-wrap .mb-4 { margin-bottom: 6px !important; }
+          .bao-gia-wrap .mt-4 { margin-top: 6px !important; }
+          .bao-gia-wrap .mt-6 { margin-top: 8px !important; }
+          .bao-gia-wrap .mt-1 { margin-top: 2px !important; }
         }
       `}</style>
 
-      <div className="max-w-4xl mx-auto">
-        {/* Header: logo trái, tiêu đề căn giữa, ngày phải */}
-        <div className="header-container mb-4">
-          <table className="w-full border-collapse mb-0">
-            <tbody>
-              <tr className="align-middle">
-                <td className="p-3 align-middle" style={{ width: "18%" }}>
-                  <img
-                    src={logoImage}
-                    alt="VinFast"
-                    className="header-logo w-auto object-contain object-left"
-                  />
-                </td>
-                <td className="p-3 align-middle text-center" style={{ width: "64%" }}>
-                  <span className="header-title uppercase">
-                    BẢNG BÁO GIÁ CHI PHÍ MUA XE TẠM TÍNH
-                  </span>
-                </td>
-                <td className="p-3 align-middle text-right" style={{ width: "18%" }}>
-                  <span className="header-date">
-                    {formatDate(invoiceData?.savedAt || new Date().toISOString())}
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      <div className="bao-gia-wrap">
+        {/* Header: logo trái, tiêu đề giữa, ngày phải */}
+        <div className="flex items-center justify-between gap-4 mb-4 header-row">
+          <div className="flex-shrink-0">
+            <img src={logoImage} alt="VinFast" className="header-logo-img w-auto object-contain" />
+          </div>
+          <h1 className="header-title-txt uppercase text-center flex-1 mx-2" style={{ margin: 0 }}>
+            BẢNG BÁO GIÁ CHI PHÍ MUA XE TẠM TÍNH
+          </h1>
+          <div className="flex-shrink-0 text-right font-semibold text-gray-800">
+            {formatDate(invoiceData?.savedAt || new Date().toISOString())}
+          </div>
         </div>
 
-        {/* Thông tin khách hàng */}
-        <table className="w-full border-collapse mb-3 text-sm bg-white">
+        {/* Thông tin khách hàng - 2 cột */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 mb-4 text-sm">
+          <div>
+            <p className="mb-1"><strong>Kính gửi:</strong> {(invoiceData.customerName || "Quý khách hàng").trim() || "—"}</p>
+            <p className="mb-0"><strong>Địa chỉ:</strong> {invoiceData.customerAddress || "—"}</p>
+          </div>
+          <div>
+            <p className="mb-1"><strong>Nhu cầu:</strong> {getBusinessTypeLabel()}</p>
+            <p className="mb-0"><strong>Loại khách:</strong> {invoiceData.customerType === "ca_nhan" ? "Cá nhân" : "Kinh doanh"}</p>
+          </div>
+        </div>
+
+        {/* THÔNG TIN SẢN PHẨM */}
+        <div className="section-bar">Thông tin sản phẩm</div>
+        <table className="bao-gia-table">
           <tbody>
-            <tr>
-              <td className="p-2" style={{ width: "15%" }}>
-                <strong>Kính Gửi:</strong>
-              </td>
-              <td className="p-2 font-semibold text-gray-800" style={{ width: "50%" }}>
-                {(invoiceData.customerName || "QUÝ KHÁCH HÀNG").toUpperCase()}
-              </td>
-              <td className="p-2" style={{ width: "15%" }}>
-                <strong>Nhu cầu:</strong>
-              </td>
-              <td className="p-2" style={{ width: "20%" }}>
-                {getBusinessTypeLabel()}
-              </td>
-            </tr>
-            <tr>
-              <td className="p-2" style={{ width: "15%" }}>
-                <strong>Địa Chỉ:</strong>
-              </td>
-              <td className="p-2" colSpan="3">
-                {invoiceData.customerAddress || "Thành phố Hồ Chí Minh"}
-              </td>
-            </tr>
+            <tr><td style={{ width: "28%" }}><strong>Dòng xe</strong></td><td>{invoiceData.carModel || "—"}</td></tr>
+            <tr><td><strong>Phiên bản</strong></td><td>{invoiceData.carVersion || "—"}</td></tr>
+            <tr><td><strong>Ngoại thất</strong></td><td>{getExteriorColorName() || "—"}</td></tr>
+            <tr><td><strong>Nội thất</strong></td><td>{getInteriorColorName() || "—"}</td></tr>
           </tbody>
         </table>
 
-        {/* Section: Thông tin sản phẩm */}
-        <div className="section-title text-blue-900 font-bold uppercase text-sm">
-          Thông tin sản phẩm
-        </div>
-        <table className="w-full border-collapse mb-0 text-sm bg-white table-bordered">
+        {/* GIÁ XE & CHƯƠNG TRÌNH KHUYẾN MÃI */}
+        <div className="section-bar">Giá xe & Chương trình khuyến mãi</div>
+        <table className="bao-gia-table">
           <tbody>
             <tr>
-              <td
-                className="p-1"
-                style={{ width: "33%" }}
-              >
-                <strong>Dòng xe</strong>
-              </td>
-              <td className="p-1">
-                {invoiceData.carModel || "VF 3"}
-              </td>
+              <td style={{ width: "50%" }}><strong>Giá xe đã bao gồm VAT</strong> — Kèm Pin</td>
+              <td className="text-right-num">{formatCurrency(invoiceData.carBasePrice || 0)}</td>
             </tr>
-            <tr>
-              <td
-                className="p-1"
-                style={{ width: "33%" }}
-              >
-                <strong>Phiên bản</strong>
-              </td>
-              <td className="p-1">
-                {invoiceData.carVersion || "Base"}
-              </td>
-            </tr>
-            <tr>
-              <td
-                className="p-1"
-                style={{ width: "33%" }}
-              >
-                <strong>Ngoại thất</strong>
-              </td>
-              <td className="p-1">
-                {getExteriorColorName()}
-              </td>
-            </tr>
-            <tr>
-              <td
-                className="p-1"
-                style={{ width: "33%" }}
-              >
-                <strong>Nội thất</strong>
-              </td>
-              <td className="p-1">
-                {getInteriorColorName()}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        {/* Section: Giá xe & Chương trình khuyến mãi */}
-        <div className="section-title text-blue-900 font-bold uppercase text-sm">
-          Giá xe & Chương trình khuyến mãi
-        </div>
-        <table className="w-full border-collapse mb-0 text-sm bg-white table-bordered">
-          <tbody>
-            <tr>
-              <td className="p-1" style={{ width: "48%" }}>
-                <strong>Giá Xe Đã Bao Gồm VAT</strong>
-              </td>
-              <td className="p-1 text-center align-middle" style={{ width: "8%" }}>
-                <span className={getPromoPrintChecked("basePrice") ? "" : "print:hidden"}>
-                  <input
-                    type="checkbox"
-                    checked={getPromoPrintChecked("basePrice")}
-                    onChange={() => setPromoPrintChecked("basePrice", !getPromoPrintChecked("basePrice"))}
-                    className="w-3 h-3"
-                  />
-                </span>
-              </td>
-              <td className="p-1 text-center" style={{ width: "12%" }}>
-                Kèm Pin
-              </td>
-              <td className="p-1 text-right" style={{ width: "32%" }}>
-                <strong>{formatCurrency(invoiceData.carBasePrice || 0)}</strong>
-              </td>
-            </tr>
-            {/* Selected promotions from Firebase */}
-            {invoiceData.selectedPromotions && invoiceData.selectedPromotions.length > 0 && 
+            {invoiceData.selectedPromotions && invoiceData.selectedPromotions.length > 0 &&
               invoiceData.selectedPromotions.map((promo, index) => {
                 const key = `selectedPromo_${index}`;
                 return (
                   <tr key={promo.id || index}>
-                    <td className="p-1">{promo.name || promo.ten_chuong_trinh}</td>
-                    <td className="p-1 text-center align-middle">
-                      <span className={getPromoPrintChecked(key) ? "" : "print:hidden"}>
-                        <input
-                          type="checkbox"
-                          checked={getPromoPrintChecked(key)}
-                          onChange={() => setPromoPrintChecked(key, !getPromoPrintChecked(key))}
-                          className="w-3 h-3"
-                        />
-                      </span>
-                    </td>
-                    <td className="p-1 text-center">
-                      {promo.type === 'percentage' ? `${promo.value || 0}%` : ''}
-                    </td>
-                    <td className="p-1 text-right">
+                    <td>{promo.name || promo.ten_chuong_trinh}</td>
+                    <td className="text-right-num">
                       {formatCurrency(
-                        typeof promo.calculatedDiscount === 'number'
+                        typeof promo.calculatedDiscount === "number"
                           ? promo.calculatedDiscount
-                          : promo.type === 'percentage'
+                          : promo.type === "percentage"
                             ? Math.round((Number(invoiceData.carBasePrice) || 0) * (Number(promo.value) || 0) / 100)
-                            : (promo.value || 0)
+                            : promo.value || 0
                       )}
                     </td>
                   </tr>
                 );
-              })
-            }
-            {/* CS QDND&CAND - chỉ hiện nếu được chọn */}
-            {invoiceData.promotionCheckboxes?.discount2 && (
-              <tr>
-                <td className="p-1">CS QDND& CAND</td>
-                <td className="p-1 text-center align-middle">
-                  <span className={getPromoPrintChecked("discount2") ? "" : "print:hidden"}>
-                    <input
-                      type="checkbox"
-                      checked={getPromoPrintChecked("discount2")}
-                      onChange={() => setPromoPrintChecked("discount2", !getPromoPrintChecked("discount2"))}
-                      className="w-3 h-3"
-                    />
-                  </span>
-                </td>
-                <td className="p-1 text-center">0,00%</td>
-                <td className="p-1 text-right">0</td>
-              </tr>
-            )}
-            {/* Vin 2024 - chỉ hiện nếu được chọn */}
-            {invoiceData.promotionCheckboxes?.discount3 && (
-              <tr>
-                <td className="p-1">Vin 2024</td>
-                <td className="p-1 text-center align-middle">
-                  <span className={getPromoPrintChecked("discount3") ? "" : "print:hidden"}>
-                    <input
-                      type="checkbox"
-                      checked={getPromoPrintChecked("discount3")}
-                      onChange={() => setPromoPrintChecked("discount3", !getPromoPrintChecked("discount3"))}
-                      className="w-3 h-3"
-                    />
-                  </span>
-                </td>
-                <td className="p-1 text-center"></td>
-                <td className="p-1 text-right">0</td>
-              </tr>
-            )}
-            {/* Hỗ trợ lãi Suất - chỉ hiện nếu được chọn */}
-            {invoiceData.promotionCheckboxes?.hoTroLaiSuat && (
-              <tr>
-                <td className="p-1">Hỗ trợ lãi Suất</td>
-                <td className="p-1 text-center align-middle">
-                  <span className={getPromoPrintChecked("hoTroLaiSuat") ? "" : "print:hidden"}>
-                    <input
-                      type="checkbox"
-                      checked={getPromoPrintChecked("hoTroLaiSuat")}
-                      onChange={() => setPromoPrintChecked("hoTroLaiSuat", !getPromoPrintChecked("hoTroLaiSuat"))}
-                      className="w-3 h-3"
-                    />
-                  </span>
-                </td>
-                <td className="p-1 text-center"></td>
-                <td className="p-1 text-right"></td>
-              </tr>
-            )}
-            {/* Quy đổi 2 năm bảo hiểm - chỉ hiện nếu được chọn */}
+              })}
             {invoiceData.promotionCheckboxes?.discountBhvc2 && (
               <tr>
-                <td className="p-1">Quy đổi 2 năm bảo hiểm</td>
-                <td className="p-1 text-center align-middle">
-                  <span className={getPromoPrintChecked("discountBhvc2") ? "" : "print:hidden"}>
-                    <input
-                      type="checkbox"
-                      checked={getPromoPrintChecked("discountBhvc2")}
-                      onChange={() => setPromoPrintChecked("discountBhvc2", !getPromoPrintChecked("discountBhvc2"))}
-                      className="w-3 h-3"
-                    />
-                  </span>
-                </td>
-                <td className="p-1 text-center"></td>
-                <td className="p-1 text-right">
-                  {formatCurrency(invoiceData.bhvc2Discount || 0)}
-                </td>
+                <td>Quy đổi 2 năm bảo hiểm</td>
+                <td className="text-right-num">{formatCurrency(invoiceData.bhvc2Discount || 0)}</td>
               </tr>
             )}
-            {/* Miễn Phí Màu Nâng Cao - chỉ hiện nếu được chọn */}
             {invoiceData.promotionCheckboxes?.discountPremiumColor && (
               <tr>
-                <td className="p-1">Miễn Phí Màu Nâng Cao</td>
-                <td className="p-1 text-center align-middle">
-                  <span className={getPromoPrintChecked("discountPremiumColor") ? "" : "print:hidden"}>
-                    <input
-                      type="checkbox"
-                      checked={getPromoPrintChecked("discountPremiumColor")}
-                      onChange={() => setPromoPrintChecked("discountPremiumColor", !getPromoPrintChecked("discountPremiumColor"))}
-                      className="w-3 h-3"
-                    />
-                  </span>
-                </td>
-                <td className="p-1 text-center"></td>
-                <td className="p-1 text-right">
-                  {formatCurrency(invoiceData.premiumColorDiscount || 0)}
-                </td>
+                <td>Miễn phí màu nâng cao</td>
+                <td className="text-right-num">{formatCurrency(invoiceData.premiumColorDiscount || 0)}</td>
               </tr>
             )}
-            {/* Xăng Đổi Điện - chỉ hiện nếu được chọn */}
             {invoiceData.promotionCheckboxes?.convertCheckbox && (
               <tr>
-                <td className="p-1">Xăng Đổi Điện</td>
-                <td className="p-1 text-center align-middle">
-                  <span className={getPromoPrintChecked("convertCheckbox") ? "" : "print:hidden"}>
-                    <input
-                      type="checkbox"
-                      checked={getPromoPrintChecked("convertCheckbox")}
-                      onChange={() => setPromoPrintChecked("convertCheckbox", !getPromoPrintChecked("convertCheckbox"))}
-                      className="w-3 h-3"
-                    />
-                  </span>
-                </td>
-                <td className="p-1 text-center"></td>
-                <td className="p-1 text-right">
-                  {formatCurrency(invoiceData.convertSupportDiscount || 0)}
-                </td>
+                <td>Xăng đổi điện</td>
+                <td className="text-right-num">{formatCurrency(invoiceData.convertSupportDiscount || 0)}</td>
               </tr>
             )}
-            {/* Hạng thành viên VinClub - chỉ hiện nếu có chọn và không có hỗ trợ lãi suất */}
-            {invoiceData.promotionCheckboxes?.vinClubVoucher && invoiceData.promotionCheckboxes.vinClubVoucher !== 'none' && !invoiceData.promotionCheckboxes?.hoTroLaiSuat && (
+            {invoiceData.promotionCheckboxes?.quanDoiCongAnCheckbox && (
               <tr>
-                <td className="p-1">
-                  Hạng thành viên VinClub - {invoiceData.promotionCheckboxes.vinClubVoucher.charAt(0).toUpperCase() + invoiceData.promotionCheckboxes.vinClubVoucher.slice(1)}
-                </td>
-                <td className="p-1 text-center align-middle">
-                  <span className={getPromoPrintChecked("vinClubVoucher") ? "" : "print:hidden"}>
-                    <input
-                      type="checkbox"
-                      checked={getPromoPrintChecked("vinClubVoucher")}
-                      onChange={() => setPromoPrintChecked("vinClubVoucher", !getPromoPrintChecked("vinClubVoucher"))}
-                      className="w-3 h-3"
-                    />
-                  </span>
-                </td>
-                <td className="p-1 text-center">
-                  {(() => {
-                    const vinClubData = getDataByKey(uu_dai_vin_club, 'hang', invoiceData.promotionCheckboxes.vinClubVoucher);
-                    const tyLe = vinClubData?.ty_le;
-                    if (vinClubData && typeof tyLe === 'number' && invoiceData.vinClubDiscount > 0) {
-                      const percent = tyLe * 100;
-                      return percent % 1 === 0 ? `${percent}%` : `${percent.toFixed(1).replace('.', ',')}%`;
-                    }
-                    return invoiceData.vinClubDiscount > 0 ? '0,5%' : '';
-                  })()}
-                </td>
-                <td className="p-1 text-right">
-                  {formatCurrency(invoiceData.vinClubDiscount || 0)}
-                </td>
+                <td>Quân Đội & Công An</td>
+                <td className="text-right-num">{formatCurrency(invoiceData.quanDoiCongAnDiscount || 0)}</td>
               </tr>
             )}
-            {/* Giá Xuất Hóa Đơn */}
-            <tr className="bg-yellow-100">
-              <td className="p-1" colSpan="2">
-                <strong>Giá Xuất Hóa Đơn</strong>
-              </td>
-              <td className="p-1 text-right" colSpan="2">
-                <strong>{formatCurrency(invoiceData.giaXuatHoaDon || invoiceData.priceFinalPayment || invoiceData.carTotal || 0)}</strong>
-              </td>
+            {invoiceData.promotionCheckboxes?.vinClubVoucher && invoiceData.promotionCheckboxes.vinClubVoucher !== "none" && !invoiceData.promotionCheckboxes?.hoTroLaiSuat && (
+              <tr>
+                <td>Hạng thành viên VinClub</td>
+                <td className="text-right-num">{formatCurrency(invoiceData.vinClubDiscount || 0)}</td>
+              </tr>
+            )}
+            <tr className="row-highlight-yellow">
+              <td><strong>Giá xuất hóa đơn</strong></td>
+              <td className="text-right-num"><strong>{formatCurrency(invoiceData.giaXuatHoaDon || invoiceData.priceFinalPayment || invoiceData.carTotal || 0)}</strong></td>
             </tr>
-            {/* Giá Thanh toán thực tế */}
-            <tr className="bg-yellow-100">
-              <td className="p-1" colSpan="2">
-                <strong>Giá Thanh toán thực tế</strong>
-              </td>
-              <td className="p-1 text-right" colSpan="2">
-                <strong>{formatCurrency(invoiceData.giaThanhToanThucTe || invoiceData.priceFinalPayment || invoiceData.carTotal || 0)}</strong>
-              </td>
+            {cashDiscount !== 0 && (
+              <tr>
+                <td>Ưu đãi tiền mặt</td>
+                <td className="text-right-num">{formatCurrency(Math.abs(cashDiscount))}</td>
+              </tr>
+            )}
+            <tr className="row-highlight-orange">
+              <td><strong>Giá thanh toán thực tế</strong></td>
+              <td className="text-right-num"><strong>{formatCurrency(invoiceData.giaThanhToanThucTe || invoiceData.priceFinalPayment || invoiceData.carTotal || 0)}</strong></td>
             </tr>
-            {/* Phase 7: Số tiền thanh toán đối ứng (khi có vay) */}
             {invoiceData.hasLoan && (
               <>
-                <tr className="bg-blue-50">
-                  <td className="p-1" colSpan="2">
-                    Tiền vay ngân hàng {invoiceData.loanRatio ? `(${invoiceData.loanRatio}%)` : ''}
-                  </td>
-                  <td className="p-1 text-right text-blue-600" colSpan="2">
-                    <strong>{formatCurrency(Math.abs(invoiceData.tienVayTuGiaXHD || 0))}</strong>
-                  </td>
+                <tr>
+                  <td>Tiền vay ngân hàng {invoiceData.loanRatio ? `(${invoiceData.loanRatio}%)` : ""}</td>
+                  <td className="text-right-num">{formatCurrency(Math.abs(invoiceData.tienVayTuGiaXHD || 0))}</td>
                 </tr>
-                <tr className="bg-green-100">
-                  <td className="p-1" colSpan="2">
-                    <strong>Số tiền thanh toán (đối ứng)</strong>
-                  </td>
-                  <td className="p-1 text-right text-green-700" colSpan="2">
-                    <strong>{formatCurrency(invoiceData.soTienThanhToanDoiUng || 0)}</strong>
-                  </td>
+                <tr>
+                  <td><strong>Số tiền thanh toán (đối ứng)</strong></td>
+                  <td className="text-right-num"><strong>{formatCurrency(invoiceData.soTienThanhToanDoiUng || 0)}</strong></td>
                 </tr>
               </>
             )}
           </tbody>
         </table>
 
-        {/* Section: Chi phí lăn bánh */}
-        <div className="section-title text-blue-900 font-bold uppercase text-sm">
-          Chi phí lăn bánh
-        </div>
-        <table className="w-full border-collapse mb-0 text-sm bg-white table-bordered">
+        {/* CHI PHÍ LĂN BÁNH - bảng STT, Tên phí, Ghi chú, Số tiền */}
+        <div className="section-bar">Chi phí lăn bánh</div>
+        <table className="bao-gia-table">
           <thead>
-            <tr className="bg-blue-50">
-              <td className="p-2 font-semibold text-gray-800" style={{ width: "8%" }}>STT</td>
-              <td className="p-2 font-semibold text-gray-800" style={{ width: "32%" }}>Hạng mục</td>
-              <td className="p-2 font-semibold text-gray-800" style={{ width: "15%" }}>Chi tiết</td>
-              <td className="p-2 text-right font-semibold text-gray-800" style={{ width: "18%" }}>Số tiền</td>
-              <td className="p-2 text-right font-semibold text-gray-800" style={{ width: "27%" }}>Loại chứng từ</td>
+            <tr className="bg-slate-100">
+              <th style={{ width: "8%" }}>STT</th>
+              <th style={{ width: "38%" }}>Tên phí</th>
+              <th style={{ width: "26%" }}>Ghi chú</th>
+              <th style={{ width: "28%" }} className="text-right-num">Số tiền</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td
-                className="p-1"
-                style={{ width: "8%" }}
-              >
-                1
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "32%" }}
-              >
-                Lệ phí trước bạ
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "15%" }}
-              >
-                {invoiceData.carModel && invoiceData.carModel.includes("VF")
-                  ? "0%"
-                  : "10%"}
-              </td>
-              <td
-                className="p-1 text-right"
-                style={{ width: "18%" }}
-              >
-                Miễn Phí
-              </td>
-              <td
-                className="p-1 text-right"
-                style={{ width: "15%" }}
-              >
-                Hóa đơn
-              </td>
+              <td>1</td>
+              <td>Lệ phí trước bạ</td>
+              <td>{invoiceData.carModel && String(invoiceData.carModel).includes("VF") ? "0%" : "10%"}</td>
+              <td className="text-right-num">Miễn phí</td>
             </tr>
             <tr>
-              <td
-                className="p-1"
-                style={{ width: "8%" }}
-              >
-                2
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "32%" }}
-              >
-                Phí 01 năm BH Dân sự
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "15%" }}
-              ></td>
-              <td
-                className="p-1 text-right"
-                style={{ width: "18%" }}
-              >
-                {formatCurrency(invoiceData.liabilityInsurance || 0)}
-              </td>
-              <td
-                className="p-1 text-right"
-                style={{ width: "15%" }}
-              >
-                Hóa đơn
-              </td>
+              <td>2</td>
+              <td>Phí 01 năm BH Dân sự</td>
+              <td></td>
+              <td className="text-right-num">{formatCurrency(invoiceData.liabilityInsurance || 0)}</td>
             </tr>
             <tr>
-              <td
-                className="p-1"
-                style={{ width: "8%" }}
-              >
-                3
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "32%" }}
-              >
-                Phí cấp biển số
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "15%" }}
-              >
-                {getRegistrationLocationLabel()}
-              </td>
-              <td
-                className="p-1 text-right"
-                style={{ width: "18%" }}
-              >
-                {formatCurrency(invoiceData.plateFee || 0)}
-              </td>
-              <td
-                className="p-1 text-right"
-                style={{ width: "15%" }}
-              >
-                Biên Lai
-              </td>
+              <td>3</td>
+              <td>Phí cấp biển số</td>
+              <td>{getRegistrationLocationLabel()}</td>
+              <td className="text-right-num">{formatCurrency(invoiceData.plateFee || 0)}</td>
             </tr>
             <tr>
-              <td
-                className="p-1"
-                style={{ width: "8%" }}
-              >
-                4
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "32%" }}
-              >
-                Phí kiểm định
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "15%" }}
-              ></td>
-              <td
-                className="p-1 text-right"
-                style={{ width: "18%" }}
-              >
-                {formatCurrency(invoiceData.inspectionFee || 0)}
-              </td>
-              <td
-                className="p-1 text-right"
-                style={{ width: "15%" }}
-              >
-                Biên Lai
-              </td>
+              <td>4</td>
+              <td>Phí kiểm định</td>
+              <td></td>
+              <td className="text-right-num">{formatCurrency(invoiceData.inspectionFee || 0)}</td>
             </tr>
             <tr>
-              <td
-                className="p-1"
-                style={{ width: "8%" }}
-              >
-                5
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "32%" }}
-              >
-                Phí bảo trì đường bộ
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "15%" }}
-              >
-                {getCustomerTypeLabel()}
-              </td>
-              <td
-                className="p-1 text-right"
-                style={{ width: "18%" }}
-              >
-                {formatCurrency(invoiceData.roadFee || 0)}
-              </td>
-              <td
-                className="p-1 text-right"
-                style={{ width: "15%" }}
-              >
-                Biên Lai
-              </td>
+              <td>5</td>
+              <td>Phí bảo trì đường bộ</td>
+              <td>{getCustomerTypeLabel()}</td>
+              <td className="text-right-num">{formatCurrency(invoiceData.roadFee || 0)}</td>
             </tr>
             <tr>
-              <td
-                className="p-1"
-                style={{ width: "8%" }}
-              >
-                6
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "32%" }}
-              >
-                Phí dịch vụ
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "15%" }}
-              ></td>
-              <td
-                className="p-1 text-right"
-                style={{ width: "18%" }}
-              >
-                {formatCurrency(invoiceData.registrationFee || 0)}
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "15%" }}
-              ></td>
+              <td>6</td>
+              <td>Phí dịch vụ</td>
+              <td></td>
+              <td className="text-right-num">{formatCurrency(invoiceData.registrationFee || 0)}</td>
             </tr>
             <tr>
-              <td
-                className="p-1"
-                style={{ width: "8%" }}
-              >
-                7
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "32%" }}
-              >
-                BHVC bao gồm Pin
-              </td>
-              <td
-                className="p-1"
-                style={{ width: "15%" }}
-              >
-                {getBusinessTypeLabel()}
-              </td>
-              <td
-                className="p-1 text-right"
-                style={{ width: "18%" }}
-              >
-                {formatCurrency(
-                  invoiceData.isBodyInsuranceManual 
-                    ? invoiceData.bodyInsuranceFee 
-                    : invoiceData.bodyInsurance
-                ) || formatCurrency(invoiceData.bodyInsurance || 0)}
-              </td>
-              <td
-                className="p-1 text-right"
-                style={{ width: "15%" }}
-              >
-                Hóa Đơn
-              </td>
+              <td>7</td>
+              <td>BHVC bao gồm Pin</td>
+              <td>{getBusinessTypeLabel()}</td>
+              <td className="text-right-num">{formatCurrency(invoiceData.isBodyInsuranceManual ? invoiceData.bodyInsuranceFee : invoiceData.bodyInsurance || 0)}</td>
             </tr>
-            <tr className="bg-blue-50 font-semibold">
-              <td className="p-1" colSpan="3">
-                Tổng
-              </td>
-              <td className="p-1 text-right">
-                {formatCurrency(
-                  (Number(invoiceData.liabilityInsurance) || 0) +
-                  (Number(invoiceData.plateFee) || 0) +
-                  (Number(invoiceData.inspectionFee) || 0) +
-                  (Number(invoiceData.roadFee) || 0) +
-                  (Number(invoiceData.registrationFee) || 0) +
-                  (Number(invoiceData.isBodyInsuranceManual ? invoiceData.bodyInsuranceFee : invoiceData.bodyInsurance) || 0)
-                )}
-              </td>
-              <td className="p-1"></td>
+            <tr className="bg-slate-100 font-semibold">
+              <td colSpan="3">Tổng chi phí lăn bánh (phí)</td>
+              <td className="text-right-num">{formatCurrency(totalOnRoadFees)}</td>
             </tr>
           </tbody>
         </table>
 
-        {/* Section: Tổng chi phí lăn bánh */}
-        <div className="section-title text-blue-900 font-bold uppercase text-sm">
-          Tổng chi phí lăn bánh
+        {/* TỔNG CHI PHÍ LĂN BÁNH - 1 dòng nổi bật */}
+        <div className="section-bar">Tổng chi phí lăn bánh</div>
+        <div className="total-bar">
+          <span>TỔNG CHI PHÍ LĂN BÁNH</span>
+          <span className="amount">{formatCurrency(grandTotal)}</span>
         </div>
-        <table className="w-full border-collapse mb-0 text-sm bg-white table-bordered">
-          <tbody>
-            <tr className="bg-blue-50">
-              <td
-                className="p-2 font-semibold text-gray-800"
-                style={{ width: "8%" }}
-              >
-                STT
-              </td>
-              <td
-                className="p-2 font-semibold text-gray-800"
-                style={{ width: "40%" }}
-              >
-                Hạng mục
-              </td>
-              <td
-                className="p-2 text-center font-semibold text-gray-800"
-                style={{ width: "15%" }}
-              >
-                Chi tiết
-              </td>
-              <td
-                className="p-2 text-right font-semibold text-gray-800"
-                style={{ width: "37%" }}
-              >
-                Số tiền
-              </td>
-            </tr>
-            {invoiceData.hasLoan ? (
-              <>
-                <tr>
-                  <td
-                    className="p-1"
-                    style={{ width: "8%" }}
-                  >
-                    1
-                  </td>
-                  <td
-                    className="p-1"
-                    style={{ width: "40%" }}
-                  >
-                    Tiền ngân hàng
-                  </td>
-                  <td
-                    className="p-1 text-center"
-                    style={{ width: "15%" }}
-                  >
-                    {invoiceData.loanRatio ? `${invoiceData.loanRatio}%` : ''}
-                  </td>
-                  <td
-                    className="p-1 text-right"
-                    style={{ width: "37%" }}
-                  >
-                    {formatCurrency(invoiceData.loanAmount || 0)}
-                  </td>
-                </tr>
-                <tr>
-                  <td
-                    className="p-1"
-                    style={{ width: "8%" }}
-                  >
-                    2
-                  </td>
-                  <td
-                    className="p-1"
-                    style={{ width: "40%" }}
-                  >
-                    Đối ứng
-                  </td>
-                  <td
-                    className="p-1 text-center"
-                    style={{ width: "15%" }}
-                  ></td>
-                  <td
-                    className="p-1 text-right"
-                    style={{ width: "37%" }}
-                  >
-                    {formatCurrency(invoiceData.soTienThanhToanDoiUng || 0)}
-                  </td>
-                </tr>
-                <tr>
-                  <td
-                    className="p-1"
-                    style={{ width: "8%" }}
-                  >
-                    3
-                  </td>
-                  <td
-                    className="p-1"
-                    style={{ width: "40%" }}
-                  >
-                    Tổng chi phí lăn bánh
-                  </td>
-                  <td
-                    className="p-1 text-center"
-                    style={{ width: "15%" }}
-                  ></td>
-                  <td
-                    className="p-1 text-right"
-                    style={{ width: "37%" }}
-                  >
-                    {formatCurrency(
-                      (Number(invoiceData.liabilityInsurance) || 0) +
-                      (Number(invoiceData.plateFee) || 0) +
-                      (Number(invoiceData.inspectionFee) || 0) +
-                      (Number(invoiceData.roadFee) || 0) +
-                      (Number(invoiceData.registrationFee) || 0) +
-                      (Number(invoiceData.isBodyInsuranceManual ? invoiceData.bodyInsuranceFee : invoiceData.bodyInsurance) || 0)
-                    )}
-                  </td>
-                </tr>
-              </>
-            ) : (
-              <>
-                <tr>
-                  <td
-                    className="p-1"
-                    style={{ width: "8%" }}
-                  >
-                    1
-                  </td>
-                  <td
-                    className="p-1"
-                    style={{ width: "40%" }}
-                  >
-                    Giá thanh toán thực tế
-                  </td>
-                  <td
-                    className="p-1 text-center"
-                    style={{ width: "15%" }}
-                  ></td>
-                  <td
-                    className="p-1 text-right"
-                    style={{ width: "37%" }}
-                  >
-                    {formatCurrency(invoiceData.giaThanhToanThucTe || invoiceData.priceFinalPayment || invoiceData.carTotal || 0)}
-                  </td>
-                </tr>
-                <tr>
-                  <td
-                    className="p-1"
-                    style={{ width: "8%" }}
-                  >
-                    2
-                  </td>
-                  <td
-                    className="p-1"
-                    style={{ width: "40%" }}
-                  >
-                    Tổng chi phí lăn bánh
-                  </td>
-                  <td
-                    className="p-1 text-center"
-                    style={{ width: "15%" }}
-                  ></td>
-                  <td
-                    className="p-1 text-right"
-                    style={{ width: "37%" }}
-                  >
-                    {formatCurrency(
-                      (Number(invoiceData.liabilityInsurance) || 0) +
-                      (Number(invoiceData.plateFee) || 0) +
-                      (Number(invoiceData.inspectionFee) || 0) +
-                      (Number(invoiceData.roadFee) || 0) +
-                      (Number(invoiceData.registrationFee) || 0) +
-                      (Number(invoiceData.isBodyInsuranceManual ? invoiceData.bodyInsuranceFee : invoiceData.bodyInsurance) || 0)
-                    )}
-                  </td>
-                </tr>
-              </>
-            )}
-            <tr className="bg-blue-50">
-              <td className="p-1" colSpan="3">
-                <strong>Tổng</strong>
-              </td>
-              <td className="p-1 text-right">
-                <strong>
-                  {(() => {
-                    if (!invoiceData) return formatCurrency(0);
-                    
-                    // Tính tổng chi phí lăn bánh (các phí)
-                    const totalOnRoadCost = 
-                      (Number(invoiceData.liabilityInsurance) || 0) +
-                      (Number(invoiceData.plateFee) || 0) +
-                      (Number(invoiceData.inspectionFee) || 0) +
-                      (Number(invoiceData.roadFee) || 0) +
-                      (Number(invoiceData.registrationFee) || 0) +
-                      (Number(invoiceData.isBodyInsuranceManual ? invoiceData.bodyInsuranceFee : invoiceData.bodyInsurance) || 0);
-                    
-                    if (invoiceData.hasLoan) {
-                      // Nếu có vay: Tổng = Tiền ngân hàng + Đối ứng + Tổng chi phí lăn bánh
-                      const loanAmount = Number(invoiceData.loanAmount) || 0;
-                      const soTienThanhToanDoiUng = Number(invoiceData.soTienThanhToanDoiUng) || 0;
-                      const tongChiPhiLanBanh = loanAmount + soTienThanhToanDoiUng + totalOnRoadCost;
-                      return formatCurrency(tongChiPhiLanBanh);
-                    } else {
-                      // Nếu không vay: Tổng = Giá thanh toán thực tế + Tổng chi phí lăn bánh
-                      const giaThanhToanThucTe = 
-                        Number(invoiceData.giaThanhToanThucTe) || 
-                        Number(invoiceData.priceFinalPayment) || 
-                        Number(invoiceData.carTotal) || 0;
-                      const tongChiPhiLanBanh = giaThanhToanThucTe + totalOnRoadCost;
-                      return formatCurrency(tongChiPhiLanBanh);
-                    }
-                  })()}
-                </strong>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        {invoiceData.hasLoan && (
+          <table className="bao-gia-table mt-1">
+            <tbody>
+              <tr>
+                <td style={{ width: "50%" }}>1 Ngân hàng ({invoiceData.loanRatio || 0}%)</td>
+                <td className="text-right-num">{formatCurrency(invoiceData.loanAmount || 0)}</td>
+              </tr>
+              <tr>
+                <td>2 Đối ứng</td>
+                <td className="text-right-num">{formatCurrency(invoiceData.soTienThanhToanDoiUng || 0)}</td>
+              </tr>
+            </tbody>
+          </table>
+        )}
 
-        {/* Section: Phương thức thanh toán */}
-        <div className="section-title text-blue-900 font-bold uppercase text-sm">
-          Phương thức thanh toán
-        </div>
-        <table className="w-full border-collapse mb-0 text-sm bg-white table-bordered">
-          <tbody>
-            <tr className="bg-blue-50">
-              <td
-                className="p-2 font-semibold text-gray-800"
-                style={{ width: "25%" }}
-              >
-                Hình thức
-              </td>
-              <td
-                className="p-2 text-right font-semibold text-gray-800"
-                style={{ width: "25%" }}
-              >
-                Đặt cọc
-              </td>
-              <td
-                className="p-2 text-right font-semibold text-gray-800"
-                style={{ width: "25%" }}
-              >
-                Lần 1: Xuất hóa đơn
-              </td>
-              <td
-                className="p-2 text-right font-semibold text-gray-800"
-                style={{ width: "25%" }}
-              >
-                Lần 2: Đăng ký
-              </td>
+        {/* PHƯƠNG THỨC THANH TOÁN */}
+        <div className="section-bar">Phương thức thanh toán</div>
+        <table className="bao-gia-table">
+          <thead>
+            <tr className="bg-slate-100">
+              <th style={{ width: "25%" }}>Hình thức</th>
+              <th style={{ width: "25%" }} className="text-right-num">Đặt cọc</th>
+              <th style={{ width: "25%" }} className="text-right-num">Lần 1: Xuất hóa đơn</th>
+              <th style={{ width: "25%" }} className="text-right-num">Lần 2: Đăng ký</th>
             </tr>
+          </thead>
+          <tbody>
             <tr>
-              <td className="p-1">Ngân hàng</td>
-              <td className="p-1 text-right">
-                {formatCurrency(deposit)}
-              </td>
-              <td className="p-1 text-right">
-                {formatCurrency(payment1)}
-              </td>
-              <td className="p-1 text-right">
-                {formatCurrency(payment2)}
-              </td>
+              <td>Trả góp</td>
+              <td className="text-right-num">{formatCurrency(deposit)}</td>
+              <td className="text-right-num">{formatCurrency(payment1)}</td>
+              <td className="text-right-num">{formatCurrency(payment2)}</td>
             </tr>
           </tbody>
         </table>
 
-        {invoiceData.gifts && invoiceData.gifts.length > 0 && (
+        {/* QUÀ TẶNG */}
+        {(invoiceData.gifts && invoiceData.gifts.length > 0) && (
           <>
-            {/* Section: Quà tặng */}
-            <div className="section-title text-blue-900 font-bold uppercase text-sm">
-              Quà tặng
-            </div>
-            <table className="w-full border-collapse mb-0 text-sm bg-white table-bordered">
+            <div className="section-bar">Quà tặng</div>
+            <table className="bao-gia-table">
+              <thead>
+                <tr className="bg-slate-100">
+                  <th style={{ width: "85%" }}>Nội dung</th>
+                  <th style={{ width: "15%" }} className="text-right-num">Ghi chú</th>
+                </tr>
+              </thead>
               <tbody>
                 {invoiceData.gifts.map((gift, index) => (
                   <tr key={index}>
-                    <td
-                      className="p-1"
-                      style={{ width: "33%" }}
-                    >
-                      {gift.name}
-                    </td>
-                    <td className="p-1 text-right">
-                      {gift.price || "Tặng"}
-                    </td>
+                    <td>{index + 1}. {gift.name}</td>
+                    <td className="text-right-num">{gift.price || "Tặng"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1569,74 +923,49 @@ export default function Invoice2Page() {
           </>
         )}
 
-        <p className="text-xs italic mt-2 text-right text-gray-700">
-          Báo giá có hiệu lực đến hết ngày 30/11/2025
+        <p className="text-sm mt-4 mb-1">
+          Lưu ý: Báo giá có hiệu lực đến hết ngày 31/03/2026.
         </p>
-
-        <div className="text-right mt-2 text-xs italic font-medium">
-          <strong>
-            Thành phố Hồ Chí Minh, Ngày {day} tháng {month} năm {year}
-          </strong>
-        </div>
-
-        <footer className="mt-4 flex justify-between text-sm">
-          <div className="w-[45%] text-center">
-            <strong className="block mb-1">Khách hàng</strong>
-            <p>(Ký và ghi rõ họ tên)</p>
+        <p className="text-sm text-right mb-2">
+          <strong>Tp. Hồ Chí Minh, Ngày {day} Tháng {month} Năm {year}</strong>
+        </p>
+        <footer className="invoice-footer signature-block flex justify-between text-sm">
+          <div className="text-center signature-field" style={{ width: "40%" }}>
+            <strong>Khách hàng</strong>
+            <p className="signature-instruction">(Ký và ghi rõ họ tên)</p>
           </div>
-          <div className="w-[45%] text-center">
-            <strong className="block mb-1">Người báo giá</strong>
-            <p>(Ký và ghi rõ họ tên)</p>
+          <div className="text-center signature-field" style={{ width: "40%" }}>
+            <strong>Người báo giá</strong>
+            <p className="signature-instruction">(Ký và ghi rõ họ tên)</p>
           </div>
         </footer>
 
-        {/* Action Buttons */}
-        <div className="text-center mt-5 pt-4 border-t-2 border-blue-900 no-print">
+        <div className="text-center mt-6 pt-4 border-t-2 border-blue-900 no-print">
           <div className="flex flex-col gap-4 items-center">
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={handlePrint}
-                className="px-8 py-3 bg-blue-900 text-white font-bold rounded cursor-pointer transition-all hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-lg flex items-center gap-2"
-              >
-                IN BÁO GIÁ
-              </button>
-            </div>
-            
-            {/* Share Link Section */}
+            <button
+              onClick={handlePrint}
+              className="px-8 py-3 bg-blue-900 text-white font-bold rounded cursor-pointer hover:bg-blue-700"
+            >
+              IN BÁO GIÁ
+            </button>
             {shareLink && (
               <div className="w-full max-w-2xl mt-4 p-4 bg-gray-50 rounded-lg border border-gray-300">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Link tự động tải PDF:
-                </label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Link tự động tải PDF:</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={shareLink}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded bg-white text-sm"
                     onClick={(e) => e.target.select()}
                   />
                   <button
                     onClick={handleCopyLink}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm font-medium"
-                    title="Copy link"
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2 text-sm"
                   >
-                    {linkCopied ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        Đã copy
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        Copy
-                      </>
-                    )}
+                    {linkCopied ? <><Check className="w-4 h-4" /> Đã copy</> : <><Copy className="w-4 h-4" /> Copy</>}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Copy link này và gửi cho khách hàng. Khi mở link, PDF sẽ tự động tải về.
-                </p>
               </div>
             )}
           </div>
