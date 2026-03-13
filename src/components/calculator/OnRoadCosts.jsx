@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { formatCurrency } from '../../data/calculatorData';
 import CurrencyInput from '../shared/CurrencyInput';
@@ -46,6 +47,12 @@ export function OnRoadCosts({
     { value: 'other', label: 'Tỉnh thành khác' },
   ];
 
+  const [notes, setNotes] = useState({});
+
+  const handleNoteChange = (key, value) => {
+    setNotes((prev) => ({ ...prev, [key]: value }));
+  };
+
   const FeeRow = ({
     label,
     value,
@@ -53,11 +60,20 @@ export function OnRoadCosts({
     isManual,
     onChange,
     onReset,
+    note,
+    onNoteChange,
     editable = true,
   }) => (
-    <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-      <span className="text-gray-700 text-sm">{label}</span>
+    <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0 gap-3">
+      <span className="text-gray-700 text-sm flex-1">{label}</span>
       <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={note || ''}
+          onChange={(e) => onNoteChange && onNoteChange(e.target.value)}
+          placeholder="Ghi chú"
+          className="w-32 text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+        />
         {editable ? (
           <>
             <CurrencyInput
@@ -118,6 +134,8 @@ export function OnRoadCosts({
           isManual={isPlateFeeManual}
           onChange={onPlateFeeChange}
           onReset={onPlateFeeReset}
+          note={notes.plateFee}
+          onNoteChange={(val) => handleNoteChange('plateFee', val)}
         />
         <FeeRow
           label="Phí đường bộ (12 tháng)"
@@ -126,6 +144,8 @@ export function OnRoadCosts({
           isManual={isRoadFeeManual}
           onChange={onRoadFeeChange}
           onReset={onRoadFeeReset}
+          note={notes.roadFee}
+          onNoteChange={(val) => handleNoteChange('roadFee', val)}
         />
         <FeeRow
           label="Bảo hiểm TNDS"
@@ -134,6 +154,8 @@ export function OnRoadCosts({
           isManual={isLiabilityInsuranceManual}
           onChange={onLiabilityChange}
           onReset={onLiabilityReset}
+          note={notes.liabilityInsurance}
+          onNoteChange={(val) => handleNoteChange('liabilityInsurance', val)}
         />
         <FeeRow
           label="Phí kiểm định"
@@ -142,6 +164,8 @@ export function OnRoadCosts({
           isManual={isInspectionFeeManual}
           onChange={onInspectionFeeChange}
           onReset={onInspectionFeeReset}
+          note={notes.inspectionFee}
+          onNoteChange={(val) => handleNoteChange('inspectionFee', val)}
         />
         <FeeRow
           label="Bảo hiểm vật chất (1.4%)"
@@ -150,6 +174,8 @@ export function OnRoadCosts({
           isManual={isBodyInsuranceManual}
           onChange={onBodyInsuranceChange}
           onReset={onBodyInsuranceReset}
+          note={notes.bodyInsurance}
+          onNoteChange={(val) => handleNoteChange('bodyInsurance', val)}
         />
         <FeeRow
           label="Phí dịch vụ đăng ký"
@@ -158,6 +184,8 @@ export function OnRoadCosts({
           isManual={false}
           onChange={onRegistrationFeeChange}
           editable={true}
+          note={notes.registrationFee}
+          onNoteChange={(val) => handleNoteChange('registrationFee', val)}
         />
       </div>
 

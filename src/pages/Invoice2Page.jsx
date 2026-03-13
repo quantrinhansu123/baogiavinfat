@@ -479,16 +479,29 @@ export default function Invoice2Page() {
   const month = String(today.getMonth() + 1).padStart(2, "0");
   const year = today.getFullYear();
 
+  const extraOnRoadTotal = Array.isArray(invoiceData.extraOnRoadRows)
+    ? invoiceData.extraOnRoadRows.reduce(
+        (sum, row) => sum + (Number(row.amount) || 0),
+        0
+      )
+    : 0;
+
   const totalOnRoadFees =
     (Number(invoiceData.liabilityInsurance) || 0) +
     (Number(invoiceData.plateFee) || 0) +
     (Number(invoiceData.inspectionFee) || 0) +
     (Number(invoiceData.roadFee) || 0) +
     (Number(invoiceData.registrationFee) || 0) +
-    (Number(invoiceData.isBodyInsuranceManual ? invoiceData.bodyInsuranceFee : invoiceData.bodyInsurance) || 0);
-  const grandTotal = invoiceData.hasLoan
-    ? (Number(invoiceData.loanAmount) || 0) + (Number(invoiceData.soTienThanhToanDoiUng) || 0) + totalOnRoadFees
-    : (Number(invoiceData.giaThanhToanThucTe) || Number(invoiceData.priceFinalPayment) || Number(invoiceData.carTotal) || 0) + totalOnRoadFees;
+    (Number(invoiceData.isBodyInsuranceManual ? invoiceData.bodyInsuranceFee : invoiceData.bodyInsurance) || 0) +
+    extraOnRoadTotal;
+
+  // TỔNG CHI PHÍ LĂN BÁNH (thanh màu xanh) = Giá thanh toán thực tế + Tổng chi phí lăn bánh (phí)
+  const basePaymentAmount =
+    Number(invoiceData.giaThanhToanThucTe) ||
+    Number(invoiceData.priceFinalPayment) ||
+    Number(invoiceData.carTotal) ||
+    0;
+  const grandTotal = basePaymentAmount + totalOnRoadFees;
   const cashDiscount = (Number(invoiceData.giaXuatHoaDon) || Number(invoiceData.priceFinalPayment) || Number(invoiceData.carTotal) || 0) -
     (Number(invoiceData.giaThanhToanThucTe) || Number(invoiceData.priceFinalPayment) || Number(invoiceData.carTotal) || 0);
 
@@ -768,6 +781,15 @@ export default function Invoice2Page() {
                 <td className="text-right-num">{formatCurrency(invoiceData.vinClubDiscount || 0)}</td>
               </tr>
             )}
+            {Array.isArray(invoiceData.customBenefits) &&
+              invoiceData.customBenefits.map((b, index) => (
+                <tr key={b.id || `custom_${index}`}>
+                  <td>{b.label || "Ưu đãi khác"}</td>
+                  <td className="text-right-num">
+                    {formatCurrency(b.amount || 0)}
+                  </td>
+                </tr>
+              ))}
             <tr className="row-highlight-yellow">
               <td><strong>Giá xuất hóa đơn</strong></td>
               <td className="text-right-num"><strong>{formatCurrency(invoiceData.giaXuatHoaDon || invoiceData.priceFinalPayment || invoiceData.carTotal || 0)}</strong></td>
@@ -812,56 +834,95 @@ export default function Invoice2Page() {
             <tr>
               <td>1</td>
               <td>Lệ phí trước bạ</td>
-              <td>{invoiceData.carModel && String(invoiceData.carModel).includes("VF") ? "0%" : "10%"}</td>
+              <td>
+                {invoiceData.onRoadNotes?.beforeTax ||
+                  (invoiceData.carModel &&
+                  String(invoiceData.carModel).includes("VF")
+                    ? "0%"
+                    : "10%")}
+              </td>
               <td className="text-right-num">Miễn phí</td>
             </tr>
             <tr>
               <td>2</td>
               <td>Phí 01 năm BH Dân sự</td>
-              <td></td>
-              <td className="text-right-num">{formatCurrency(invoiceData.liabilityInsurance || 0)}</td>
+              <td>{invoiceData.onRoadNotes?.liability || ""}</td>
+              <td className="text-right-num">
+                {formatCurrency(invoiceData.liabilityInsurance || 0)}
+              </td>
             </tr>
             <tr>
               <td>3</td>
               <td>Phí cấp biển số</td>
-              <td>{getRegistrationLocationLabel()}</td>
-              <td className="text-right-num">{formatCurrency(invoiceData.plateFee || 0)}</td>
+              <td>
+                {invoiceData.onRoadNotes?.plate || getRegistrationLocationLabel()}
+              </td>
+              <td className="text-right-num">
+                {formatCurrency(invoiceData.plateFee || 0)}
+              </td>
             </tr>
             <tr>
               <td>4</td>
               <td>Phí kiểm định</td>
-              <td></td>
-              <td className="text-right-num">{formatCurrency(invoiceData.inspectionFee || 0)}</td>
+              <td>{invoiceData.onRoadNotes?.inspection || ""}</td>
+              <td className="text-right-num">
+                {formatCurrency(invoiceData.inspectionFee || 0)}
+              </td>
             </tr>
             <tr>
               <td>5</td>
               <td>Phí bảo trì đường bộ</td>
-              <td>{getCustomerTypeLabel()}</td>
-              <td className="text-right-num">{formatCurrency(invoiceData.roadFee || 0)}</td>
+              <td>
+                {invoiceData.onRoadNotes?.road || getCustomerTypeLabel()}
+              </td>
+              <td className="text-right-num">
+                {formatCurrency(invoiceData.roadFee || 0)}
+              </td>
             </tr>
             <tr>
               <td>6</td>
               <td>Phí dịch vụ</td>
-              <td></td>
-              <td className="text-right-num">{formatCurrency(invoiceData.registrationFee || 0)}</td>
+              <td>{invoiceData.onRoadNotes?.service || ""}</td>
+              <td className="text-right-num">
+                {formatCurrency(invoiceData.registrationFee || 0)}
+              </td>
             </tr>
             <tr>
               <td>7</td>
               <td>BHVC bao gồm Pin</td>
-              <td>{getBusinessTypeLabel()}</td>
-              <td className="text-right-num">{formatCurrency(invoiceData.isBodyInsuranceManual ? invoiceData.bodyInsuranceFee : invoiceData.bodyInsurance || 0)}</td>
+              <td>
+                {invoiceData.onRoadNotes?.bodyInsurance || getBusinessTypeLabel()}
+              </td>
+              <td className="text-right-num">
+                {formatCurrency(
+                  invoiceData.isBodyInsuranceManual
+                    ? invoiceData.bodyInsuranceFee
+                    : invoiceData.bodyInsurance || 0
+                )}
+              </td>
             </tr>
+            {Array.isArray(invoiceData.extraOnRoadRows) &&
+              invoiceData.extraOnRoadRows.map((row, idx) => (
+                <tr key={row.id || idx}>
+                  <td>{8 + idx}</td>
+                  <td>{row.name || "Chi phí khác"}</td>
+                  <td>{row.note || ""}</td>
+                  <td className="text-right-num">
+                    {formatCurrency(row.amount || 0)}
+                  </td>
+                </tr>
+              ))}
             <tr className="bg-slate-100 font-semibold">
               <td colSpan="3">Tổng chi phí lăn bánh (phí)</td>
-              <td className="text-right-num">{formatCurrency(totalOnRoadFees)}</td>
+              <td className="text-right-num">
+                {formatCurrency(totalOnRoadFees)}
+              </td>
             </tr>
           </tbody>
         </table>
 
-        {/* TỔNG CHI PHÍ LĂN BÁNH - 1 dòng nổi bật */}
-        <div className="section-bar">Tổng chi phí lăn bánh</div>
         <div className="total-bar">
-          <span>TỔNG CHI PHÍ LĂN BÁNH</span>
+          <span>TỔNG CHI PHÍ</span>
           <span className="amount">{formatCurrency(grandTotal)}</span>
         </div>
         {invoiceData.hasLoan && (

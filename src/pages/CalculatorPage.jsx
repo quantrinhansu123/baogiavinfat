@@ -174,6 +174,9 @@ export default function CalculatorPage() {
   const [isInspectionFeeManual, setIsInspectionFeeManual] = useState(false);
   const [roadFeeValue, setRoadFeeValue] = useState(0);
   const [isRoadFeeManual, setIsRoadFeeManual] = useState(false);
+  const [onRoadNotes, setOnRoadNotes] = useState({});
+  const [extraOnRoadRows, setExtraOnRoadRows] = useState([]);
+  const [editingOnRoadRowId, setEditingOnRoadRowId] = useState(null);
 
   // Discounts and promotions
   const [discount2, setDiscount2] = useState(false);
@@ -184,6 +187,60 @@ export default function CalculatorPage() {
   const [quanDoiCongAnCheckbox, setQuanDoiCongAnCheckbox] = useState(false);
   const [vinClubVoucher, setVinClubVoucher] = useState('none');
   const [hoTroLaiSuat, setHoTroLaiSuat] = useState(false); // Hỗ trợ lãi suất - nếu chọn thì không được hưởng VinClub
+  const [customBenefits, setCustomBenefits] = useState([]);
+  const [fixedBenefitValues, setFixedBenefitValues] = useState({});
+
+  const allCarLines = useMemo(() => {
+    const codes = Array.from(new Set((thong_tin_ky_thuat_xe || []).map(item => item.dong_xe))).filter(Boolean);
+    return codes.map(code => {
+      const info = danh_sach_xe.find(x => x.dong_xe === code);
+      return {
+        code,
+        name: info?.ten_hien_thi || code,
+      };
+    });
+  }, []);
+
+  // Persist on-road custom rows & notes
+  useEffect(() => {
+    try {
+      const savedExtra = localStorage.getItem('extraOnRoadRows');
+      if (savedExtra) {
+        const parsed = JSON.parse(savedExtra);
+        if (Array.isArray(parsed)) {
+          setExtraOnRoadRows(parsed);
+        }
+      }
+      const savedNotes = localStorage.getItem('onRoadNotes');
+      if (savedNotes) {
+        const parsedNotes = JSON.parse(savedNotes);
+        if (parsedNotes && typeof parsedNotes === 'object') {
+          setOnRoadNotes(parsedNotes);
+        }
+      }
+    } catch (e) {
+      console.error('Error loading on-road extras from localStorage', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('extraOnRoadRows', JSON.stringify(extraOnRoadRows || []));
+      localStorage.setItem('onRoadNotes', JSON.stringify(onRoadNotes || {}));
+    } catch (e) {
+      console.error('Error saving on-road extras to localStorage', e);
+    }
+  }, [extraOnRoadRows, onRoadNotes]);
+
+  // Khi đổi dòng xe (thông qua carModel), reset trạng thái isActive của tất cả ưu đãi
+  // để tránh mang trạng thái ACTIVE từ dòng xe khác sang VF3 (hoặc ngược lại)
+  useEffect(() => {
+    setSelectedPromotions((prev) =>
+      Array.isArray(prev)
+        ? prev.map((p) => ({ ...p, isActive: false }))
+        : []
+    );
+  }, [carModel]);
 
   // Loan options
   const [loanToggle, setLoanToggle] = useState(true);
@@ -844,6 +901,155 @@ export default function CalculatorPage() {
   const [imageFade, setImageFade] = useState(false);
   const [carImageLoadError, setCarImageLoadError] = useState(false);
 
+  // State for custom benefits modal
+  const [isBenefitModalOpen, setIsBenefitModalOpen] = useState(false);
+  const [editingBenefitId, setEditingBenefitId] = useState(null);
+  const [benefitForm, setBenefitForm] = useState({
+    label: '',
+    kind: 'discount', // 'fixed' | 'discount' | 'display'
+    discountMode: 'amount', // for kind === 'discount': 'amount' | 'percent'
+    value: '',
+  });
+
+  const openAddBenefitModal = () => {
+    setEditingBenefitId(null);
+    setBenefitForm({
+      label: '',
+      kind: 'discount',
+      discountMode: 'amount',
+      value: '',
+    });
+    setFixedBenefitValues({});
+    setIsBenefitModalOpen(true);
+  };
+
+  const openEditBenefitModal = (id) => {
+    const benefit = customBenefits.find(b => b.id === id);
+    if (!benefit) return;
+
+    setEditingBenefitId(id);
+    setBenefitForm({
+      label: benefit.label || '',
+      kind: benefit.kind || 'discount',
+      discountMode: benefit.discountMode || 'amount',
+      value: benefit.value != null ? formatCurrencyInput(benefit.value) : '',
+    });
+    if (benefit.kind === 'fixed') {
+      const perDongXe = benefit.perDongXe || {};
+      const initial = {};
+      allCarLines.forEach(item => {
+        const raw = perDongXe[item.code];
+        initial[item.code] = raw ? formatCurrencyInput(raw) : '';
+      });
+      setFixedBenefitValues(initial);
+    } else {
+      setFixedBenefitValues({});
+    }
+    setIsBenefitModalOpen(true);
+  };
+
+  const handleBenefitFormChange = (field, value) => {
+    setBenefitForm(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSaveBenefit = async () => {
+    const label = (benefitForm.label || '').trim();
+    if (!label) {
+      alert('Vui lòng nhập tên ưu đãi');
+      return;
+    }
+
+    const kind = benefitForm.kind || 'discount';
+    const discountMode = benefitForm.discountMode || 'amount';
+
+    let numericValue = 0;
+    let perDongXe = null;
+    if (kind === 'discount') {
+      numericValue = parseCurrencyInput(benefitForm.value);
+      if (!numericValue || numericValue <= 0) {
+        alert('Vui lòng nhập giá trị ưu đãi hợp lệ');
+        return;
+      }
+    } else if (kind === 'fixed') {
+      perDongXe = {};
+      allCarLines.forEach(item => {
+        const raw = fixedBenefitValues[item.code];
+        const value = raw ? parseCurrencyInput(raw) : 0;
+        if (value > 0) {
+          perDongXe[item.code] = value;
+        }
+      });
+      if (!perDongXe || Object.keys(perDongXe).length === 0) {
+        alert('Vui lòng nhập ít nhất một giá trị ưu đãi cho dòng xe.');
+        return;
+      }
+    }
+
+    const benefitId = editingBenefitId || (Date.now().toString() + Math.random().toString(36).slice(2));
+
+    // Nếu là ưu đãi cố định thì lưu cấu hình ra Firebase để dùng chung
+    if (kind === 'fixed') {
+      try {
+        const fixedRef = ref(database, `fixedBenefits/${benefitId}`);
+        await set(fixedRef, {
+          label,
+          kind,
+          discountMode,
+          perDongXe,
+          createdAt: new Date().toISOString(),
+          createdBy: userEmail || username || 'system',
+        });
+      } catch (error) {
+        console.error('Error saving fixed benefit to database:', error);
+      }
+    }
+
+    if (editingBenefitId) {
+      setCustomBenefits(prev =>
+        prev.map(b =>
+          b.id === editingBenefitId
+            ? {
+                ...b,
+                label,
+                kind,
+                discountMode,
+                value: numericValue,
+                perDongXe: perDongXe || b.perDongXe,
+              }
+            : b
+        )
+      );
+    } else {
+      setCustomBenefits(prev => [
+        ...prev,
+        {
+          id: benefitId,
+          label,
+          kind,
+          discountMode,
+          value: numericValue,
+          perDongXe: perDongXe || undefined,
+        },
+      ]);
+    }
+
+    setIsBenefitModalOpen(false);
+    setEditingBenefitId(null);
+  };
+
+  const handleDeleteCustomBenefit = (id) => {
+    const benefit = customBenefits.find(b => b.id === id);
+    if (!benefit) return;
+
+    const confirmed = window.confirm(`Xóa ưu đãi "${benefit.label}"?`);
+    if (!confirmed) return;
+
+    setCustomBenefits(prev => prev.filter(b => b.id !== id));
+  };
+
   // Helper function to format currency for input (without ₫ symbol)
   const formatCurrencyInput = (value) => {
     if (!value && value !== 0) return '';
@@ -1231,6 +1437,38 @@ export default function CalculatorPage() {
 
     const priceAfterBasicPromotions = Math.max(0, basePrice - totalPromotionDiscounts);
 
+    // Manual custom benefits (Ưu đãi khác do người dùng thêm)
+    const manualBenefitsTotal = Array.isArray(customBenefits)
+      ? customBenefits.reduce((sum, b) => {
+          const kind = b.kind || 'discount';
+          if (kind === 'display') return sum;
+
+          if (kind === 'fixed') {
+            if (!selectedDongXe) return sum;
+            const perDongXe = b.perDongXe || {};
+            const value = typeof perDongXe[selectedDongXe] === 'number'
+              ? perDongXe[selectedDongXe]
+              : Number(perDongXe[selectedDongXe]) || 0;
+            return sum + (value > 0 ? value : 0);
+          }
+
+          if (kind === 'discount') {
+            const mode = b.discountMode || 'amount';
+            if (mode === 'percent') {
+              const percent = typeof b.value === 'number' ? b.value : Number(b.value) || 0;
+              if (percent <= 0) return sum;
+              const value = Math.round(priceAfterBasicPromotions * (percent / 100));
+              return sum + (value > 0 ? value : 0);
+            }
+
+            const value = typeof b.value === 'number' ? b.value : Number(b.value) || 0;
+            return sum + (value > 0 ? value : 0);
+          }
+
+          return sum;
+        }, 0)
+      : 0;
+
     // Quân Đội & Công An: 5% Giá sau ưu đãi
     const quanDoiCongAnDiscount = quanDoiCongAnCheckbox
       ? Math.round(priceAfterBasicPromotions * 0.05)
@@ -1248,7 +1486,10 @@ export default function CalculatorPage() {
 
     // Giá XHD = giá sau khi áp dụng hết ưu đãi/chính sách (VinClub + Xăng đổi điện + Quân Đội & Công An) = giá xuất hóa đơn chuẩn
     // Lưu ý: promotionDiscounts đã bao gồm TẤT CẢ các promotion (kể cả những cái có DMS = "Phiếu thu 51")
-    const giaXuatHoaDon = Math.max(0, priceAfterBasicPromotions - vinClubDiscount - convertSupportDiscount - quanDoiCongAnDiscount);
+    const giaXuatHoaDon = Math.max(
+      0,
+      priceAfterBasicPromotions - vinClubDiscount - convertSupportDiscount - quanDoiCongAnDiscount - manualBenefitsTotal
+    );
 
     // Tính tổng các chương trình có DMS = "Phiếu thu 51" (tính trên basePrice)
     // Ví dụ: "2025_11_CTKM ưu đãi Voucher Vinpearl (quy đổi tiền mặt 50tr)" có DMS = "Phiếu thu 51"
@@ -1328,9 +1569,16 @@ export default function CalculatorPage() {
         }
       }
     }
-    const totalDiscount = totalPromotionDiscounts + (vinClubDiscount || 0) + (convertSupportDiscount || 0) + (quanDoiCongAnDiscount || 0);
+    const totalDiscount = totalPromotionDiscounts +
+      (vinClubDiscount || 0) +
+      (convertSupportDiscount || 0) +
+      (quanDoiCongAnDiscount || 0) +
+      manualBenefitsTotal;
     const priceAfterDiscount = Math.max(0, basePrice - totalDiscount);
-    const amountBeforeVinClub = Math.max(0, priceAfterBasicPromotions - convertSupportDiscount - quanDoiCongAnDiscount - bhvc2 - premiumColor);
+    const amountBeforeVinClub = Math.max(
+      0,
+      priceAfterBasicPromotions - convertSupportDiscount - quanDoiCongAnDiscount - bhvc2 - premiumColor - manualBenefitsTotal
+    );
 
     // On-road costs
     const locationKey = locationMap[registrationLocation] || 'tinh_khac';
@@ -1354,8 +1602,18 @@ export default function CalculatorPage() {
     const bhvcRate = 0.0145;
     const bodyInsurance = isBodyInsuranceManual ? bodyInsuranceFee : Math.round(giaXuatHoaDon * bhvcRate);
     const registrationFeeValue = Number(registrationFee) || 0;
+    const extraOnRoadTotal = Array.isArray(extraOnRoadRows)
+      ? extraOnRoadRows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0)
+      : 0;
 
-    const totalOnRoadCost = plateFee + roadFee + liabilityInsurance + inspectionFee + bodyInsurance + registrationFeeValue;
+    const totalOnRoadCost =
+      plateFee +
+      roadFee +
+      liabilityInsurance +
+      inspectionFee +
+      bodyInsurance +
+      registrationFeeValue +
+      extraOnRoadTotal;
     const totalCost = finalPayable + totalOnRoadCost;
 
     // Loan calculations: Tiền vay và lãi dựa trên Giá XHD (giá trị xe), không dựa trên totalCost
@@ -1418,6 +1676,7 @@ export default function CalculatorPage() {
       bhvc2Potential,
       premiumColor,
       premiumColorPotential,
+      manualBenefitsTotal,
       vinClubDiscount,
       amountBeforeVinClub,
       giaXuatHoaDon,
@@ -1475,11 +1734,53 @@ export default function CalculatorPage() {
     inspectionFeeValue,
     isRoadFeeManual,
     roadFeeValue,
+    customBenefits,
+    extraOnRoadRows,
   ]);
 
   // Collect invoice data
   const collectInvoiceData = () => {
     const num = (v) => (typeof v === 'number' && Number.isFinite(v)) ? v : Number(v) || 0;
+
+    const calcCustomBenefitAmount = (benefit) => {
+      if (!benefit) return 0;
+      const kind = benefit.kind || 'discount';
+      if (kind === 'display') return 0;
+
+      if (kind === 'fixed') {
+        if (!selectedDongXe) return 0;
+        const perDongXe = benefit.perDongXe || {};
+        const raw = perDongXe[selectedDongXe];
+        const value = typeof raw === 'number' ? raw : Number(raw) || 0;
+        return value > 0 ? value : 0;
+      }
+
+      if (kind === 'discount') {
+        const mode = benefit.discountMode || 'amount';
+        if (mode === 'percent') {
+          const percent = typeof benefit.value === 'number' ? benefit.value : Number(benefit.value) || 0;
+          if (percent <= 0) return 0;
+          const value = Math.round((calculations.priceAfterBasicPromotions || 0) * (percent / 100));
+          return value > 0 ? value : 0;
+        }
+        const value = typeof benefit.value === 'number' ? benefit.value : Number(benefit.value) || 0;
+        return value > 0 ? value : 0;
+      }
+
+      return 0;
+    };
+
+    const appliedCustomBenefits = Array.isArray(customBenefits)
+      ? customBenefits
+          .map((b) => ({
+            id: b.id,
+            label: b.label,
+            kind: b.kind || 'discount',
+            discountMode: b.discountMode || 'amount',
+            amount: calcCustomBenefitAmount(b),
+          }))
+          .filter((b) => b.amount > 0)
+      : [];
 
     const data = {
       // Customer info
@@ -1539,15 +1840,20 @@ export default function CalculatorPage() {
       loanAmount: num(calculations.loanData?.loanAmount),
       downPayment: num(calculations.loanData?.downPayment),
 
-      // Detailed promotions for invoice display (tính calculatedDiscount cho loại %)
-      selectedPromotions: Array.isArray(selectedPromotions)
-        ? selectedPromotions.map((p) => {
-            const base = num(calculations.basePrice) || 0;
-            const calculatedDiscount = p.type === 'percentage' || p.type === 'fixed'
-              ? applyPromotion(p, base)
-              : (p.calculatedDiscount != null ? num(p.calculatedDiscount) : num(p.value));
-            return { ...p, calculatedDiscount };
-          })
+      // Detailed promotions cho báo giá/in (chỉ lấy ưu đãi đang ACTIVE và áp dụng cho dòng xe hiện tại)
+      selectedPromotions: Array.isArray(selectedPromotionsForCurrentCar)
+        ? selectedPromotionsForCurrentCar
+            .filter((p) => p.isActive)
+            .map((p) => {
+              const base = num(calculations.basePrice) || 0;
+              const calculatedDiscount =
+                p.type === 'percentage' || p.type === 'fixed'
+                  ? applyPromotion(p, base)
+                  : p.calculatedDiscount != null
+                    ? num(p.calculatedDiscount)
+                    : num(p.value);
+              return { ...p, calculatedDiscount };
+            })
         : [],
       promotionCheckboxes: {
         discount2,
@@ -1576,6 +1882,9 @@ export default function CalculatorPage() {
       tongChiPhiLanBanh: num(calculations.totalCost), // Tổng chi phí lăn bánh = Giá thanh toán thực tế + Tổng chi phí lăn bánh
       tienVayTuGiaXHD: num(calculations.tienVayTuGiaXHD),
       soTienThanhToanDoiUng: num(calculations.soTienThanhToanDoiUng),
+      onRoadNotes,
+      extraOnRoadRows,
+      customBenefits: appliedCustomBenefits,
     };
 
     // Save to localStorage
@@ -1642,7 +1951,183 @@ export default function CalculatorPage() {
             <div className="flex flex-col items-center">
               <div className="w-24 h-24 rounded-full flex items-center justify-center overflow-hidden bg-white border-2 border-gray-200">
                 <img src={logoImage} alt="VinFast Logo" className="w-full h-full object-contain" />
+      </div>
+
+      {/* Modal: Thêm / Sửa ưu đãi khác */}
+      {isBenefitModalOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+            <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-gray-900">
+                {editingBenefitId ? 'Sửa ưu đãi' : 'Thêm ưu đãi khác'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBenefitModalOpen(false);
+                  setEditingBenefitId(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="px-5 py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên ưu đãi
+                </label>
+                <input
+                  type="text"
+                  value={benefitForm.label}
+                  onChange={(e) => handleBenefitFormChange('label', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Ví dụ: Ưu đãi khách hàng thân thiết"
+                />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Loại ưu đãi
+                </label>
+                <select
+                  value={benefitForm.kind}
+                  onChange={(e) => handleBenefitFormChange('kind', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="fixed">
+                    Ưu đãi cố định theo dòng xe
+                  </option>
+                  <option value="discount">
+                    Ưu đãi giảm tiền / phần trăm của giá sau ưu đãi
+                  </option>
+                  <option value="display">
+                    Ưu đãi hiển thị, không trừ tiền
+                  </option>
+                </select>
+              </div>
+
+              {benefitForm.kind === 'discount' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Kiểu giảm
+                    </label>
+                    <select
+                      value={benefitForm.discountMode}
+                      onChange={(e) => handleBenefitFormChange('discountMode', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="amount">Giảm theo số tiền cố định (₫)</option>
+                      <option value="percent">Giảm theo % Giá sau ưu đãi</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Giá trị ưu đãi
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={benefitForm.value}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (benefitForm.discountMode === 'percent') {
+                            handleBenefitFormChange('value', raw.replace(/[^\d.,]/g, ''));
+                          } else {
+                            const numeric = formatCurrencyInput(raw);
+                            handleBenefitFormChange('value', numeric);
+                          }
+                        }}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder={benefitForm.discountMode === 'percent' ? 'Ví dụ: 5 (tương đương 5%)' : 'Ví dụ: 5.000.000'}
+                      />
+                      <span className="text-sm text-gray-500">
+                        {benefitForm.discountMode === 'percent' ? '%' : '₫'}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {benefitForm.kind === 'fixed' && (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">
+                    Nhập số tiền ưu đãi cho từng dòng xe. Những ô bỏ trống sẽ không áp dụng ưu đãi.
+                  </p>
+                  <div className="max-h-64 overflow-auto border border-gray-200 rounded-lg">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium text-gray-700">
+                            Dòng xe
+                          </th>
+                          <th className="px-3 py-2 text-right font-medium text-gray-700">
+                            Số tiền ưu đãi (₫)
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allCarLines.map((item) => (
+                          <tr key={item.code} className="border-t border-gray-100">
+                            <td className="px-3 py-1.5 text-gray-700">
+                              {item.name}
+                            </td>
+                            <td className="px-3 py-1.5 text-right">
+                              <input
+                                type="text"
+                                value={fixedBenefitValues[item.code] || ''}
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  const formatted = formatCurrencyInput(raw);
+                                  setFixedBenefitValues(prev => ({
+                                    ...prev,
+                                    [item.code]: formatted,
+                                  }));
+                                }}
+                                className="w-full text-right px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="0"
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {benefitForm.kind === 'display' && (
+                <p className="text-xs text-gray-500">
+                  Ưu đãi hiển thị chỉ dùng để mô tả trên báo giá, không làm thay đổi giá trị tiền.
+                </p>
+              )}
+            </div>
+
+            <div className="px-5 py-3 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBenefitModalOpen(false);
+                  setEditingBenefitId(null);
+                }}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveBenefit}
+                className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+              >
+                Lưu ưu đãi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
             </div>
             <h1 className="text-2xl font-bold text-gray-900 ml-2">
               Công cụ tính giá xe VinFast
@@ -2373,6 +2858,84 @@ export default function CalculatorPage() {
                     -{formatCurrency(calculations.premiumColorPotential)}
                   </span>
                 </div>
+
+                {/* Ưu đãi khác do người dùng tự thêm */}
+                {customBenefits.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-dashed border-gray-200 space-y-2">
+                    <div className="text-xs font-semibold text-gray-500 uppercase">
+                      Ưu đãi khác (tùy chỉnh)
+                    </div>
+                    {customBenefits.map(benefit => (
+                      <div
+                        key={benefit.id}
+                        className="flex items-center justify-between py-1"
+                      >
+                        <div className="flex-1">
+                          <div className="text-sm text-gray-700">
+                            {benefit.label}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            Ưu đãi nhập thủ công
+                          </div>
+                        </div>
+                        <span className="text-red-600 font-semibold mr-3">
+                          -{formatCurrency((() => {
+                            const kind = benefit.kind || 'discount';
+                            if (kind === 'display') return 0;
+                            if (kind === 'fixed') {
+                              if (!selectedDongXe) return 0;
+                              const perDongXe = benefit.perDongXe || {};
+                              const raw = perDongXe[selectedDongXe];
+                              const value = typeof raw === 'number' ? raw : Number(raw) || 0;
+                              return value > 0 ? value : 0;
+                            }
+                            if (kind === 'discount') {
+                              const mode = benefit.discountMode || 'amount';
+                              if (mode === 'percent') {
+                                const percent = typeof benefit.value === 'number'
+                                  ? benefit.value
+                                  : Number(benefit.value) || 0;
+                                if (percent <= 0) return 0;
+                                return Math.round(calculations.priceAfterBasicPromotions * (percent / 100));
+                              }
+                              const value = typeof benefit.value === 'number'
+                                ? benefit.value
+                                : Number(benefit.value) || 0;
+                              return value > 0 ? value : 0;
+                            }
+                            return 0;
+                          })())}
+                        </span>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openEditBenefitModal(benefit.id)}
+                            className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCustomBenefit(benefit.id)}
+                            className="px-2 py-1 text-xs border border-red-300 text-red-600 rounded hover:bg-red-50"
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={openAddBenefitModal}
+                    className="text-xs px-3 py-2 border border-dashed border-blue-400 text-blue-600 rounded hover:bg-blue-50"
+                  >
+                    + Thêm ưu đãi khác
+                  </button>
+                </div>
               </div>
 
               <div className="flex justify-between py-3 border-b border-gray-200">
@@ -2387,160 +2950,712 @@ export default function CalculatorPage() {
 
               <div className="mt-5">
                 <div className="text-sm font-semibold text-gray-600 mb-3">Chi phí lăn bánh dự tính</div>
-                <div className="space-y-3">
-                  {/* Phí 01 năm BH Dân sự - Editable */}
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-600">Phí 01 năm BH Dân sự</span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={formatCurrencyInput(isLiabilityInsuranceManual ? liabilityInsuranceValue : calculations.liabilityInsurance)}
-                        onChange={(e) => {
-                          const parsedValue = parseCurrencyInput(e.target.value);
-                          setLiabilityInsuranceValue(Math.max(0, parsedValue));
-                          setIsLiabilityInsuranceManual(true);
-                        }}
-                        className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right font-semibold"
-                        placeholder="0"
-                      />
-                      <button
-                        onClick={() => {
-                          setIsLiabilityInsuranceManual(false);
-                          setLiabilityInsuranceValue(0);
-                        }}
-                        className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"
-                        title="Tính lại tự động"
-                      >
-                        ↻
-                      </button>
-                    </div>
-                  </div>
-                  {/* Phí biển số - Editable */}
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-600">
-                      Phí biển số ({calculations.plateFeeData?.ten_khu_vuc || 'N/A'})
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={formatCurrencyInput(isPlateFeeManual ? plateFeeValue : calculations.plateFee)}
-                        onChange={(e) => {
-                          const parsedValue = parseCurrencyInput(e.target.value);
-                          setPlateFeeValue(Math.max(0, parsedValue));
-                          setIsPlateFeeManual(true);
-                        }}
-                        className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right font-semibold"
-                        placeholder="0"
-                      />
-                      <button
-                        onClick={() => {
-                          setIsPlateFeeManual(false);
-                          setPlateFeeValue(0);
-                        }}
-                        className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"
-                        title="Tính lại tự động"
-                      >
-                        ↻
-                      </button>
-                    </div>
-                  </div>
-                  {/* Phí kiểm định - Editable */}
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-600">Phí kiểm định</span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={formatCurrencyInput(isInspectionFeeManual ? inspectionFeeValue : calculations.inspectionFee)}
-                        onChange={(e) => {
-                          const parsedValue = parseCurrencyInput(e.target.value);
-                          setInspectionFeeValue(Math.max(0, parsedValue));
-                          setIsInspectionFeeManual(true);
-                        }}
-                        className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right font-semibold"
-                        placeholder="0"
-                      />
-                      <button
-                        onClick={() => {
-                          setIsInspectionFeeManual(false);
-                          setInspectionFeeValue(0);
-                        }}
-                        className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"
-                        title="Tính lại tự động"
-                      >
-                        ↻
-                      </button>
-                    </div>
-                  </div>
-                  {/* Phí bảo trì đường bộ - Editable */}
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-600">Phí bảo trì đường bộ</span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={formatCurrencyInput(isRoadFeeManual ? roadFeeValue : calculations.roadFee)}
-                        onChange={(e) => {
-                          const parsedValue = parseCurrencyInput(e.target.value);
-                          setRoadFeeValue(Math.max(0, parsedValue));
-                          setIsRoadFeeManual(true);
-                        }}
-                        className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right font-semibold"
-                        placeholder="0"
-                      />
-                      <button
-                        onClick={() => {
-                          setIsRoadFeeManual(false);
-                          setRoadFeeValue(0);
-                        }}
-                        className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"
-                        title="Tính lại tự động"
-                      >
-                        ↻
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-600">Phí dịch vụ</span>
-                    <input
-                      type="text"
-                      value={formatCurrencyInput(registrationFee)}
-                      onChange={(e) => {
-                        const parsedValue = parseCurrencyInput(e.target.value);
-                        if (isSafeCurrency(parsedValue)) {
-                          setRegistrationFee(parsedValue);
-                        }
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-blue-900 text-white">
+                        <th className="px-2 py-2 w-10 text-center">STT</th>
+                        <th className="px-2 py-2 w-40 text-left">Tên phí</th>
+                        <th className="px-2 py-2 text-left">Ghi chú</th>
+                        <th className="px-2 py-2 w-36 text-right">Số tiền</th>
+                        <th className="px-2 py-2 w-20 text-center">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {/* 1. Lệ phí trước bạ (hiển thị, luôn miễn phí) */}
+                      <tr>
+                        <td className="px-2 py-2 text-center">1</td>
+                        <td className="px-2 py-2 text-sm">Lệ phí trước bạ</td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={onRoadNotes.beforeTax || '0%'}
+                            readOnly
+                            className="w-full px-2 py-1 border border-gray-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </td>
+                        <td className="px-2 py-2 text-right text-sm text-gray-500">Miễn phí</td>
+                        <td className="px-2 py-2 text-center text-xs">
+                          <button
+                            type="button"
+                            className="px-2 py-1 text-[10px] text-gray-400 border border-gray-200 rounded cursor-default"
+                            disabled
+                          >
+                            —
+                          </button>
+                        </td>
+                      </tr>
+                      {/* 2. Phí 01 năm BH Dân sự */}
+                      <tr>
+                        <td className="px-2 py-2 text-center">2</td>
+                        <td className="px-2 py-2 text-sm">Phí 01 năm BH Dân sự</td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={onRoadNotes.liability || ''}
+                            onChange={(e) =>
+                              setOnRoadNotes((prev) => ({ ...prev, liability: e.target.value }))
+                            }
+                            readOnly={editingOnRoadRowId !== 'liability'}
+                            className={`w-full px-2 py-1 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                              editingOnRoadRowId === 'liability'
+                                ? 'border-blue-400 bg-white'
+                                : 'border-gray-200 bg-gray-50'
+                            }`}
+                            placeholder="Ghi chú"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-1 justify-end">
+                            <input
+                              type="text"
+                              value={formatCurrencyInput(
+                                isLiabilityInsuranceManual
+                                  ? liabilityInsuranceValue
+                                  : calculations.liabilityInsurance
+                              )}
+                              onChange={(e) => {
+                                const parsedValue = parseCurrencyInput(e.target.value);
+                                setLiabilityInsuranceValue(Math.max(0, parsedValue));
+                                setIsLiabilityInsuranceManual(true);
+                              }}
+                              readOnly={editingOnRoadRowId !== 'liability'}
+                              className={`w-28 px-2 py-1 border rounded text-right font-semibold focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                                editingOnRoadRowId === 'liability'
+                                  ? 'border-blue-400 bg-white'
+                                  : 'border-gray-300 bg-gray-50'
+                              }`}
+                              placeholder="0"
+                            />
+                            <button
+                              onClick={() => {
+                                setIsLiabilityInsuranceManual(false);
+                                setLiabilityInsuranceValue(0);
+                              }}
+                              className="px-2 py-1 text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300"
+                              title="Tính lại tự động"
+                            >
+                              ↻
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 text-center text-xs">
+                          <div className="flex items-center justify-center gap-1">
+                            {editingOnRoadRowId === 'liability' ? (
+                              <button
+                                type="button"
+                                onClick={() => setEditingOnRoadRowId(null)}
+                                className="p-1 text-green-700 border border-green-300 rounded hover:bg-green-50"
+                                title="Lưu"
+                              >
+                                <Check className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setEditingOnRoadRowId('liability')}
+                                className="p-1 text-blue-700 border border-blue-300 rounded hover:bg-blue-50"
+                                title="Sửa"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                window.alert('Không thể xóa dòng phí mặc định.')
+                              }
+                              className="p-1 text-gray-400 border border-gray-200 rounded hover:bg-gray-50"
+                              title="Không thể xóa phí mặc định"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* 3. Phí cấp biển số */}
+                      <tr>
+                        <td className="px-2 py-2 text-center">3</td>
+                        <td className="px-2 py-2 text-sm">Phí cấp biển số</td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={
+                              onRoadNotes.plate ||
+                              calculations.plateFeeData?.ten_khu_vuc ||
+                              ''
+                            }
+                            onChange={(e) =>
+                              setOnRoadNotes((prev) => ({ ...prev, plate: e.target.value }))
+                            }
+                            readOnly={editingOnRoadRowId !== 'plate'}
+                            className={`w-full px-2 py-1 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                              editingOnRoadRowId === 'plate'
+                                ? 'border-blue-400 bg-white'
+                                : 'border-gray-200 bg-gray-50'
+                            }`}
+                            placeholder="Ví dụ: TP. Hồ Chí Minh"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-1 justify-end">
+                            <input
+                              type="text"
+                              value={formatCurrencyInput(
+                                isPlateFeeManual ? plateFeeValue : calculations.plateFee
+                              )}
+                              onChange={(e) => {
+                                const parsedValue = parseCurrencyInput(e.target.value);
+                                setPlateFeeValue(Math.max(0, parsedValue));
+                                setIsPlateFeeManual(true);
+                              }}
+                              readOnly={editingOnRoadRowId !== 'plate'}
+                              className={`w-28 px-2 py-1 border rounded text-right font-semibold focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                                editingOnRoadRowId === 'plate'
+                                  ? 'border-blue-400 bg-white'
+                                  : 'border-gray-300 bg-gray-50'
+                              }`}
+                              placeholder="0"
+                            />
+                            <button
+                              onClick={() => {
+                                setIsPlateFeeManual(false);
+                                setPlateFeeValue(0);
+                              }}
+                              className="px-2 py-1 text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300"
+                              title="Tính lại tự động"
+                            >
+                              ↻
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 text-center text-xs">
+                          <div className="flex items-center justify-center gap-1">
+                            {editingOnRoadRowId === 'plate' ? (
+                              <button
+                                type="button"
+                                onClick={() => setEditingOnRoadRowId(null)}
+                                className="p-1 text-green-700 border border-green-300 rounded hover:bg-green-50"
+                                title="Lưu"
+                              >
+                                <Check className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setEditingOnRoadRowId('plate')}
+                                className="p-1 text-blue-700 border border-blue-300 rounded hover:bg-blue-50"
+                                title="Sửa"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                window.alert('Không thể xóa dòng phí mặc định.')
+                              }
+                              className="p-1 text-gray-400 border border-gray-200 rounded hover:bg-gray-50"
+                              title="Không thể xóa phí mặc định"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* 4. Phí kiểm định */}
+                      <tr>
+                        <td className="px-2 py-2 text-center">4</td>
+                        <td className="px-2 py-2 text-sm">Phí kiểm định</td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={onRoadNotes.inspection || ''}
+                            onChange={(e) =>
+                              setOnRoadNotes((prev) => ({
+                                ...prev,
+                                inspection: e.target.value,
+                              }))
+                            }
+                            readOnly={editingOnRoadRowId !== 'inspection'}
+                            className={`w-full px-2 py-1 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                              editingOnRoadRowId === 'inspection'
+                                ? 'border-blue-400 bg-white'
+                                : 'border-gray-200 bg-gray-50'
+                            }`}
+                            placeholder="Ghi chú"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-1 justify-end">
+                            <input
+                              type="text"
+                              value={formatCurrencyInput(
+                                isInspectionFeeManual
+                                  ? inspectionFeeValue
+                                  : calculations.inspectionFee
+                              )}
+                              onChange={(e) => {
+                                const parsedValue = parseCurrencyInput(e.target.value);
+                                setInspectionFeeValue(Math.max(0, parsedValue));
+                                setIsInspectionFeeManual(true);
+                              }}
+                              readOnly={editingOnRoadRowId !== 'inspection'}
+                              className={`w-28 px-2 py-1 border rounded text-right font-semibold focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                                editingOnRoadRowId === 'inspection'
+                                  ? 'border-blue-400 bg-white'
+                                  : 'border-gray-300 bg-gray-50'
+                              }`}
+                              placeholder="0"
+                            />
+                            <button
+                              onClick={() => {
+                                setIsInspectionFeeManual(false);
+                                setInspectionFeeValue(0);
+                              }}
+                              className="px-2 py-1 text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300"
+                              title="Tính lại tự động"
+                            >
+                              ↻
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 text-center text-xs">
+                          <div className="flex items-center justify-center gap-1">
+                            {editingOnRoadRowId === 'inspection' ? (
+                              <button
+                                type="button"
+                                onClick={() => setEditingOnRoadRowId(null)}
+                                className="p-1 text-green-700 border border-green-300 rounded hover:bg-green-50"
+                                title="Lưu"
+                              >
+                                <Check className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setEditingOnRoadRowId('inspection')}
+                                className="p-1 text-blue-700 border border-blue-300 rounded hover:bg-blue-50"
+                                title="Sửa"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                window.alert('Không thể xóa dòng phí mặc định.')
+                              }
+                              className="p-1 text-gray-400 border border-gray-200 rounded hover:bg-gray-50"
+                              title="Không thể xóa phí mặc định"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* 5. Phí bảo trì đường bộ */}
+                      <tr>
+                        <td className="px-2 py-2 text-center">5</td>
+                        <td className="px-2 py-2 text-sm">Phí bảo trì đường bộ</td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={
+                              onRoadNotes.road ||
+                              (customerType === 'ca_nhan' ? 'Cá nhân' : 'Kinh doanh')
+                            }
+                            onChange={(e) =>
+                              setOnRoadNotes((prev) => ({ ...prev, road: e.target.value }))
+                            }
+                            readOnly={editingOnRoadRowId !== 'road'}
+                            className={`w-full px-2 py-1 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                              editingOnRoadRowId === 'road'
+                                ? 'border-blue-400 bg-white'
+                                : 'border-gray-200 bg-gray-50'
+                            }`}
+                            placeholder="Ghi chú"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-1 justify-end">
+                            <input
+                              type="text"
+                              value={formatCurrencyInput(
+                                isRoadFeeManual ? roadFeeValue : calculations.roadFee
+                              )}
+                              onChange={(e) => {
+                                const parsedValue = parseCurrencyInput(e.target.value);
+                                setRoadFeeValue(Math.max(0, parsedValue));
+                                setIsRoadFeeManual(true);
+                              }}
+                              readOnly={editingOnRoadRowId !== 'road'}
+                              className={`w-28 px-2 py-1 border rounded text-right font-semibold focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                                editingOnRoadRowId === 'road'
+                                  ? 'border-blue-400 bg-white'
+                                  : 'border-gray-300 bg-gray-50'
+                              }`}
+                              placeholder="0"
+                            />
+                            <button
+                              onClick={() => {
+                                setIsRoadFeeManual(false);
+                                setRoadFeeValue(0);
+                              }}
+                              className="px-2 py-1 text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300"
+                              title="Tính lại tự động"
+                            >
+                              ↻
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 text-center text-xs">
+                          <div className="flex items-center justify-center gap-1">
+                            {editingOnRoadRowId === 'road' ? (
+                              <button
+                                type="button"
+                                onClick={() => setEditingOnRoadRowId(null)}
+                                className="p-1 text-green-700 border border-green-300 rounded hover:bg-green-50"
+                                title="Lưu"
+                              >
+                                <Check className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setEditingOnRoadRowId('road')}
+                                className="p-1 text-blue-700 border border-blue-300 rounded hover:bg-blue-50"
+                                title="Sửa"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                window.alert('Không thể xóa dòng phí mặc định.')
+                              }
+                              className="p-1 text-gray-400 border border-gray-200 rounded hover:bg-gray-50"
+                              title="Không thể xóa phí mặc định"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* 6. Phí dịch vụ */}
+                      <tr>
+                        <td className="px-2 py-2 text-center">6</td>
+                        <td className="px-2 py-2 text-sm">Phí dịch vụ</td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={onRoadNotes.service || ''}
+                            onChange={(e) =>
+                              setOnRoadNotes((prev) => ({ ...prev, service: e.target.value }))
+                            }
+                            readOnly={editingOnRoadRowId !== 'service'}
+                            className={`w-full px-2 py-1 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                              editingOnRoadRowId === 'service'
+                                ? 'border-blue-400 bg-white'
+                                : 'border-gray-200 bg-gray-50'
+                            }`}
+                            placeholder="Ghi chú"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={formatCurrencyInput(registrationFee)}
+                            onChange={(e) => {
+                              const parsedValue = parseCurrencyInput(e.target.value);
+                              if (isSafeCurrency(parsedValue)) {
+                                setRegistrationFee(parsedValue);
+                              }
+                            }}
+                            readOnly={editingOnRoadRowId !== 'service'}
+                            className={`w-28 px-2 py-1 border rounded text-right font-semibold focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                              editingOnRoadRowId === 'service'
+                                ? 'border-blue-400 bg-white'
+                                : 'border-gray-300 bg-gray-50'
+                            }`}
+                            placeholder="0"
+                          />
+                        </td>
+                        <td className="px-2 py-2 text-center text-xs">
+                          <div className="flex items-center justify-center gap-1">
+                            {editingOnRoadRowId === 'service' ? (
+                              <button
+                                type="button"
+                                onClick={() => setEditingOnRoadRowId(null)}
+                                className="p-1 text-green-700 border border-green-300 rounded hover:bg-green-50"
+                                title="Lưu"
+                              >
+                                <Check className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setEditingOnRoadRowId('service')}
+                                className="p-1 text-blue-700 border border-blue-300 rounded hover:bg-blue-50"
+                                title="Sửa"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                window.alert('Không thể xóa dòng phí mặc định.')
+                              }
+                              className="p-1 text-gray-400 border border-gray-200 rounded hover:bg-gray-50"
+                              title="Không thể xóa phí mặc định"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* 7. BHVC bao gồm Pin */}
+                      <tr>
+                        <td className="px-2 py-2 text-center">7</td>
+                        <td className="px-2 py-2 text-sm">BHVC bao gồm Pin</td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="text"
+                            value={
+                              onRoadNotes.bodyInsurance ||
+                              (businessType === 'khong_kinh_doanh' ? 'Không Kinh Doanh' : 'Kinh Doanh')
+                            }
+                            onChange={(e) =>
+                              setOnRoadNotes((prev) => ({
+                                ...prev,
+                                bodyInsurance: e.target.value,
+                              }))
+                            }
+                            readOnly={editingOnRoadRowId !== 'bodyInsurance'}
+                            className={`w-full px-2 py-1 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                              editingOnRoadRowId === 'bodyInsurance'
+                                ? 'border-blue-400 bg-white'
+                                : 'border-gray-200 bg-gray-50'
+                            }`}
+                            placeholder="Ghi chú"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-1 justify-end">
+                            <input
+                              type="text"
+                              value={formatCurrencyInput(
+                                isBodyInsuranceManual
+                                  ? bodyInsuranceFee
+                                  : calculations.bodyInsurance
+                              )}
+                              onChange={(e) => {
+                                const parsedValue = parseCurrencyInput(e.target.value);
+                                if (isSafeCurrency(parsedValue)) {
+                                  setBodyInsuranceFee(parsedValue);
+                                  setIsBodyInsuranceManual(true);
+                                }
+                              }}
+                              readOnly={editingOnRoadRowId !== 'bodyInsurance'}
+                              className={`w-28 px-2 py-1 border rounded text-right font-semibold focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                                editingOnRoadRowId === 'bodyInsurance'
+                                  ? 'border-blue-400 bg-white'
+                                  : 'border-gray-300 bg-gray-50'
+                              }`}
+                              placeholder="0"
+                            />
+                            <button
+                              onClick={() => {
+                                setIsBodyInsuranceManual(false);
+                                const calculatedBodyInsurance = Math.round(
+                                  calculations.giaXuatHoaDon * 0.0145
+                                );
+                                setBodyInsuranceFee(calculatedBodyInsurance);
+                              }}
+                              className="px-2 py-1 text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300"
+                              title="Tính lại tự động"
+                            >
+                              ↻
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 text-center text-xs">
+                          <div className="flex items-center justify-center gap-1">
+                            {editingOnRoadRowId === 'bodyInsurance' ? (
+                              <button
+                                type="button"
+                                onClick={() => setEditingOnRoadRowId(null)}
+                                className="p-1 text-green-700 border border-green-300 rounded hover:bg-green-50"
+                                title="Lưu"
+                              >
+                                <Check className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setEditingOnRoadRowId('bodyInsurance')}
+                                className="p-1 text-blue-700 border border-blue-300 rounded hover:bg-blue-50"
+                                title="Sửa"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                window.alert('Không thể xóa dòng phí mặc định.')
+                              }
+                              className="p-1 text-gray-400 border border-gray-200 rounded hover:bg-gray-50"
+                              title="Không thể xóa phí mặc định"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* Extra custom rows */}
+                      {extraOnRoadRows.map((row, index) => (
+                        <tr key={row.id}>
+                          <td className="px-2 py-2 text-center">
+                            {7 + index + 1}
+                          </td>
+                          <td className="px-2 py-2">
+                            <input
+                              type="text"
+                              value={row.name}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setExtraOnRoadRows((prev) =>
+                                  prev.map((r) =>
+                                    r.id === row.id ? { ...r, name: value } : r
+                                  )
+                                );
+                              }}
+                              readOnly={editingOnRoadRowId !== row.id}
+                              className={`w-full px-2 py-1 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm ${
+                                editingOnRoadRowId === row.id
+                                  ? 'border-blue-400 bg-white'
+                                  : 'border-gray-200 bg-gray-50'
+                              }`}
+                              placeholder="Tên phí khác"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <input
+                              type="text"
+                              value={row.note || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setExtraOnRoadRows((prev) =>
+                                  prev.map((r) =>
+                                    r.id === row.id ? { ...r, note: value } : r
+                                  )
+                                );
+                              }}
+                              readOnly={editingOnRoadRowId !== row.id}
+                              className={`w-full px-2 py-1 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                                editingOnRoadRowId === row.id
+                                  ? 'border-blue-400 bg-white'
+                                  : 'border-gray-200 bg-gray-50'
+                              }`}
+                              placeholder="Ghi chú"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <input
+                              type="text"
+                              value={formatCurrencyInput(row.amount || 0)}
+                              onChange={(e) => {
+                                const parsedValue = parseCurrencyInput(e.target.value);
+                                if (isSafeCurrency(parsedValue)) {
+                                  setExtraOnRoadRows((prev) =>
+                                    prev.map((r) =>
+                                      r.id === row.id
+                                        ? { ...r, amount: Math.max(0, parsedValue) }
+                                        : r
+                                    )
+                                  );
+                                }
+                              }}
+                              readOnly={editingOnRoadRowId !== row.id}
+                              className={`w-28 px-2 py-1 border rounded text-right font-semibold focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                                editingOnRoadRowId === row.id
+                                  ? 'border-blue-400 bg-white'
+                                  : 'border-gray-300 bg-gray-50'
+                              }`}
+                              placeholder="0"
+                            />
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              {editingOnRoadRowId === row.id ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingOnRoadRowId(null)}
+                                  className="p-1 text-green-700 border border-green-300 rounded hover:bg-green-50"
+                                  title="Lưu"
+                                >
+                                  <Check className="w-3 h-3" />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingOnRoadRowId(row.id)}
+                                  className="p-1 text-blue-700 border border-blue-300 rounded hover:bg-blue-50"
+                                  title="Sửa"
+                                >
+                                  <Edit className="w-3 h-3" />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      'Bạn có chắc chắn muốn xóa dòng chi phí này?'
+                                    )
+                                  ) {
+                                    setExtraOnRoadRows((prev) =>
+                                      prev.filter((r) => r.id !== row.id)
+                                    );
+                                  }
+                                }}
+                                className="p-1 text-red-600 hover:text-red-800 border border-red-200 rounded hover:bg-red-50 inline-flex items-center justify-center"
+                                title="Xóa dòng chi phí"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="px-3 py-2 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newId = Date.now();
+                        setExtraOnRoadRows((prev) => [
+                          ...prev,
+                          {
+                            id: newId,
+                            name: '',
+                            note: '',
+                            amount: 0,
+                          },
+                        ]);
+                        setEditingOnRoadRowId(newId);
                       }}
-                      className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right font-semibold"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-gray-600">BHVC bao gồm Pin</span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={formatCurrencyInput(isBodyInsuranceManual ? bodyInsuranceFee : calculations.bodyInsurance)}
-                        onChange={(e) => {
-                          const parsedValue = parseCurrencyInput(e.target.value);
-                          if (isSafeCurrency(parsedValue)) {
-                            setBodyInsuranceFee(parsedValue);
-                            setIsBodyInsuranceManual(true);
-                          }
-                        }}
-                        className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right font-semibold"
-                        placeholder="0"
-                      />
-                      <button
-                        onClick={() => {
-                          setIsBodyInsuranceManual(false); // Reset về chế độ tự động (BHVC = Giá XHD × 1,45%)
-                          const calculatedBodyInsurance = Math.round(calculations.giaXuatHoaDon * 0.0145);
-                          setBodyInsuranceFee(calculatedBodyInsurance);
-                        }}
-                        className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded border border-gray-300 transition-colors"
-                        title="Tính lại tự động"
-                      >
-                        ↻
-                      </button>
-                    </div>
+                      className="px-3 py-1 text-xs bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-100"
+                    >
+                      + Thêm dòng chi phí
+                    </button>
+                    <span className="text-[11px] text-gray-500">
+                      Có thể thêm/sửa/xóa các dòng chi phí khác.
+                    </span>
                   </div>
                 </div>
               </div>
