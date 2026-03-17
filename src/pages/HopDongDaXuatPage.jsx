@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import FilterPanel from "../components/FilterPanel";
 import { ref, get, remove, update } from "firebase/database";
 import { database } from "../firebase/config";
-import { ArrowLeft, X, Trash2, Edit, AlertTriangle, Image } from "lucide-react";
+import { ArrowLeft, X, Trash2, Edit, AlertTriangle, Image, Download } from "lucide-react";
+import { exportTableToExcel } from "../utils/exportToExcel";
 import { toast } from "react-toastify";
 import {
   uniqueNgoaiThatColors,
@@ -734,6 +735,55 @@ export default function HopDongDaXuatPage() {
     return new Intl.NumberFormat("vi-VN").format(num);
   };
 
+  // Export exported contracts to Excel
+  const handleExportExcel = async () => {
+    if (filteredContracts.length === 0) {
+      toast.warning("Không có dữ liệu để xuất");
+      return;
+    }
+    try {
+      await exportTableToExcel({
+        data: filteredContracts,
+        columns: [
+          { header: "STT", getValue: (_, idx) => idx + 1 },
+          { header: "Ngày XHD", key: "ngayXhd" },
+          { header: "TVBH", key: "tvbh" },
+          { header: "Showroom", key: "showroom" },
+          { header: "VSO", key: "vso" },
+          { header: "Tên KH", key: "tenKh" },
+          { header: "Số Điện Thoại", key: "soDienThoai" },
+          { header: "Email", key: "email" },
+          { header: "Địa Chỉ lấy theo VNeid", key: "diaChi" },
+          { header: "CCCD", key: "cccd" },
+          { header: "Ngày Cấp", key: "ngayCap" },
+          { header: "Nơi Cấp", key: "noiCap" },
+          { header: "Dòng xe", key: "dongXe" },
+          { header: "Phiên Bản", key: "phienBan" },
+          { header: "Ngoại Thất", getValue: (row) => getColorName(row.ngoaiThat || "", true) },
+          { header: "Nội Thất", getValue: (row) => getColorName(row.noiThat || "", false) },
+          { header: "Số Khung", key: "soKhung" },
+          { header: "Số Máy", key: "soMay" },
+          { header: "Tình Trạng", key: "tinhTrang" },
+          { header: "Giá Niêm Yết", getValue: (row) => formatCurrency(row.giaNiemYet) },
+          { header: "Giá Giảm", getValue: (row) => formatCurrency(row.giaGiam) },
+          { header: "Giá Hợp Đồng", getValue: (row) => formatCurrency(row.giaHopDong) },
+          { header: "Thanh toán", key: "thanhToan" },
+          { header: "Ngân hàng", key: "nganHang" },
+          { header: "Tiền đặt cọc", getValue: (row) => formatCurrency(row.tienDatCoc) },
+          { header: "Tiền đối ứng", getValue: (row) => formatCurrency(calculateCounterpartPayment(row)) },
+          { header: "Tiền vay ngân hàng", getValue: (row) => formatCurrency(calculateBankLoan(row)) },
+          { header: "Số Ngày", getValue: (row) => { const v = calculateDaysFromExport(row.ngayXhd, row.tinhTrang); return v === "-" ? "" : `${v} ngày`; } },
+        ],
+        sheetName: "Hợp đồng đã xuất",
+        filename: `HopDongDaXuat_${new Date().toISOString().split("T")[0]}.xlsx`,
+      });
+      toast.success("Xuất Excel thành công");
+    } catch (err) {
+      console.error("Export Excel error:", err);
+      toast.error("Lỗi xuất Excel: " + (err?.message || err));
+    }
+  };
+
   // Calculate bank loan amount (tiền vay ngân hàng)
   const calculateBankLoan = (contract) => {
     // Priority: soTienVay > tienVayNganHang > calculated value
@@ -1139,6 +1189,16 @@ export default function HopDongDaXuatPage() {
                 </span>
               )}
             </p>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={filteredContracts.length === 0}
+              className="px-3 py-1.5 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Tải xuống Excel"
+            >
+              <Download className="w-4 h-4" />
+              Xuất Excel
+            </button>
             {filteredContracts.length > itemsPerPage && (
               <p className="text-xs sm:hidden text-secondary-500">
                 Trang {currentPage}/{totalPages} ({startIndex + 1}-

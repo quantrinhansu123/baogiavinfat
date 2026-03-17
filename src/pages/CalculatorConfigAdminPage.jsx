@@ -9,9 +9,10 @@ import {
   formatCurrency,
 } from '../data/calculatorData';
 import CurrencyInput from '../components/shared/CurrencyInput';
-import { Plus, Edit2, Trash2, RotateCcw, ArrowLeft, Image, Search, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, RotateCcw, ArrowLeft, Image, Search, X, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { exportTableToExcel } from '../utils/exportToExcel';
 
 const TABS = [
   { key: 'carPrice', label: 'Bảng giá xe' },
@@ -173,6 +174,47 @@ export default function CalculatorConfigAdminPage() {
     finally { setIsRestoring(false); }
   };
 
+  const handleExportExcel = async () => {
+    if (rows.length === 0) {
+      toast.warning('Không có dữ liệu để xuất');
+      return;
+    }
+    const getExtName = (code) => (fbExtRows || []).find((c) => c.code === code)?.name || code;
+    const getIntName = (code) => (fbIntRows || []).find((c) => c.code === code)?.name || code;
+    try {
+      if (tab === 'carPrice') {
+        await exportTableToExcel({
+          data: rows,
+          columns: [
+            { header: 'Dòng xe', key: 'model' },
+            { header: 'Phiên bản', key: 'trim' },
+            { header: 'Màu ngoại thất', getValue: (row) => getExtName(row.exterior_color) },
+            { header: 'Màu nội thất', getValue: (row) => getIntName(row.interior_color) },
+            { header: 'Giá (VNĐ)', getValue: (row) => formatCurrency(row.price_vnd || 0) },
+            { header: 'Đường dẫn ảnh xe', key: 'car_image_url' },
+          ],
+          sheetName: 'Bảng giá xe',
+          filename: `BangGiaXe_${new Date().toISOString().split('T')[0]}.xlsx`,
+        });
+      } else {
+        await exportTableToExcel({
+          data: rows,
+          columns: [
+            { header: 'Mã màu', key: 'code' },
+            { header: 'Tên màu', key: 'name' },
+            { header: 'Đường dẫn ảnh màu', key: 'icon' },
+          ],
+          sheetName: tab === 'exterior' ? 'Màu ngoại thất' : 'Màu nội thất',
+          filename: `Mau${tab === 'exterior' ? 'NgoaiThat' : 'NoiThat'}_${new Date().toISOString().split('T')[0]}.xlsx`,
+        });
+      }
+      toast.success('Xuất Excel thành công');
+    } catch (err) {
+      console.error('Export Excel error:', err);
+      toast.error('Lỗi xuất Excel: ' + (err?.message || err));
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       {/* Header */}
@@ -193,6 +235,10 @@ export default function CalculatorConfigAdminPage() {
           <button type="button" onClick={restoreDefault} disabled={isRestoring || loading}
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 disabled:opacity-50 text-sm">
             <RotateCcw className="h-4 w-4" /> Khôi phục tab này
+          </button>
+          <button type="button" onClick={handleExportExcel} disabled={rows.length === 0}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-primary-600 text-primary-600 hover:bg-primary-50 disabled:opacity-50 text-sm">
+            <Download className="h-4 w-4" /> Xuất Excel
           </button>
           <button type="button" onClick={openAdd}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 text-sm">

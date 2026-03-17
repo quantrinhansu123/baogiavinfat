@@ -94,12 +94,14 @@ export default function CustomerFormModal({
                 Số Điện Thoại <span className="text-red-500">*</span>
               </label>
               <input
-                type="text"
+                type="tel"
                 value={formData.soDienThoai}
                 onChange={(e) => onInputChange('soDienThoai', e.target.value)}
+                placeholder="+84 912 345 678"
                 className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 required
               />
+              <p className="text-xs text-gray-500 mt-1">Mặc định vùng Việt Nam (+84)</p>
             </div>
 
             <div>

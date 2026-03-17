@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Trash2, Check, Globe, Edit, ArrowLeft } from 'lucide-react';
+import { X, Trash2, Check, Globe, Edit, ArrowLeft, Download } from 'lucide-react';
+import { exportTableToExcel } from '../utils/exportToExcel';
 import { ref, get, update, remove, push, set } from 'firebase/database';
 import { database } from '../firebase/config';
 import FilterPanel from '../components/FilterPanel';
@@ -618,6 +619,37 @@ export default function NhanSuPage() {
     }
   };
 
+  // Export employees to Excel
+  const handleExportExcel = async () => {
+    if (filteredUsers.length === 0) {
+      toast.warning('Không có dữ liệu để xuất');
+      return;
+    }
+    try {
+      await exportTableToExcel({
+        data: filteredUsers,
+        columns: [
+          { header: 'STT', getValue: (_, idx) => idx + 1 },
+          { header: 'TVBH', getValue: (row) => row['Họ Và Tên'] || row.TVBH || row.name || '' },
+          { header: 'Số Điện Thoại', getValue: (row) => row.phone || row.soDienThoai || row['Số Điện Thoại'] || '' },
+          { header: 'Mail', getValue: (row) => row.email || row.mail || '' },
+          { header: 'Sinh Nhật', getValue: (row) => row['Sinh Nhật'] || row.sinhNhat || row.birthdate || '' },
+          { header: 'Ngày vào làm', getValue: (row) => row['Ngày vào làm'] || row.ngayVaoLam || row.createdAt || '' },
+          { header: 'Chức Vụ', getValue: (row) => row['Vị trí'] || row.chucVu || row.position || '' },
+          { header: 'Phòng Ban', getValue: (row) => row['Bộ phận'] || row.phongBan || row.department || '' },
+          { header: 'Tình trạng', getValue: (row) => row.tinhTrang || row.status || '' },
+          { header: 'Quyền', getValue: (row) => row.quyen || row.role || '' },
+        ],
+        sheetName: 'Nhân sự',
+        filename: `NhanSu_${new Date().toISOString().split('T')[0]}.xlsx`,
+      });
+      toast.success('Xuất Excel thành công');
+    } catch (err) {
+      console.error('Export Excel error:', err);
+      toast.error('Lỗi xuất Excel: ' + (err?.message || err));
+    }
+  };
+
   // Calculate pagination
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -705,6 +737,16 @@ export default function NhanSuPage() {
                 </span>
               )}
             </p>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={filteredUsers.length === 0}
+              className="px-3 py-1.5 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Tải xuống Excel"
+            >
+              <Download className="w-4 h-4" />
+              Xuất Excel
+            </button>
             {filteredUsers.length > itemsPerPage && (
               <p className="text-xs sm:hidden text-secondary-500">
                 Trang {currentPage}/{totalPages} ({startIndex + 1}-{Math.min(endIndex, filteredUsers.length)})

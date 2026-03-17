@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Gift, Plus, Check, Edit, Trash2, X, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Gift, Plus, Check, Edit, Trash2, X, RefreshCw, Download } from 'lucide-react';
+import { exportTableToExcel } from '../utils/exportToExcel';
 import { toast } from 'react-toastify';
 import { ref, push, set, update, remove, get } from 'firebase/database';
 import { database } from '../firebase/config';
@@ -309,6 +310,33 @@ export default function PromotionsPage() {
         })
         .filter(p => !promotionSearchTerm.trim() || (p.name || '').toLowerCase().includes(promotionSearchTerm.trim().toLowerCase()));
 
+    const handleExportExcel = async () => {
+        if (filteredPromotions.length === 0) {
+            toast.warning('Không có dữ liệu để xuất');
+            return;
+        }
+        try {
+            await exportTableToExcel({
+                data: filteredPromotions,
+                columns: [
+                    { header: 'Tên chương trình', key: 'name' },
+                    { header: 'DMS', key: 'dms' },
+                    { header: 'Loại', getValue: (row) => row.type === 'display' ? 'Chỉ hiển thị' : row.type === 'percentage' ? 'Giảm %' : row.type === 'fixed' ? 'Giảm tiền' : row.type || '' },
+                    { header: 'Giá trị', getValue: (row) => row.type === 'percentage' ? (row.value != null ? `${row.value}%` : '') : row.type === 'fixed' ? formatCurrency(row.value) : '' },
+                    { header: 'Thời gian áp dụng', getValue: (row) => formatEffectiveDateDisplay(row.thoiGianApDung || '') },
+                    { header: 'Tình trạng', key: 'tinhTrang' },
+                    { header: 'Dòng xe áp dụng', getValue: (row) => (normalizeDongXe(row.dongXe).map(code => dongXeCodeToName[code] || code)).join(', ') || 'Tất cả' },
+                ],
+                sheetName: 'Chương trình ưu đãi',
+                filename: `ChuongTrinhUuDai_${new Date().toISOString().split('T')[0]}.xlsx`,
+            });
+            toast.success('Xuất Excel thành công');
+        } catch (err) {
+            console.error('Export Excel error:', err);
+            toast.error('Lỗi xuất Excel: ' + (err?.message || err));
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-100 p-4">
             <div className="max-w-5xl mx-auto">
@@ -550,6 +578,16 @@ export default function PromotionsPage() {
                                 placeholder="Tìm kiếm..."
                                 className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm w-48 sm:w-64 focus:ring-purple-500"
                             />
+                            <button
+                                type="button"
+                                onClick={handleExportExcel}
+                                disabled={filteredPromotions.length === 0}
+                                className="p-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 disabled:opacity-50 flex items-center gap-1.5 text-sm font-medium"
+                                title="Tải xuống Excel"
+                            >
+                                <Download className="w-4 h-4" />
+                                Xuất Excel
+                            </button>
                             <button onClick={loadPromotions} className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50" title="Tải lại">
                                 <RefreshCw className={`w-4 h-4 text-gray-600 ${loadingPromotions ? 'animate-spin' : ''}`} />
                             </button>

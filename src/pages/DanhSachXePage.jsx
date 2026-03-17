@@ -4,13 +4,18 @@ import { toast } from 'react-toastify';
 import { ref, set, push, update, remove } from 'firebase/database';
 import { database } from '../firebase/config';
 import { useFirebaseQuery } from '../hooks';
-import { danh_sach_xe, carPriceData, uniqueNgoaiThatColors, uniqueNoiThatColors, getCarImageUrl } from '../data/calculatorData';
+import { carPriceData as staticCarPriceData, uniqueNgoaiThatColors, uniqueNoiThatColors, getCarImageUrl } from '../data/calculatorData';
+import { useCarPriceData } from '../contexts/CarPriceDataContext';
 import { parseVehicleExcel, exportVehiclesToExcel, downloadImportTemplate, VEHICLE_STATUSES, STATUS_LABELS, STATUS_COLORS } from '../utils/excelParser';
 
 export default function DanhSachXePage() {
     // Use custom Firebase hook for realtime data
     const { data: vehiclesRaw, loading: isLoading, error } = useFirebaseQuery('vehicleInventory');
     const vehicles = Array.isArray(vehiclesRaw) ? vehiclesRaw : [];
+
+    // Bảng giá từ Firebase — dùng cho filter dropdown và form thêm/sửa xe (đồng bộ với Quản trị bảng giá)
+    const { carPriceData: carPriceDataFromContext } = useCarPriceData();
+    const carPriceData = Array.isArray(carPriceDataFromContext) && carPriceDataFromContext.length > 0 ? carPriceDataFromContext : staticCarPriceData;
 
     const [expandedRows, setExpandedRows] = useState(new Set());
     const [showAddModal, setShowAddModal] = useState(false);
@@ -305,31 +310,50 @@ export default function DanhSachXePage() {
         return found ? found.name : colorCode;
     };
 
-    // Get unique models from vehicles
-    const getUniqueModels = () => {
-        return [...new Set(vehicles.map(v => v.model))].sort();
-    };
+    // Danh sách Dòng xe cho filter — từ bảng giá Firebase + tồn kho (đồng bộ với Quản trị bảng giá). Loại trừ VF2 khỏi filter.
+    const filterModelOptions = useMemo(() => {
+        const fromPrice = (carPriceData || []).map((c) => c.model).filter(Boolean);
+        const fromVehicles = vehicles.map((v) => v.model).filter(Boolean);
+        const unique = [...new Set([...fromPrice, ...fromVehicles])].filter((m) => m !== 'VF2');
+        const modelOrder = ['VF 3', 'VF 5', 'VF 6', 'VF 7', 'VF 8', 'VF 9', 'Minio', 'Herio', 'Nerio', 'Limo', 'EC', 'EC Nâng Cao'];
+        return unique.sort((a, b) => {
+            const iA = modelOrder.indexOf(a);
+            const iB = modelOrder.indexOf(b);
+            if (iA !== -1 && iB !== -1) return iA - iB;
+            if (iA !== -1) return -1;
+            if (iB !== -1) return 1;
+            return (a || '').localeCompare(b || '');
+        });
+    }, [carPriceData, vehicles]);
 
-    // Get unique trims based on selected model
-    const getUniqueTrims = () => {
-        if (!filters.model) {
-            return [...new Set(vehicles.map(v => v.trim))].sort();
+    // Bỏ chọn VF2 nếu đang chọn (do đã loại VF2 khỏi filter)
+    useEffect(() => {
+        if (filters.model === 'VF2') {
+            setFilters((prev) => ({ ...prev, model: '', trim: '', exteriorColor: '' }));
         }
-        return [...new Set(vehicles.filter(v => v.model === filters.model).map(v => v.trim))].sort();
-    };
+    }, [filters.model]);
 
-    // Get unique exterior colors based on filters
-    const getUniqueExteriorColors = () => {
-        let filtered = vehicles;
+    // Phiên bản cho filter — từ bảng giá theo dòng xe đã chọn (hoặc tất cả khi chưa chọn)
+    const filterTrimOptions = useMemo(() => {
+        let list = carPriceData || [];
         if (filters.model) {
-            filtered = filtered.filter(v => v.model === filters.model);
+            list = list.filter((c) => c.model === filters.model);
         }
-        if (filters.trim) {
-            filtered = filtered.filter(v => v.trim === filters.trim);
-        }
-        const colorCodes = [...new Set(filtered.map(v => v.exterior_color))];
-        return uniqueNgoaiThatColors.filter(color => colorCodes.includes(color.code));
-    };
+        const trims = [...new Set(list.map((c) => c.trim).filter(Boolean))];
+        return trims.sort();
+    }, [carPriceData, filters.model]);
+
+    // Màu ngoại thất cho filter — từ bảng giá theo dòng xe + phiên bản
+    const filterExteriorColorOptions = useMemo(() => {
+        let list = carPriceData || [];
+        if (filters.model) list = list.filter((c) => c.model === filters.model);
+        if (filters.trim) list = list.filter((c) => c.trim === filters.trim);
+        const codes = [...new Set(list.map((c) => c.exterior_color).filter(Boolean))];
+        return uniqueNgoaiThatColors.filter((c) => codes.includes(c.code));
+    }, [carPriceData, filters.model, filters.trim]);
+
+    // Danh sách dòng xe cho form Thêm/Sửa xe (cùng nguồn với filter)
+    const formModelOptions = useMemo(() => filterModelOptions, [filterModelOptions]);
 
     const clearFilters = () => {
         setFilters({
@@ -567,7 +591,7 @@ export default function DanhSachXePage() {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                             <option value="">Tất cả</option>
-                            {getUniqueModels().map((model) => (
+                            {filterModelOptions.map((model) => (
                                 <option key={model} value={model}>
                                     {model}
                                 </option>
@@ -586,7 +610,7 @@ export default function DanhSachXePage() {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                             <option value="">Tất cả</option>
-                            {getUniqueTrims().map((trim) => (
+                            {filterTrimOptions.map((trim) => (
                                 <option key={trim} value={trim}>
                                     {trim}
                                 </option>
@@ -605,7 +629,7 @@ export default function DanhSachXePage() {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                             <option value="">Tất cả</option>
-                            {getUniqueExteriorColors().map((color) => (
+                            {filterExteriorColorOptions.map((color) => (
                                 <option key={color.code} value={color.code}>
                                     {color.name}
                                 </option>
@@ -1143,9 +1167,9 @@ export default function DanhSachXePage() {
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     >
                                         <option value="">-- Chọn dòng xe --</option>
-                                        {danh_sach_xe.map((xe) => (
-                                            <option key={xe.dong_xe} value={xe.ten_hien_thi}>
-                                                {xe.ten_hien_thi}
+                                        {formModelOptions.map((model) => (
+                                            <option key={model} value={model}>
+                                                {model}
                                             </option>
                                         ))}
                                     </select>
@@ -1318,9 +1342,9 @@ export default function DanhSachXePage() {
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     >
                                         <option value="">-- Chọn dòng xe --</option>
-                                        {danh_sach_xe.map((xe) => (
-                                            <option key={xe.dong_xe} value={xe.ten_hien_thi}>
-                                                {xe.ten_hien_thi}
+                                        {formModelOptions.map((model) => (
+                                            <option key={model} value={model}>
+                                                {model}
                                             </option>
                                         ))}
                                     </select>

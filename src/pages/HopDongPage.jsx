@@ -10,6 +10,7 @@ import { useCarPriceData } from '../contexts/CarPriceDataContext';
 import { getBranchByShowroomName, getAllBranches } from '../data/branchData';
 import { loadPromotionsFromFirebase, filterPromotionsByDongXe, normalizeDongXe } from '../data/promotionsData';
 import CurrencyInput from '../components/shared/CurrencyInput';
+import { exportTableToExcel } from '../utils/exportToExcel';
 
 export default function HopDongPage() {
   const { carPriceData } = useCarPriceData();
@@ -113,6 +114,50 @@ export default function HopDongPage() {
     
     // Format with thousand separators
     return numValue.toLocaleString('vi-VN');
+  };
+
+  // Export contracts to Excel
+  const handleExportExcel = async () => {
+    if (filteredContracts.length === 0) {
+      toast.warning('Không có dữ liệu để xuất');
+      return;
+    }
+    try {
+      await exportTableToExcel({
+        data: filteredContracts,
+        columns: [
+          { header: 'STT', getValue: (_, idx) => idx + 1 },
+          { header: 'Mã HĐ', getValue: (row) => (row.firebaseKey || row.id || '').slice(-8) },
+          { header: 'Ngày tạo', key: 'createdAt' },
+          { header: 'TVBH', key: 'TVBH' },
+          { header: 'Showroom', getValue: (row) => getShowroomShortName(row.showroom || '') },
+          { header: 'VSO', key: 'vso' },
+          { header: 'Tên KH', key: 'customerName' },
+          { header: 'Số Điện thoại', key: 'phone' },
+          { header: 'email', key: 'email' },
+          { header: 'Địa chỉ', key: 'address' },
+          { header: 'sô CCCD', key: 'cccd' },
+          { header: 'Ngày Cấp', key: 'issueDate' },
+          { header: 'Nơi Cấp', key: 'issuePlace' },
+          { header: 'Dòng xe', key: 'model' },
+          { header: 'Phiên Bản', key: 'variant' },
+          { header: 'Ngoại Thất', getValue: (row) => getColorName(row.exterior || '', true) },
+          { header: 'Nội Thất', getValue: (row) => getColorName(row.interior || '', false) },
+          { header: 'Giá HD', getValue: (row) => formatCurrency(row.contractPrice) },
+          { header: 'Số tiền cọc', getValue: (row) => formatCurrency(row.deposit) },
+          { header: 'thanh toán', key: 'payment' },
+          { header: 'ngân hàng', key: 'bank' },
+          { header: 'ưu đãi', key: 'uuDai' },
+          { header: 'trạng thái', key: 'status' },
+        ],
+        sheetName: 'Hợp đồng',
+        filename: `HopDong_${new Date().toISOString().split('T')[0]}.xlsx`,
+      });
+      toast.success('Xuất Excel thành công');
+    } catch (err) {
+      console.error('Export Excel error:', err);
+      toast.error('Lỗi xuất Excel: ' + (err?.message || err));
+    }
   };
 
   useEffect(() => {
@@ -1293,6 +1338,16 @@ export default function HopDongPage() {
                 </span>
               )}
             </p>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={filteredContracts.length === 0}
+              className="px-3 py-1.5 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Tải xuống Excel"
+            >
+              <Download className="w-4 h-4" />
+              Xuất Excel
+            </button>
             {filteredContracts.length > itemsPerPage && (
               <p className="text-xs sm:hidden text-secondary-500">
                 Trang {currentPage}/{totalPages} ({startIndex + 1}-{Math.min(endIndex, filteredContracts.length)})

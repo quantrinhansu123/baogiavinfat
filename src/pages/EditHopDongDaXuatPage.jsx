@@ -4,7 +4,8 @@ import { ref, get, update } from "firebase/database";
 import { database } from "../firebase/config";
 import { X, Edit, ArrowLeft, Image, Printer } from "lucide-react";
 import { toast } from "react-toastify";
-import { carPriceData, uniqueNgoaiThatColors, uniqueNoiThatColors } from '../data/calculatorData';
+import { carPriceData as staticCarPriceData, uniqueNgoaiThatColors, uniqueNoiThatColors } from '../data/calculatorData';
+import { useCarPriceData } from '../contexts/CarPriceDataContext';
 import { uploadImageToCloudinary } from '../config/cloudinary';
 import { getAllBranches } from '../data/branchData';
 import CurrencyInput from '../components/shared/CurrencyInput';
@@ -14,6 +15,9 @@ export default function EditHopDongDaXuatPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { carPriceData: carPriceDataFromContext } = useCarPriceData();
+  const carPriceData = Array.isArray(carPriceDataFromContext) && carPriceDataFromContext.length > 0 ? carPriceDataFromContext : staticCarPriceData;
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -221,7 +225,7 @@ export default function EditHopDongDaXuatPage() {
     }
   }, [location.state, loading, navigate, location.pathname]);
 
-  // Get unique car models from carPriceData
+  // Get unique car models from carPriceData (Firebase khi có — đồng bộ với Quản trị bảng giá)
   const carModels = useMemo(() => {
     const uniqueModels = new Set();
     carPriceData.forEach((car) => {
@@ -246,7 +250,7 @@ export default function EditHopDongDaXuatPage() {
       // If neither is in the list, sort alphabetically
       return a.localeCompare(b);
     });
-  }, []);
+  }, [carPriceData]);
 
   // Get available trims (variants) for selected model
   const availableTrims = useMemo(() => {
@@ -258,7 +262,7 @@ export default function EditHopDongDaXuatPage() {
       }
     });
     return Array.from(trims).sort();
-  }, [contract.dongXe]);
+  }, [contract.dongXe, carPriceData]);
 
   // Get available exterior colors for selected model and trim
   const availableExteriorColors = useMemo(() => {
@@ -270,7 +274,7 @@ export default function EditHopDongDaXuatPage() {
       }
     });
     return uniqueNgoaiThatColors.filter((color) => colorCodes.has(color.code));
-  }, [contract.dongXe, contract.phienBan]);
+  }, [contract.dongXe, contract.phienBan, carPriceData]);
 
   // Get available interior colors for selected model and trim
   const availableInteriorColors = useMemo(() => {
@@ -282,7 +286,7 @@ export default function EditHopDongDaXuatPage() {
       }
     });
     return uniqueNoiThatColors.filter((color) => colorCodes.has(color.code));
-  }, [contract.dongXe, contract.phienBan]);
+  }, [contract.dongXe, contract.phienBan, carPriceData]);
 
   // Helper function to map color code to name (for display)
   const mapColorCodeToName = (colorCode, isExterior = true) => {
@@ -363,6 +367,20 @@ export default function EditHopDongDaXuatPage() {
       // Reset dependent fields when exterior changes
       if (field === 'ngoaiThat') {
         updated.noiThat = '';
+      }
+
+      // Tự động điền Giá Niêm Yết từ bảng giá (Firebase) khi chọn đủ dòng xe + phiên bản + màu
+      if (['dongXe', 'phienBan', 'ngoaiThat', 'noiThat'].includes(field) && updated.dongXe && updated.phienBan) {
+        const match = carPriceData.find(
+          (c) =>
+            c.model === updated.dongXe &&
+            c.trim === updated.phienBan &&
+            (c.exterior_color === updated.ngoaiThat || !updated.ngoaiThat) &&
+            (c.interior_color === updated.noiThat || !updated.noiThat)
+        );
+        if (match && match.price_vnd != null) {
+          updated.giaNiemYet = String(match.price_vnd);
+        }
       }
 
       return updated;

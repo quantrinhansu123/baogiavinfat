@@ -46,6 +46,28 @@ export const isValidPhone = (phone) => {
   return VN_PHONE_REGEX.test(cleaned);
 };
 
+/** Default Vietnam country code for storage and display */
+export const VN_PHONE_PREFIX = '+84';
+
+/**
+ * Normalize phone number to Vietnam format (+84...).
+ * Use for storage and display so all numbers are consistently +84.
+ * @param {string} phone - Raw input (e.g. 0912345678, 84912345678, +84912345678)
+ * @returns {string} Normalized e.g. +84912345678, or '' if empty/invalid
+ */
+export const normalizePhoneToVn = (phone) => {
+  if (phone === null || phone === undefined) return '';
+  const s = String(phone).trim();
+  if (!s) return '';
+  const cleaned = s.replace(/[\s\-\.]/g, '');
+  if (cleaned.startsWith('+84')) return cleaned;
+  if (cleaned.startsWith('84') && cleaned.length >= 10) return '+' + cleaned;
+  if (cleaned.startsWith('0') && cleaned.length >= 10) return '+84' + cleaned.slice(1);
+  // 9 digits without leading 0: 912345678 -> +84912345678
+  if (/^[35789]\d{8}$/.test(cleaned)) return '+84' + cleaned;
+  return '';
+};
+
 /**
  * Validate VSO format
  * @param {string} vso - VSO string to validate
@@ -177,6 +199,8 @@ export const parseCurrency = (value) => {
 export default {
   isValidCCCD,
   isValidPhone,
+  normalizePhoneToVn,
+  VN_PHONE_PREFIX,
   isValidVSO,
   isValidMaDms,
   isValidInterestRate,

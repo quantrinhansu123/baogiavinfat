@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, get, push, update, remove } from 'firebase/database';
 import { database } from '../firebase/config';
-import { X, Trash2, Plus, Edit, Search, ArrowLeft, FileText, ChevronDown } from 'lucide-react';
+import { X, Trash2, Plus, Edit, Search, ArrowLeft, FileText, ChevronDown, Download } from 'lucide-react';
+import { exportTableToExcel } from '../utils/exportToExcel';
 import { toast } from 'react-toastify';
-import { uniqueNgoaiThatColors, uniqueNoiThatColors, danh_sach_xe, carPriceData } from '../data/calculatorData';
+import { uniqueNgoaiThatColors, uniqueNoiThatColors, carPriceData as staticCarPriceData, getAvailableDongXeForPromotion } from '../data/calculatorData';
+import { useCarPriceData } from '../contexts/CarPriceDataContext';
 import { getBranchByShowroomName } from '../data/branchData';
 import { provinces } from '../data/provincesData';
+import { normalizePhoneToVn, VN_PHONE_PREFIX } from '../utils/validation';
 import {
   getMucDoColorClasses,
   MUC_DO_OPTIONS,
@@ -21,6 +24,9 @@ import {
 
 export default function QuanLyKhachHangPage() {
   const navigate = useNavigate();
+  const { carPriceData: carPriceDataFromContext } = useCarPriceData();
+  const carPriceData = Array.isArray(carPriceDataFromContext) && carPriceDataFromContext.length > 0 ? carPriceDataFromContext : staticCarPriceData;
+
   const [allCustomers, setAllCustomers] = useState([]); // Store all customers before filtering
   const [customers, setCustomers] = useState([]); // Filtered customers based on permissions
   const [filteredCustomers, setFilteredCustomers] = useState([]);
@@ -109,9 +115,9 @@ export default function QuanLyKhachHangPage() {
     return found ? found.name : colorCode;
   };
 
-  // Get list of car models (dòng xe)
+  // Get list of car models (dòng xe) — từ bảng giá Firebase + danh_sach_xe tĩnh, đồng bộ với Quản trị bảng giá
   const getCarModels = () => {
-    return danh_sach_xe.map(xe => xe.ten_hien_thi);
+    return getAvailableDongXeForPromotion(carPriceData).map((x) => x.name);
   };
 
   // Get list of variants (phiên bản) based on selected car model
@@ -361,6 +367,7 @@ export default function QuanLyKhachHangPage() {
   }, []);
 
   // Load all customers from Firebase (without permission filter)
+  // Tự động chuẩn hóa số điện thoại chưa +84 trong DB (cập nhật ngầm, không chặn UI)
   useEffect(() => {
     const loadCustomers = async () => {
       try {
@@ -368,16 +375,32 @@ export default function QuanLyKhachHangPage() {
         const snapshot = await get(customersRef);
         const data = snapshot.exists() ? snapshot.val() : {};
 
-        const customersList = Object.entries(data || {}).map(([key, customer], index) => ({
-          firebaseKey: key,
-          stt: customer.stt || index + 1,
-          ...customer,
-        }));
+        const updates = {};
+        const customersList = Object.entries(data || {}).map(([key, customer], index) => {
+          const raw = customer.soDienThoai;
+          const soDienThoai = (raw && normalizePhoneToVn(raw)) || raw || '';
+          if (raw && soDienThoai && soDienThoai !== String(raw).trim()) {
+            updates[`customers/${key}/soDienThoai`] = soDienThoai;
+          }
+          return {
+            firebaseKey: key,
+            stt: customer.stt || index + 1,
+            ...customer,
+            soDienThoai,
+          };
+        });
 
         // Sort by STT
         customersList.sort((a, b) => (a.stt || 0) - (b.stt || 0));
 
         setAllCustomers(customersList);
+
+        // Cập nhật Firebase ngầm cho các số chưa +84 (không await để không chặn giao diện)
+        if (Object.keys(updates).length > 0) {
+          update(ref(database), updates).catch((err) => {
+            console.warn('Tự động chuẩn hóa số điện thoại (+84):', err?.message);
+          });
+        }
       } catch (err) {
         console.error('Error loading customers:', err);
         toast.error('Lỗi khi tải dữ liệu khách hàng');
@@ -496,11 +519,12 @@ export default function QuanLyKhachHangPage() {
       const inferredType = selectedContract.khachHangLa || (hasTaxCode ? 'Công ty' : 'Cá nhân');
 
       setFormData(prev => {
+        const soDienThoai = normalizePhoneToVn(selectedContract.phone) || selectedContract.phone || '';
         const updated = {
           ...prev,
           selectedContractId: contractId,
           tenKhachHang: selectedContract.customerName || '',
-          soDienThoai: selectedContract.phone || '',
+          soDienThoai,
           tinhThanh: province,
           dongXe: selectedContract.dongXe || '',
           phienBan: selectedContract.phienBan || '',
@@ -556,7 +580,7 @@ export default function QuanLyKhachHangPage() {
     setFormData({
       ngay: new Date().toISOString().split('T')[0],
       tenKhachHang: '',
-      soDienThoai: '',
+      soDienThoai: VN_PHONE_PREFIX,
       khachHangLa: '',
       tinhThanh: '',
       dongXe: '',
@@ -583,10 +607,11 @@ export default function QuanLyKhachHangPage() {
   // Open edit modal
   const openEditModal = (customer) => {
     setEditingCustomer(customer);
+    const soDienThoai = normalizePhoneToVn(customer.soDienThoai) || customer.soDienThoai || '';
     setFormData({
       ngay: customer.ngay || new Date().toISOString().split('T')[0],
       tenKhachHang: customer.tenKhachHang || '',
-      soDienThoai: customer.soDienThoai || '',
+      soDienThoai,
       khachHangLa: customer.khachHangLa || '',
       tinhThanh: customer.tinhThanh || '',
       dongXe: customer.dongXe || '',
@@ -646,8 +671,10 @@ export default function QuanLyKhachHangPage() {
 
   // Save customer
   const handleSave = async () => {
-    if (!formData.tenKhachHang || !formData.soDienThoai) {
-      toast.error('Vui lòng điền tên khách hàng và số điện thoại!');
+    const normalizedPhone = normalizePhoneToVn(formData.soDienThoai);
+    const validPhone = normalizedPhone && normalizedPhone.length >= 12; // +84912345678
+    if (!formData.tenKhachHang || !validPhone) {
+      toast.error('Vui lòng điền tên khách hàng và số điện thoại hợp lệ (VN, ví dụ: 0912345678 hoặc +84...)!');
       return;
     }
 
@@ -656,7 +683,7 @@ export default function QuanLyKhachHangPage() {
       const customerData = {
         ngay: formData.ngay,
         tenKhachHang: formData.tenKhachHang,
-        soDienThoai: formData.soDienThoai,
+        soDienThoai: normalizedPhone.trim(),
         khachHangLa: formData.khachHangLa || '',
         tinhThanh: formData.tinhThanh,
         dongXe: formData.dongXe,
@@ -794,6 +821,42 @@ export default function QuanLyKhachHangPage() {
     }
 
     return dateStr;
+  };
+
+  // Export customers to Excel
+  const handleExportExcel = async () => {
+    if (filteredCustomers.length === 0) {
+      toast.warning('Không có dữ liệu để xuất');
+      return;
+    }
+    try {
+      await exportTableToExcel({
+        data: filteredCustomers,
+        columns: [
+          { header: 'STT', getValue: (row, idx) => row.stt ?? idx + 1 },
+          { header: 'Ngày', key: 'ngay' },
+          { header: 'Tên Khách Hàng', key: 'tenKhachHang' },
+          { header: 'Số Điện Thoại', key: 'soDienThoai' },
+          { header: 'TVBH', key: 'tvbh' },
+          { header: 'Tỉnh Thành', key: 'tinhThanh' },
+          { header: 'Dòng Xe', key: 'dongXe' },
+          { header: 'Phiên Bản', key: 'phienBan' },
+          { header: 'Ngoại Thất', key: 'mauSac' },
+          { header: 'Nhu Cầu', key: 'nhuCau' },
+          { header: 'Thanh Toán', key: 'thanhToan' },
+          { header: 'Nguồn', key: 'nguon' },
+          { header: 'Mức Độ', key: 'mucDo' },
+          { header: 'Trạng thái', key: 'tinhTrang' },
+          { header: 'Nội Dung', key: 'noiDung' },
+        ],
+        sheetName: 'Khách hàng',
+        filename: `KhachHang_${new Date().toISOString().split('T')[0]}.xlsx`,
+      });
+      toast.success('Xuất Excel thành công');
+    } catch (err) {
+      console.error('Export Excel error:', err);
+      toast.error('Lỗi xuất Excel: ' + (err?.message || err));
+    }
   };
 
   // Parse work history from content string
@@ -1317,13 +1380,24 @@ export default function QuanLyKhachHangPage() {
           </button>
           <h2 className="text-xl sm:text-2xl font-bold text-primary-700">Quản Lý Khách Hàng</h2>
         </div>
-        <button
-          onClick={openAddModal}
-          className="w-full sm:w-auto px-4 py-2 bg-secondary-600 text-white rounded-lg border-2 border-transparent hover:bg-white hover:border-secondary-600 hover:text-secondary-600 transition-all duration-200 flex items-center justify-center gap-2 font-medium"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Thêm mới</span>
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleExportExcel}
+            disabled={filteredCustomers.length === 0}
+            className="w-full sm:w-auto px-4 py-2 border-2 border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-all duration-200 flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Tải xuống Excel"
+          >
+            <Download className="w-4 h-4" />
+            <span>Xuất Excel</span>
+          </button>
+          <button
+            onClick={openAddModal}
+            className="w-full sm:w-auto px-4 py-2 bg-secondary-600 text-white rounded-lg border-2 border-transparent hover:bg-white hover:border-secondary-600 hover:text-secondary-600 transition-all duration-200 flex items-center justify-center gap-2 font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Thêm mới</span>
+          </button>
+        </div>
       </div>
 
       {/* Search */}
