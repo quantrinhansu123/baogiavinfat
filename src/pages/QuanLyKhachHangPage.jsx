@@ -329,7 +329,7 @@ export default function QuanLyKhachHangPage() {
     return employee ? employee.TVBH : '';
   };
 
-  // Load contracts for selection
+  // Load contracts for selection (tự động chuẩn hóa SĐT +84 trong DB khi tải)
   useEffect(() => {
     const loadContracts = async () => {
       try {
@@ -337,27 +337,40 @@ export default function QuanLyKhachHangPage() {
         const snapshot = await get(contractsRef);
         const data = snapshot.exists() ? snapshot.val() : {};
 
-        const contractsList = Object.entries(data || {}).map(([key, contract]) => ({
-          firebaseKey: key,
-          id: contract.id || key,
-          customerName: contract.customerName || contract["Tên KH"] || '',
-          phone: contract.phone || contract["Số Điện Thoại"] || '',
-          address: contract.address || contract["Địa chỉ"] || '',
-          showroom: contract.showroom || '',
-          dongXe: contract.dongXe || contract.model || '',
-          phienBan: contract.phienBan || contract.variant || '',
-          ngoaiThat: contract.ngoaiThat || contract.exterior || '',
-          thanhToan: contract.thanhToan || contract.payment || '',
-          tvbh: contract.tvbh || contract.TVBH || '',
-          createdAt: contract.createdDate || contract.createdAt || '',
-          taxCode: contract.taxCode || contract.MSDN || contract.taxCodeOrg || contract.companyTaxCode || '',
-          taxCodeOrg: contract.taxCodeOrg || '',
-          representative: contract.representative || contract.daiDien || contract.companyRepresentative || '',
-          position: contract.position || contract.chucVu || contract.companyPosition || '',
-          khachHangLa: contract.khachHangLa || '',
-        }));
+        const updates = {};
+        const contractsList = Object.entries(data || {}).map(([key, contract]) => {
+          const phoneRaw = contract?.phone ?? contract?.soDienThoai ?? contract?.["Số Điện Thoại"];
+          const phoneNorm = phoneRaw ? (normalizePhoneToVn(phoneRaw) || phoneRaw) : '';
+          if (phoneRaw && phoneNorm && phoneNorm !== String(phoneRaw).trim()) {
+            if (contract.phone !== undefined) updates[`contracts/${key}/phone`] = phoneNorm;
+            if (contract.soDienThoai !== undefined) updates[`contracts/${key}/soDienThoai`] = phoneNorm;
+            if (contract["Số Điện Thoại"] !== undefined) updates[`contracts/${key}/Số Điện Thoại`] = phoneNorm;
+          }
+          return {
+            firebaseKey: key,
+            id: contract.id || key,
+            customerName: contract.customerName || contract["Tên KH"] || '',
+            phone: phoneNorm || contract.phone || contract["Số Điện Thoại"] || '',
+            address: contract.address || contract["Địa chỉ"] || '',
+            showroom: contract.showroom || '',
+            dongXe: contract.dongXe || contract.model || '',
+            phienBan: contract.phienBan || contract.variant || '',
+            ngoaiThat: contract.ngoaiThat || contract.exterior || '',
+            thanhToan: contract.thanhToan || contract.payment || '',
+            tvbh: contract.tvbh || contract.TVBH || '',
+            createdAt: contract.createdDate || contract.createdAt || '',
+            taxCode: contract.taxCode || contract.MSDN || contract.taxCodeOrg || contract.companyTaxCode || '',
+            taxCodeOrg: contract.taxCodeOrg || '',
+            representative: contract.representative || contract.daiDien || contract.companyRepresentative || '',
+            position: contract.position || contract.chucVu || contract.companyPosition || '',
+            khachHangLa: contract.khachHangLa || '',
+          };
+        });
 
         setContracts(contractsList);
+        if (Object.keys(updates).length > 0) {
+          update(ref(database), updates).catch((err) => console.warn('Tự động chuẩn hóa SĐT (+84) contracts:', err?.message));
+        }
       } catch (err) {
         console.error('Error loading contracts:', err);
       }

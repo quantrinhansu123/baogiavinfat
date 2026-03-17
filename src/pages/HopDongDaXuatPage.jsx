@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import FilterPanel from "../components/FilterPanel";
 import { ref, get, remove, update } from "firebase/database";
 import { database } from "../firebase/config";
+import { normalizePhoneToVn } from "../utils/validation";
 import { ArrowLeft, X, Trash2, Edit, AlertTriangle, Image, Download } from "lucide-react";
 import { exportTableToExcel } from "../utils/exportToExcel";
 import { toast } from "react-toastify";
@@ -373,12 +374,28 @@ export default function HopDongDaXuatPage() {
         const snapshot = await get(contractsRef);
         const data = snapshot.exists() ? snapshot.val() : {};
 
+        const updates = {};
+        Object.entries(data || {}).forEach(([key, c]) => {
+          const phoneRaw = c?.phone ?? c?.soDienThoai ?? c?.["Số Điện Thoại"];
+          if (phoneRaw == null || String(phoneRaw).trim() === "") return;
+          const normalized = normalizePhoneToVn(phoneRaw);
+          if (!normalized) return;
+          if (c.phone !== undefined && c.phone !== normalized) updates[`exportedContracts/${key}/phone`] = normalized;
+          if (c.soDienThoai !== undefined && c.soDienThoai !== normalized) updates[`exportedContracts/${key}/soDienThoai`] = normalized;
+          if (c["Số Điện Thoại"] !== undefined && c["Số Điện Thoại"] !== normalized) updates[`exportedContracts/${key}/Số Điện Thoại`] = normalized;
+        });
+
         const mapped = Object.entries(data || {}).map(([key, c], idx) => {
           const base = mapContract(c || {});
-          return { ...base, firebaseKey: key };
+          const phoneNorm = (c?.soDienThoai && normalizePhoneToVn(c.soDienThoai)) || (c?.phone && normalizePhoneToVn(c.phone)) || (c?.["Số Điện Thoại"] && normalizePhoneToVn(c["Số Điện Thoại"])) || base.soDienThoai || base["Số Điện Thoại"] || "";
+          return { ...base, firebaseKey: key, soDienThoai: phoneNorm || base.soDienThoai, "Số Điện Thoại": phoneNorm || base["Số Điện Thoại"] };
         });
 
         setAllContracts(mapped);
+
+        if (Object.keys(updates).length > 0) {
+          update(ref(database), updates).catch((err) => console.warn("Tự động chuẩn hóa SĐT (+84) exportedContracts:", err?.message));
+        }
       } catch (err) {
         console.error("Error loading exported contracts from Firebase:", err);
         toast.error("Lỗi khi tải dữ liệu hợp đồng đã xuất từ Firebase");

@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import FilterPanel from '../components/FilterPanel';
 import { ref, get, update, remove, push, set } from 'firebase/database';
 import { database } from '../firebase/config';
+import { normalizePhoneToVn } from '../utils/validation';
 import { X, Trash2, Plus, Check, AlertTriangle, Edit, Download, ArrowLeft, Gift } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { uniqueNgoaiThatColors, uniqueNoiThatColors, getAvailableDongXeForPromotion } from '../data/calculatorData';
@@ -317,12 +318,28 @@ export default function HopDongPage() {
         const snapshot = await get(contractsRef);
         const data = snapshot.exists() ? snapshot.val() : {};
 
+        const updates = {};
+        Object.entries(data || {}).forEach(([key, c]) => {
+          const phoneRaw = c?.phone ?? c?.soDienThoai ?? c?.["Số Điện Thoại"];
+          if (phoneRaw == null || String(phoneRaw).trim() === "") return;
+          const normalized = normalizePhoneToVn(phoneRaw);
+          if (!normalized) return;
+          if (c.phone !== undefined && c.phone !== normalized) updates[`contracts/${key}/phone`] = normalized;
+          if (c.soDienThoai !== undefined && c.soDienThoai !== normalized) updates[`contracts/${key}/soDienThoai`] = normalized;
+          if (c["Số Điện Thoại"] !== undefined && c["Số Điện Thoại"] !== normalized) updates[`contracts/${key}/Số Điện Thoại`] = normalized;
+        });
+
         const mapped = Object.entries(data || {}).map(([key, c], idx) => {
           const base = mapSample(c || {});
-          return { ...base, firebaseKey: key };
+          const phoneNorm = (c?.phone && normalizePhoneToVn(c.phone)) || (c?.soDienThoai && normalizePhoneToVn(c.soDienThoai)) || c?.phone || c?.soDienThoai || "";
+          return { ...base, firebaseKey: key, phone: phoneNorm || base.phone };
         });
 
         setAllContracts(mapped);
+
+        if (Object.keys(updates).length > 0) {
+          update(ref(database), updates).catch((err) => console.warn("Tự động chuẩn hóa SĐT (+84) contracts:", err?.message));
+        }
       } catch (err) {
         console.error("Error loading contracts from Firebase:", err);
         toast.error("Lỗi khi tải dữ liệu hợp đồng từ Firebase");
