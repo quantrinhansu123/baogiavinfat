@@ -28,13 +28,7 @@ export default defineConfig({
             // Don't separate it into vendor-ui as it causes useLayoutEffect issues
           }
 
-          // Feature chunks - BieuMau không tách riêng để tránh lỗi useLayoutEffect (chunk load trước vendor-react)
-          if (id.includes('/pages/Calculator') || id.includes('/calculator/')) {
-            return 'feature-calculator'
-          }
-          if (id.includes('/pages/QuanLyKhachHang') || id.includes('/khachhang/')) {
-            return 'feature-customers'
-          }
+          // Không tách feature-calculator / feature-customers — tránh lỗi "Cannot read properties of undefined (reading 'useLayoutEffect')" khi chunk load trước vendor-react trên production (Vercel).
         }
       }
     },
