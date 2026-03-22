@@ -80,6 +80,61 @@ const DeXuatGiaban = () => {
     "(Lưu ý: Mức lương TVBH phụ thuộc vào chính sách của VINFAST, trường hợp tại thời điểm XHĐ chính sách VINFAST thay đổi, Cty sẽ xem xét điều chỉnh phù hợp)"
   );
 
+  const parseUuDaiList = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => String(item || "").trim())
+        .filter(Boolean);
+    }
+    if (typeof value === "string") {
+      const normalized = value.replace(/\r\n/g, "\n").trim();
+      if (!normalized) return [];
+      const splitLegacyByProgramPrefix = (text) =>
+        text
+          .split(
+            /,\s*(?=(?:-?\s*CTKM:|Chương trình|CHƯƠNG TRÌNH|Ưu đãi|ƯU ĐÃI))/i
+          )
+          .map((item) => item.replace(/^-CTKM:\s*/i, "").trim())
+          .filter(Boolean);
+
+      try {
+        const parsed = JSON.parse(normalized);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((item) => String(item || "").trim())
+            .filter(Boolean);
+        }
+      } catch (_) {
+        // Keep string parsing fallback below.
+      }
+
+      if (normalized.includes("\n")) {
+        return normalized
+          .split("\n")
+          .map((item) => item.replace(/^-CTKM:\s*/i, "").trim())
+          .filter(Boolean);
+      }
+      if (normalized.includes("-CTKM:")) {
+        return normalized
+          .split(/-CTKM:\s*/i)
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+      // Legacy fallback: old exported text sometimes joined programs by comma.
+      // Only split when comma is followed by a likely new program prefix.
+      const legacyParts = splitLegacyByProgramPrefix(normalized);
+      if (legacyParts.length > 1) return legacyParts;
+      return [normalized];
+    }
+    return [];
+  };
+
+  const formatUuDaiForTextarea = (value) =>
+    parseUuDaiList(value)
+      .map((item) => `-CTKM: ${item}`)
+      .join("\n");
+
   // Helper function to format text with non-breaking commas
   // This function processes data that has already been formatted by the load logic
   // Newlines (\n) are used to separate programs (each program on a new line)
@@ -431,29 +486,7 @@ const DeXuatGiaban = () => {
               contractData["ưu đãi"] ||
               "";
             if (uuDaiValue) {
-              // Handle array, comma-separated string, or plain string
-              let formattedUuDai = "";
-              if (Array.isArray(uuDaiValue)) {
-                // If it's an array, join with newlines and prefix each with "-CTKM: "
-                formattedUuDai = uuDaiValue
-                  .filter((item) => item && item.trim())
-                  .map((item) => `-CTKM: ${item.trim()}`)
-                  .join("\n");
-              } else if (typeof uuDaiValue === "string") {
-                // If it's a string, check if it contains commas
-                if (uuDaiValue.includes(",")) {
-                  // Split by comma and format each item
-                  formattedUuDai = uuDaiValue
-                    .split(",")
-                    .map((item) => item.trim())
-                    .filter((item) => item)
-                    .map((item) => `-CTKM: ${item}`)
-                    .join("\n");
-                } else {
-                  // Single string value, format it
-                  formattedUuDai = `-CTKM: ${uuDaiValue.trim()}`;
-                }
-              }
+              const formattedUuDai = formatUuDaiForTextarea(uuDaiValue);
               if (formattedUuDai) {
                 setChinhSachKhuyenMai(formattedUuDai);
               }
@@ -529,22 +562,7 @@ const DeXuatGiaban = () => {
         const stateUuDai =
           stateData.uuDai || stateData["Ưu đãi"] || stateData["ưu đãi"] || "";
         if (stateUuDai) {
-          let formattedUuDai = "";
-          if (Array.isArray(stateUuDai)) {
-            // Join array items with comma and space
-            formattedUuDai = stateUuDai
-              .filter((item) => item && item.trim())
-              .map((item) => {
-                const trimmed = item.trim();
-                // Add -CTKM: prefix if not already present
-                return trimmed.startsWith("-CTKM:") ? trimmed : `-CTKM: ${trimmed}`;
-              })
-              .join(", ");
-          } else if (typeof stateUuDai === "string") {
-            // Keep newlines as they are (newlines = line breaks in print)
-            // Don't add -CTKM: prefix, keep original format
-            formattedUuDai = stateUuDai.trim();
-          }
+          const formattedUuDai = formatUuDaiForTextarea(stateUuDai);
           if (formattedUuDai) {
             setChinhSachKhuyenMai(formattedUuDai);
           }
@@ -736,7 +754,7 @@ const DeXuatGiaban = () => {
                     </td>
                     <td className="p-1 w-1/2">
                       <div className="space-y-1">
-                        <div className="info-row grid-cols-[100px_1fr]">
+                        <div className="info-row !grid-cols-[100px_1fr]">
                           <strong className="info-label w-[100px]">Số Hợp đồng:</strong>{" "}
                           <div className="info-value">
                             <span className="print:hidden font-bold">
@@ -750,7 +768,7 @@ const DeXuatGiaban = () => {
                             <span className="hidden print:inline font-bold">{soHopDong}</span>
                           </div>
                         </div>
-                        <div className="info-row grid-cols-[100px_1fr]">
+                        <div className="info-row !grid-cols-[100px_1fr]">
                           <strong className="info-label w-[100px]">Ngày Hợp đồng:</strong>{" "}
                           <div className="info-value">
                             <span className="print:hidden font-bold">
@@ -786,7 +804,7 @@ const DeXuatGiaban = () => {
                     </td>
                     <td className="p-1 w-1/2">
                       <div className="space-y-1">
-                        <div className="info-row grid-cols-[100px_1fr]">
+                        <div className="info-row !grid-cols-[100px_1fr]">
                           <strong className="info-label w-[100px]">CCCD (Cá nhân):</strong>{" "}
                           <div className="info-value">
                             <span className="print:hidden font-bold">
@@ -800,7 +818,7 @@ const DeXuatGiaban = () => {
                             <span className="hidden print:inline font-bold">{cccd}</span>
                           </div>
                         </div>
-                        <div className="info-row grid-cols-[100px_1fr]">
+                        <div className="info-row !grid-cols-[100px_1fr]">
                           <strong className="info-label w-[100px]">Mã số thuế (Cty):</strong>{" "}
                           <div className="info-value">
                             <span className="print:hidden font-bold">
@@ -814,7 +832,7 @@ const DeXuatGiaban = () => {
                             <span className="hidden print:inline font-bold">{maSoThue}</span>
                           </div>
                         </div>
-                        <div className="info-row grid-cols-[100px_1fr]">
+                        <div className="info-row !grid-cols-[100px_1fr]">
                           <strong className="info-label w-[100px]">Điện thoại:</strong>{" "}
                           <div className="info-value">
                             <span className="print:hidden font-bold">
@@ -867,7 +885,7 @@ const DeXuatGiaban = () => {
                       THÔNG TIN XE:
                     </td>
                     <td className="border-r border-black p-1 font-bold" colSpan={3}>
-                      <div className="info-row grid-cols-[120px_1fr]">
+                      <div className="info-row !grid-cols-[120px_1fr]">
                         <strong className="info-label w-[120px]">Loại xe:</strong>{" "}
                         <div className="info-value">
                           <span className="print:hidden">
@@ -885,7 +903,7 @@ const DeXuatGiaban = () => {
                   </tr>
                   <tr className="border-b border-black">
                     <td className="border-r border-black p-1 font-bold" colSpan={3}>
-                      <div className="info-row grid-cols-[120px_1fr]">
+                      <div className="info-row !grid-cols-[120px_1fr]">
                         <strong className="info-label w-[120px]">Màu xe (ngoại/nội):</strong>{" "}
                         <div className="info-value">
                           <span className="print:hidden">
@@ -903,7 +921,7 @@ const DeXuatGiaban = () => {
                   </tr>
                   <tr className="border-b border-black">
                     <td className="border-r border-black p-1" colSpan={3}>
-                      <div className="info-row grid-cols-[120px_1fr]">
+                      <div className="info-row !grid-cols-[120px_1fr]">
                         <strong className="info-label w-[120px]">Năm sản xuất:</strong>{" "}
                         <div className="info-value">
                           <span className="print:hidden">
@@ -921,7 +939,7 @@ const DeXuatGiaban = () => {
                   </tr>
                   <tr className="border-b border-black">
                     <td className="border-r border-black p-1" colSpan={3}>
-                      <div className="info-row grid-cols-[120px_1fr]">
+                      <div className="info-row !grid-cols-[120px_1fr]">
                         <strong className="info-label w-[120px]">Số khung (VIN):</strong>{" "}
                         <div className="info-value">
                           <span className="print:hidden">
@@ -1044,7 +1062,7 @@ const DeXuatGiaban = () => {
                       GIÁ BÁN:
                     </td>
                     <td className="border-r border-black p-1" colSpan={3}>
-                      <div className="info-row grid-cols-[150px_1fr]">
+                      <div className="info-row !grid-cols-[150px_1fr]">
                         <strong className="info-label w-[150px]">Giá niêm yết (VNĐ)</strong>{" "}
                         <div className="info-value">
                           <span className="print:hidden">
@@ -1066,7 +1084,7 @@ const DeXuatGiaban = () => {
                   </tr>
                   <tr className="border-b border-black font-bold">
                     <td className="border-r border-black p-1" colSpan={3}>
-                      <div className="info-row grid-cols-[150px_1fr]">
+                      <div className="info-row !grid-cols-[150px_1fr]">
                         <strong className="info-label w-[150px]">Giảm giá (VNĐ)</strong>{" "}
                         <div className="info-value">
                           <span className="print:hidden">
@@ -1088,7 +1106,7 @@ const DeXuatGiaban = () => {
                   </tr>
                   <tr className="border-b border-black font-bold">
                     <td className="border-r border-black p-1" colSpan={3}>
-                      <div className="info-row grid-cols-[150px_1fr]">
+                      <div className="info-row !grid-cols-[150px_1fr]">
                         <strong className="info-label w-[150px]">Giá bán hợp đồng (VNĐ)</strong>{" "}
                         <div className="info-value">
                           <span className="print:hidden">
@@ -1125,7 +1143,7 @@ const DeXuatGiaban = () => {
                       QUÀ TẶNG
                     </td>
                     <td className="border-r border-black p-1 font-bold" colSpan={3}>
-                      <div className="info-row grid-cols-[120px_1fr]">
+                      <div className="info-row !grid-cols-[120px_1fr]">
                         <strong className="info-label w-[120px]">Quà tặng theo xe:</strong>{" "}
                         <div className="info-value">
                           <span className="print:hidden">
@@ -1143,7 +1161,7 @@ const DeXuatGiaban = () => {
                   </tr>
                   <tr className="border-b border-black">
                     <td className="border-r border-black p-1 font-bold" colSpan={3}>
-                      <div className="info-row grid-cols-[120px_1fr]">
+                      <div className="info-row !grid-cols-[120px_1fr]">
                         <strong className="info-label w-[120px]">Quà tặng khác:</strong>{" "}
                         <div className="info-value">
                           <span className="print:hidden">
@@ -1173,7 +1191,7 @@ const DeXuatGiaban = () => {
                       THANH TOÁN
                     </td>
                     <td className="border-r border-black p-1 font-bold">
-                      <div className="info-row grid-cols-[60px_1fr]">
+                      <div className="info-row !grid-cols-[60px_1fr]">
                         <strong className="info-label w-[60px]">Trả thẳng:</strong>{" "}
                         <div className="info-value print:whitespace-nowrap">
                           <span className="print:hidden">
@@ -1190,7 +1208,7 @@ const DeXuatGiaban = () => {
                       </div>
                     </td>
                     <td className="border-r border-black p-1 font-bold">
-                      <div className="info-row grid-cols-[60px_1fr]">
+                      <div className="info-row !grid-cols-[60px_1fr]">
                         <strong className="info-label w-[60px]">Trả góp:</strong>{" "}
                         <div className="info-value print:whitespace-nowrap">
                           <span className="print:hidden">
@@ -1207,7 +1225,7 @@ const DeXuatGiaban = () => {
                       </div>
                     </td>
                     <td className="p-1 font-bold">
-                      <div className="info-row grid-cols-[40px_1fr]">
+                      <div className="info-row !grid-cols-[40px_1fr]">
                         <strong className="info-label w-[40px]">Bank:</strong>{" "}
                         <div className="info-value print:whitespace-nowrap">
                           <span className="print:hidden">
@@ -1230,7 +1248,7 @@ const DeXuatGiaban = () => {
                       className="border-r border-black p-1 font-bold"
                       colSpan={2}
                     >
-                      <div className="info-row grid-cols-[100px_1fr]">
+                      <div className="info-row !grid-cols-[100px_1fr]">
                         <span className="info-label w-[100px]">Số tiền Đặt cọc:</span>{" "}
                         <div className="info-value">
                           <span className="print:hidden">
@@ -1246,7 +1264,7 @@ const DeXuatGiaban = () => {
                       </div>
                     </td>
                     <td className="border-r border-black p-1" colSpan={2}>
-                      <div className="info-row grid-cols-[120px_1fr]">
+                      <div className="info-row !grid-cols-[120px_1fr]">
                         <strong className="info-label w-[120px]">Ngày dự kiến nhận xe:</strong>{" "}
                         <div className="info-value">
                           <span className="print:hidden">
@@ -1281,7 +1299,7 @@ const DeXuatGiaban = () => {
                       Đề xuất Lương TVBH:
                     </td>
                     <td className="border-r border-black p-1" colSpan={3}>
-                      <div className="info-row grid-cols-[150px_1fr]">
+                      <div className="info-row !grid-cols-[150px_1fr]">
                         <strong className="info-label w-[150px]">Theo chính sách khung:</strong>{" "}
                         <div className="info-value">
                           <span className="print:hidden">
@@ -1301,7 +1319,7 @@ const DeXuatGiaban = () => {
                   </tr>
                   <tr className="border-b border-black">
                     <td className="border-r border-black p-1" colSpan={3}>
-                      <div className="info-row grid-cols-[150px_1fr]">
+                      <div className="info-row !grid-cols-[150px_1fr]">
                         <strong className="info-label w-[150px]">Đề xuất:</strong>{" "}
                         <div className="info-value">
                           <span className="print:hidden">

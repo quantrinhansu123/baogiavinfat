@@ -268,22 +268,50 @@ export default function ContractFormPage() {
         return exactMatch ? exactMatch.name : showroomValue; // Return original if no match
       };
 
-      // Helper to parse uuDai (can be array, string, or comma-separated string)
+      // Helper to parse uuDai safely (do not split by comma)
       const parseUuDai = (value) => {
         if (!value) return [];
-        if (Array.isArray(value)) return value;
+        if (Array.isArray(value)) {
+          return value
+            .map((item) => String(item || "").trim())
+            .filter(Boolean);
+        }
         if (typeof value === 'string') {
+          const normalized = value.replace(/\r\n/g, '\n').trim();
+          if (!normalized) return [];
+          const splitLegacyByProgramPrefix = (text) =>
+            text
+              .split(
+                /,\s*(?=(?:-?\s*CTKM:|Chương trình|CHƯƠNG TRÌNH|Ưu đãi|ƯU ĐÃI))/i
+              )
+              .map((item) => item.replace(/^-CTKM:\s*/i, '').trim())
+              .filter(Boolean);
+
           // Try to parse as JSON array first
           try {
-            const parsed = JSON.parse(value);
-            if (Array.isArray(parsed)) return parsed;
-          } catch (e) {
-            // Not JSON, treat as comma-separated string or single value
-            if (value.includes(',')) {
-              return value.split(',').map(v => v.trim()).filter(Boolean);
+            const parsed = JSON.parse(normalized);
+            if (Array.isArray(parsed)) {
+              return parsed
+                .map((item) => String(item || "").trim())
+                .filter(Boolean);
             }
-            // Return as single item array if it's a single string value
-            return [value];
+          } catch (e) {
+            // Not JSON: support newline list or -CTKM: markers, and keep comma as normal character
+            if (normalized.includes('\n')) {
+              return normalized
+                .split('\n')
+                .map(v => v.replace(/^-CTKM:\s*/i, '').trim())
+                .filter(Boolean);
+            }
+            if (normalized.includes('-CTKM:')) {
+              return normalized
+                .split(/-CTKM:\s*/i)
+                .map(v => v.trim())
+                .filter(Boolean);
+            }
+            const legacyParts = splitLegacyByProgramPrefix(normalized);
+            if (legacyParts.length > 1) return legacyParts;
+            return [normalized];
           }
         }
         return [];
@@ -799,10 +827,20 @@ export default function ContractFormPage() {
             "ngân hàng": safeValue(normalizedContract.bank || ""),
             thanhToan: normalizedContract.payment,
             soTienVay: normalizedContract.loanAmount,
+            uuDai: Array.isArray(normalizedContract.uuDai)
+              ? normalizedContract.uuDai
+                  .map((item) => String(item || '').trim())
+                  .filter(Boolean)
+              : [],
             "ưu đãi": (() => {
               const uuDaiValue = normalizedContract.uuDai || "";
               if (Array.isArray(uuDaiValue)) {
-                return uuDaiValue.length > 0 ? uuDaiValue.join(", ") : "";
+                return uuDaiValue.length > 0
+                  ? uuDaiValue
+                      .map((item) => String(item || '').trim())
+                      .filter(Boolean)
+                      .join("\n")
+                  : "";
               }
               return safeValue(uuDaiValue);
             })(),
@@ -915,10 +953,20 @@ export default function ContractFormPage() {
               "ngân hàng": safeValue(normalizedContract.bank || ""),
               thanhToan: normalizedContract.payment,
               soTienVay: normalizedContract.loanAmount,
+              uuDai: Array.isArray(normalizedContract.uuDai)
+                ? normalizedContract.uuDai
+                    .map((item) => String(item || '').trim())
+                    .filter(Boolean)
+                : [],
               "ưu đãi": (() => {
                 const uuDaiValue = normalizedContract.uuDai || "";
                 if (Array.isArray(uuDaiValue)) {
-                  return uuDaiValue.length > 0 ? uuDaiValue.join(", ") : "";
+                  return uuDaiValue.length > 0
+                    ? uuDaiValue
+                        .map((item) => String(item || '').trim())
+                        .filter(Boolean)
+                        .join("\n")
+                    : "";
                 }
                 return safeValue(uuDaiValue);
               })(),
