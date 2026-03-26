@@ -631,7 +631,7 @@ const DeXuatGiaban = () => {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 8mm 10mm;
+            margin: 5mm;
           }
           /* Full trang A4: dùng hết diện tích in */
           #printable-content.de-xuat-gia-ban-print {
@@ -656,7 +656,7 @@ const DeXuatGiaban = () => {
           }
           #printable-content.de-xuat-gia-ban-print table.border-table td:not(.signature-empty-cell),
           #printable-content.de-xuat-gia-ban-print table.border-table th {
-            padding: 8px 12px !important;
+            padding: 4px 6px !important;
           }
           /* Không thu nhỏ: nội dung full 100% trang */
           #printable-content.de-xuat-gia-ban-print .de-xuat-gia-ban-print-inner {
