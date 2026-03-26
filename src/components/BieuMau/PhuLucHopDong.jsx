@@ -387,7 +387,7 @@ const PhuLucHopDong = () => {
                   <span>
                     : Số {data.cccd || ""}
                     {data.cccdIssueDate && <>, cấp ngày {data.cccdIssueDate}</>}
-                    {data.cccdIssuePlace && <> bởi Bộ Công An</>}
+                    {data.cccdIssuePlace && <> bởi {data.cccdIssuePlace}</>}
                   </span>
                 </div>
                 {data.phone && (

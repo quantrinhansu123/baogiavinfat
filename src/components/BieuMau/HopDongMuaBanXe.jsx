@@ -60,6 +60,61 @@ const HopDongMuaBanXe = () => {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
 
+  const parseUuDaiList = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => String(item || "").trim())
+        .filter(Boolean);
+    }
+    if (typeof value === "string") {
+      const normalized = value.replace(/\r\n/g, "\n").trim();
+      if (!normalized) return [];
+      const splitLegacyByProgramPrefix = (text) =>
+        text
+          .split(
+            /,\s*(?=(?:-?\s*CTKM:|Chương trình|CHƯƠNG TRÌNH|Ưu đãi|ƯU ĐÃI))/i
+          )
+          .map((item) => item.replace(/^-CTKM:\s*/i, "").trim())
+          .filter(Boolean);
+
+      try {
+        const parsed = JSON.parse(normalized);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((item) => String(item || "").trim())
+            .filter(Boolean);
+        }
+      } catch (_) {
+        // Keep string parsing fallback below.
+      }
+
+      if (normalized.includes("\n")) {
+        return normalized
+          .split("\n")
+          .map((item) => item.replace(/^-CTKM:\s*/i, "").trim())
+          .filter(Boolean);
+      }
+      if (normalized.includes("-CTKM:")) {
+        return normalized
+          .split(/-CTKM:\s*/i)
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+      // Legacy fallback: old exported text sometimes joined programs by comma.
+      // Only split when comma is followed by a likely new program prefix.
+      const legacyParts = splitLegacyByProgramPrefix(normalized);
+      if (legacyParts.length > 1) return legacyParts;
+      return [normalized];
+    }
+    return [];
+  };
+
+  const formatUuDaiForTextarea = (value) =>
+    parseUuDaiList(value)
+      .map((item) => `-CTKM: ${item}`)
+      .join("\n");
+
   const formatDateForDisplay = (dateStr) => {
     if (!dateStr) return "";
     const d = new Date(dateStr);
@@ -159,7 +214,7 @@ const HopDongMuaBanXe = () => {
           loanAmount: incoming.loanAmount || incoming.soTienVay || "",
         };
         setData(processedData);
-        setUuDai(String(processedData.uuDai || ""));
+        setUuDai(formatUuDaiForTextarea(processedData.uuDai || ""));
         setTaxCodeOrg(processedData.taxCode || "");
         setRepresentativeOrg(processedData.representative || "");
         setPositionOrg(processedData.position || "");
@@ -305,28 +360,26 @@ const HopDongMuaBanXe = () => {
 
   // Helper function to format ưu đãi as bulleted list
   const formatUuDaiList = (text) => {
-    if (!text) return "[---]";
-    // Ensure text is a string
+    if (!text) return " ";
     const textStr = String(text);
-    if (!textStr.trim()) return "[---]";
+    if (!textStr.trim()) return " ";
 
-    let lines = [];
-
-    // First, try splitting by newlines
-    const newlineSplit = textStr
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line !== "");
-
-    lines = newlineSplit;
-
-    if (lines.length === 0) return "[---]";
+    const programs = textStr.split('\n').map(p => p.trim()).filter(p => p);
+    
+    if (programs.length === 0) return " ";
 
     return (
       <div className="mt-2 space-y-1">
-        {lines.map((line, index) => (
-          <div key={index}>{line}</div>
-        ))}
+        {programs.map((program, programIndex) => {
+          let cleanProgram = program.replace(/^-CTKM:\s*/i, '');
+          const formattedProgram = cleanProgram.replace(/,/g, ',\u00A0');
+          
+          return (
+            <div key={programIndex}>
+              {formattedProgram}
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -382,6 +435,29 @@ const HopDongMuaBanXe = () => {
       style={{ fontFamily: "Times New Roman" }}
     >
       <PrintStyles />
+      <style>{`
+        #printable-content {
+          font-size: 18px !important;
+        }
+        #printable-content .text-xs {
+          font-size: 14px !important;
+        }
+        #printable-content .text-sm {
+          font-size: 16px !important;
+        }
+        #printable-content .text-base {
+          font-size: 18px !important;
+        }
+        #printable-content .text-lg {
+          font-size: 20px !important;
+        }
+        #printable-content .text-xl {
+          font-size: 22px !important;
+        }
+        #printable-content input, #printable-content textarea {
+          font-size: inherit;
+        }
+      `}</style>
       <div className="max-w-5xl mx-auto print:max-w-5xl print:mx-auto">
         <div
           ref={printableRef}
