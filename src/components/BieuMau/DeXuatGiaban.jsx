@@ -142,18 +142,18 @@ const DeXuatGiaban = () => {
   // Colons (:) should not break lines either
   const formatTextWithNonBreakingCommas = (text) => {
     if (!text) return text;
-    
+
     // Split by newline to separate programs (Enter = new program/new line)
     const programs = text.split('\n').map(p => p.trim()).filter(p => p);
-    
+
     // Process each program: don't split by colon, just replace commas with non-breaking space
     return programs.map((program, programIndex) => {
       // Remove -CTKM: prefix if present
       let cleanProgram = program.replace(/^-CTKM:\s*/i, '');
-      
+
       // Replace commas with comma + non-breaking space (don't split by colon)
       const formattedProgram = cleanProgram.replace(/,/g, ',\u00A0');
-      
+
       return (
         <React.Fragment key={programIndex}>
           {formattedProgram}
@@ -405,6 +405,20 @@ const DeXuatGiaban = () => {
               );
             }
 
+            // Năm sản xuất
+            if (
+              contractData.namSanXuat ||
+              contractData["Năm sản xuất"] ||
+              contractData.year
+            ) {
+              setNamSanXuat(
+                contractData.namSanXuat ||
+                contractData["Năm sản xuất"] ||
+                contractData.year ||
+                ""
+              );
+            }
+
             // Giá niêm yết
             if (contractData.giaNiemYet || contractData["Giá Niêm Yết"]) {
               const gia =
@@ -555,6 +569,9 @@ const DeXuatGiaban = () => {
         if (stateData.customerCCCD) setCccd(stateData.customerCCCD);
         if (stateData.hieuxe || stateData.model || stateData.dongXe) setLoaiXe(stateData.hieuxe || stateData.model || stateData.dongXe);
         if (stateData.soKhung) setSoKhung(stateData.soKhung);
+        if (stateData.namSanXuat || stateData.year) {
+          setNamSanXuat(stateData.namSanXuat || stateData.year);
+        }
         if (stateData.contractPrice)
           setGiaBanHopDong(formatCurrency(stateData.contractPrice));
 
@@ -929,7 +946,7 @@ const DeXuatGiaban = () => {
                               type="text"
                               value={namSanXuat}
                               onChange={(e) => setNamSanXuat(e.target.value)}
-                              className="border-b border-gray-400 font-bold px-1 w-24 focus:outline-none focus:border-blue-500"
+                              className="border-b border-gray-400 font-bold px-1 w-64 focus:outline-none focus:border-blue-500"
                             />
                           </span>
                           <span className="hidden print:inline font-bold">{namSanXuat}</span>
@@ -1039,7 +1056,7 @@ const DeXuatGiaban = () => {
                     </td>
                   </tr>
                   <tr className="border-b border-black font-bold">
-                    <td className="border-r border-black p-1">5. Xăng -</td>
+                    <td className="border-r border-black p-1">5. Xăng - Điện</td>
                     <td className="border-r border-black p-1 text-center">
                       <span className="print:hidden">
                         <input
