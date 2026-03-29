@@ -1515,7 +1515,11 @@ export default function QuanLyKhachHangPage() {
                       {customer.tenKhachHang || '-'}
                     </td>
                     <td className="px-2 sm:px-3 py-2 whitespace-nowrap text-xs sm:text-sm text-black border border-secondary-400">
-                      {customer.soDienThoai || '-'}
+                      {customer.soDienThoai ? (
+                        <a href={`tel:${customer.soDienThoai}`} className="text-blue-600 hover:text-blue-800 hover:underline">
+                          {customer.soDienThoai}
+                        </a>
+                      ) : '-'}
                     </td>
                     <td className="px-2 sm:px-3 py-2 whitespace-nowrap text-xs sm:text-sm text-black border border-secondary-400 relative" style={{ overflow: 'visible', zIndex: openDropdown === `tvbh-${customer.firebaseKey}` ? 9999 : 'auto' }}>
                       {userRole === 'admin' ? (
