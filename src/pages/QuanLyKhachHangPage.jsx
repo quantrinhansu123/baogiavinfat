@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, get, push, update, remove } from 'firebase/database';
 import { database } from '../firebase/config';
-import { X, Trash2, Plus, Edit, Search, ArrowLeft, FileText, ChevronDown, Download } from 'lucide-react';
+import { X, Trash2, Plus, Edit, Search, ArrowLeft, FileText, ChevronDown, Download, Phone } from 'lucide-react';
 import { exportTableToExcel } from '../utils/exportToExcel';
 import { toast } from 'react-toastify';
 import { uniqueNgoaiThatColors, uniqueNoiThatColors, carPriceData as staticCarPriceData, getAvailableDongXeForPromotion } from '../data/calculatorData';
@@ -1705,6 +1705,14 @@ export default function QuanLyKhachHangPage() {
                     </td>
                     <td className="px-2 sm:px-3 py-2 whitespace-nowrap text-xs sm:text-sm text-black border border-secondary-400 sticky right-0 z-20 bg-white">
                       <div className="flex items-center justify-center gap-1 sm:gap-2">
+                        <a
+                          href={customer.soDienThoai ? `tel:${customer.soDienThoai}` : '#'}
+                          className={`p-1 rounded transition-colors ${customer.soDienThoai ? 'text-green-600 hover:bg-green-100' : 'text-gray-400 cursor-not-allowed'}`}
+                          title={customer.soDienThoai ? "Gọi điện" : "Không có số điện thoại"}
+                          onClick={(e) => !customer.soDienThoai && e.preventDefault()}
+                        >
+                          <Phone className="w-3 h-3 sm:w-4 sm:h-4" />
+                        </a>
                         <button
                           onClick={() => openWorkHistoryModal(customer)}
                           className="p-1 text-blue-600 hover:bg-blue-100 rounded transition-colors"

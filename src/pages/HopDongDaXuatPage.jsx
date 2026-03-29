@@ -4,7 +4,7 @@ import FilterPanel from "../components/FilterPanel";
 import { ref, get, remove, update } from "firebase/database";
 import { database } from "../firebase/config";
 import { normalizePhoneToVn } from "../utils/validation";
-import { ArrowLeft, X, Trash2, Edit, AlertTriangle, Image, Download } from "lucide-react";
+import { ArrowLeft, X, Trash2, Edit, AlertTriangle, Image, Download, Phone } from "lucide-react";
 import { exportTableToExcel } from "../utils/exportToExcel";
 import { toast } from "react-toastify";
 import {
@@ -1507,6 +1507,16 @@ export default function HopDongDaXuatPage() {
                           {/* Actions column - sticky to right */}
                           <td className="px-2 sm:px-3 py-2 whitespace-nowrap text-xs sm:text-sm text-black border border-secondary-400 sticky right-0 z-20 bg-primary-200">
                             <div className="flex items-center justify-end gap-1 sm:gap-2">
+                              {contract.soDienThoai && (
+                                <a
+                                  href={`tel:${contract.soDienThoai}`}
+                                  className="px-1.5 sm:px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+                                  title="Gọi điện"
+                                >
+                                  <Phone className="w-3 h-3 sm:w-4 sm:h-4" />
+                                  <span className="hidden sm:inline">Gọi</span>
+                                </a>
+                              )}
                               <button
                                 onClick={() => openImageModal(contract)}
                                 className="px-1.5 sm:px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"

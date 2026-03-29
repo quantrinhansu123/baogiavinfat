@@ -4,7 +4,7 @@ import FilterPanel from '../components/FilterPanel';
 import { ref, get, update, remove, push, set } from 'firebase/database';
 import { database } from '../firebase/config';
 import { normalizePhoneToVn } from '../utils/validation';
-import { X, Trash2, Plus, Check, AlertTriangle, Edit, Download, ArrowLeft, Gift } from 'lucide-react';
+import { X, Trash2, Plus, Check, AlertTriangle, Edit, Download, ArrowLeft, Gift, Phone } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { uniqueNgoaiThatColors, uniqueNoiThatColors, getAvailableDongXeForPromotion } from '../data/calculatorData';
 import { useCarPriceData } from '../contexts/CarPriceDataContext';
@@ -1653,6 +1653,19 @@ export default function HopDongPage() {
                       {/* Actions column - sticky to right */}
                       <td className="px-2 sm:px-3 py-2 whitespace-nowrap text-xs sm:text-sm text-black border border-secondary-400 sticky right-0 z-20 bg-primary-200">
                         <div className="flex items-center justify-end gap-1 sm:gap-2">
+                          {(() => {
+                            const phone = contract.phone || contract["Số Điện Thoại"] || contract.phoneNumber;
+                            return phone ? (
+                              <a
+                                href={`tel:${phone}`}
+                                className="px-1.5 sm:px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+                                title="Gọi điện"
+                              >
+                                <Phone className="w-3 h-3 sm:w-4 sm:h-4" />
+                                <span className="hidden sm:inline">Gọi</span>
+                              </a>
+                            ) : null;
+                          })()}
                           <button
                             onClick={() => openEditModal(contract)}
                             className="px-1.5 sm:px-3 py-1 bg-secondary-600 text-white rounded-md hover:bg-secondary-700 transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
