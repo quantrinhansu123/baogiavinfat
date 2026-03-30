@@ -506,7 +506,6 @@ const PhuLucHopDong = () => {
             </div>
             <div className="flex-1 text-center">
               <p className="font-bold mb-32">ĐẠI DIỆN BÊN MUA</p>
-              <p className="text-sm font-semibold">VINFAST ĐÔNG SÀI GÒN</p>
             </div>
           </div>
 
