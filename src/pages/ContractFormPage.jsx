@@ -7,7 +7,7 @@ import { toast } from 'react-toastify';
 import { carPriceData as staticCarPriceData, uniqueNgoaiThatColors, uniqueNoiThatColors, getAvailableDongXeForPromotion } from '../data/calculatorData';
 import { useCarPriceData } from '../contexts/CarPriceDataContext';
 import { getAllBranches, getBranchByShowroomName } from '../data/branchData';
-import { loadPromotionsFromFirebase, defaultPromotions, filterPromotionsByDongXe } from '../data/promotionsData';
+import { loadPromotionsFromFirebase, defaultPromotions, filterPromotionsByDongXe, normalizeDongXe } from '../data/promotionsData';
 import CurrencyInput from '../components/shared/CurrencyInput';
 import { generateVSO } from '../utils/vsoGenerator';
 import { isValidCCCD, isValidPhone, validateRequiredFields } from '../utils/validation';
@@ -28,6 +28,11 @@ export default function ContractFormPage() {
   const modelToDongXeMapFromData = useMemo(() => {
     const list = getAvailableDongXeForPromotion(carPriceData);
     return Object.fromEntries(list.map((x) => [x.name, x.code]));
+  }, [carPriceData]);
+
+  const dongXeToModelMapFromData = useMemo(() => {
+    const list = getAvailableDongXeForPromotion(carPriceData);
+    return Object.fromEntries(list.map((x) => [x.code, x.name]));
   }, [carPriceData]);
 
   // Get all branches for showroom dropdown
@@ -1824,7 +1829,21 @@ export default function ContractFormPage() {
                               <div className="text-xs text-gray-600">
                                 Hiển thị: {promotion.description || 'Không có mô tả'}
                               </div>
-                            )}
+                             )}
+                            {/* Display assigned car models */}
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {normalizeDongXe(promotion.dongXe).length > 0 ? (
+                                normalizeDongXe(promotion.dongXe).map(code => (
+                                  <span key={code} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-100">
+                                    {dongXeToModelMapFromData[code] || code}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-50 text-gray-600 border border-gray-100">
+                                  Tất cả dòng xe
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
