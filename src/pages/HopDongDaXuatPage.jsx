@@ -1639,6 +1639,7 @@ export default function HopDongDaXuatPage() {
                                     uuDai: contract.uuDai || contract["Ưu đãi"] || contract["ưu đãi"] || "",
                                     "Ưu đãi": contract.uuDai || contract["Ưu đãi"] || contract["ưu đãi"] || "",
                                     "ưu đãi": contract.uuDai || contract["Ưu đãi"] || contract["ưu đãi"] || "",
+                                    namSanXuat: contract.namSanXuat || contract["Năm sản xuất"] || contract.year || "",
                                   };
                                   setPrintContract(printData);
                                   // Load bankLoanFile from contract if exists

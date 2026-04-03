@@ -212,6 +212,7 @@ const HopDongMuaBanXe = () => {
           showroom: incoming.showroom || branchInfo.shortName,
           payment: incoming.payment || incoming.thanhToan || "",
           loanAmount: incoming.loanAmount || incoming.soTienVay || "",
+          namSanXuat: incoming.namSanXuat || incoming["Năm sản xuất"] || incoming.year || "",
         };
         setData(processedData);
         setUuDai(formatUuDaiForTextarea(processedData.uuDai || ""));
@@ -849,7 +850,7 @@ const HopDongMuaBanXe = () => {
                             {data.variant || "[---]"} - Màu:{" "}
                             {getColorName(data.exterior, true) ||
                               data.exterior ||
-                              "[---]"}
+                              "[---]"} - Năm sản xuất: {data.namSanXuat || "[---]"}
                           </span>
                           {/* Edit view */}
                           <span className="print:hidden">
@@ -882,6 +883,16 @@ const HopDongMuaBanXe = () => {
                               }
                               className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-32 focus:outline-none focus:border-blue-500"
                               placeholder="Infinity Blanc"
+                            />
+                            {" "}- Năm sản xuất:{" "}
+                            <input
+                              type="text"
+                              value={data.namSanXuat || ""}
+                              onChange={(e) =>
+                                setData({ ...data, namSanXuat: e.target.value })
+                              }
+                              className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-16 focus:outline-none focus:border-blue-500"
+                              placeholder="2025"
                             />
                           </span>
                         </p>

@@ -105,6 +105,7 @@ export default function EditHopDongDaXuatPage() {
     giayUyQuyen: "",
     giayUyQuyenNgay: "",
     showroom: "",
+    namSanXuat: "",
   });
 
   // Load contract data
@@ -189,6 +190,7 @@ export default function EditHopDongDaXuatPage() {
           giayUyQuyen: contractData.giayUyQuyen || "",
           giayUyQuyenNgay: contractData.giayUyQuyenNgay || "",
           showroom: contractData.showroom || contractData.Showroom || contractData["Showroom"] || "",
+          namSanXuat: contractData.namSanXuat || contractData["Năm sản xuất"] || contractData.year || "",
         };
 
         setContract(mapped);
@@ -549,6 +551,7 @@ export default function EditHopDongDaXuatPage() {
       "Ảnh chụp hình đặt cọc": depositImage || "",
       counterpartImage: counterpartImage || "",
       "Ảnh chụp đối ứng": counterpartImage || "",
+      namSanXuat: contract.namSanXuat || "",
     };
     navigate("/phu-luc-hop-dong", { state: printData });
   };
@@ -623,6 +626,7 @@ export default function EditHopDongDaXuatPage() {
         giayUyQuyen: safeValue(contract.giayUyQuyen),
         giayUyQuyenNgay: safeValue(contract.giayUyQuyenNgay),
         showroom: safeValue(contract.showroom),
+        namSanXuat: safeValue(contract.namSanXuat),
         "Ảnh chụp hình đặt cọc": safeValue(depositImage),
         "Ảnh chụp đối ứng": safeValue(counterpartImage),
         depositImage: safeValue(depositImage),
@@ -1099,6 +1103,20 @@ export default function EditHopDongDaXuatPage() {
                     onChange={(e) => handleChange("soMay", e.target.value)}
                     className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors text-xs sm:text-sm"
                     placeholder="Số máy"
+                  />
+                </div>
+
+                {/* Production Year (Năm sản xuất) */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                    Năm sản xuất
+                  </label>
+                  <input
+                    type="text"
+                    value={contract.namSanXuat || ""}
+                    onChange={(e) => handleChange("namSanXuat", e.target.value)}
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors text-xs sm:text-sm"
+                    placeholder="Ví dụ: 2025"
                   />
                 </div>
               </div>
