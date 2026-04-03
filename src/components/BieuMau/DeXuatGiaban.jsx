@@ -556,6 +556,7 @@ const DeXuatGiaban = () => {
       setNgay(pad(today.getDate()));
       setThang(pad(today.getMonth() + 1));
       setNam(today.getFullYear().toString());
+      setNamSanXuat(today.getFullYear().toString());
 
       if (location.state) {
         const stateData = location.state;
@@ -569,9 +570,7 @@ const DeXuatGiaban = () => {
         if (stateData.customerCCCD) setCccd(stateData.customerCCCD);
         if (stateData.hieuxe || stateData.model || stateData.dongXe) setLoaiXe(stateData.hieuxe || stateData.model || stateData.dongXe);
         if (stateData.soKhung) setSoKhung(stateData.soKhung);
-        if (stateData.namSanXuat || stateData.year) {
-          setNamSanXuat(stateData.namSanXuat || stateData.year);
-        }
+
         if (stateData.contractPrice)
           setGiaBanHopDong(formatCurrency(stateData.contractPrice));
 
