@@ -19,6 +19,9 @@ const GiayDeNghiThanhToan = () => {
   const [recipientInfo, setRecipientInfo] = useState(
     "Trung Tâm Thế Chấp Vùng 9"
   );
+  const [requestRecipientInfo, setRequestRecipientInfo] = useState(
+    "Trung Tâm Thế Chấp Vùng 9"
+  );
   const [vehicleInfo, setVehicleInfo] = useState("");
   const [branch, setBranch] = useState(null);
 
@@ -29,6 +32,9 @@ const GiayDeNghiThanhToan = () => {
   const [branchName, setBranchName] = useState("");
   const [bankName, setBankName] = useState(
     "NGÂN HÀNG TMCP VIỆT NAM THỊNH VƯỢNG-VP BANK"
+  );
+  const [requestBankName, setRequestBankName] = useState(
+    "NGÂN HÀNG TMCP VIỆT NAM THỊNH VƯỢNG VP BANK"
   );
   const [accountHolder, setAccountHolder] = useState("");
 
@@ -151,6 +157,13 @@ const GiayDeNghiThanhToan = () => {
         setVehicleInfo(incoming.vehicleInfo || defaultVehicleInfo);
         if (incoming.recipientInfo) {
           setRecipientInfo(incoming.recipientInfo);
+          setRequestRecipientInfo(incoming.recipientInfo);
+        }
+        if (incoming.requestRecipientInfo) {
+          setRequestRecipientInfo(incoming.requestRecipientInfo);
+        }
+        if (incoming.requestBankName) {
+          setRequestBankName(incoming.requestBankName);
         }
 
         // Set branch name for editable field
@@ -324,8 +337,28 @@ const GiayDeNghiThanhToan = () => {
               </strong>{" "}
               đề nghị{" "}
               <strong>
-                NGÂN HÀNG TMCP VIỆT NAM THỊNH VƯỢNG VP BANK-
-                {recipientInfo.toUpperCase()}
+                <span className="print:hidden">
+                  <input
+                    type="text"
+                    value={requestBankName}
+                    onChange={(e) => setRequestBankName(e.target.value)}
+                    className="border-b border-gray-400 px-1 text-sm font-bold focus:outline-none focus:border-blue-500 bg-transparent min-w-[380px]"
+                    placeholder="NGÂN HÀNG TMCP VIỆT NAM THỊNH VƯỢNG VP BANK"
+                  />
+                </span>
+                <span className="hidden print:inline">{requestBankName}</span>-
+                <span className="print:hidden">
+                  <input
+                    type="text"
+                    value={requestRecipientInfo}
+                    onChange={(e) => setRequestRecipientInfo(e.target.value)}
+                    className="border-b border-gray-400 px-1 text-sm font-bold focus:outline-none focus:border-blue-500 bg-transparent min-w-[250px]"
+                    placeholder="TRUNG TÂM THẾ CHẤP VÙNG 9"
+                  />
+                </span>
+                <span className="hidden print:inline">
+                  {requestRecipientInfo.toUpperCase()}
+                </span>
               </strong>{" "}
               thanh toán số tiền khách hàng vay mua xe tại Công ty như sau:
             </p>

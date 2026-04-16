@@ -42,7 +42,9 @@ const getColorName = (colorCode, isExterior = true) => {
 const extractProvince = (address, showroom) => {
   if (!address && !showroom) return '';
 
-  const searchText = (address || showroom || '').toLowerCase();
+  const showroomText = typeof showroom === 'string' ? showroom : String(showroom || '');
+  const addressText = typeof address === 'string' ? address : String(address || '');
+  const searchText = (addressText || showroomText).toLowerCase();
 
   for (const province of provinces) {
     if (searchText.includes(province.toLowerCase())) {
@@ -50,12 +52,12 @@ const extractProvince = (address, showroom) => {
     }
   }
 
-  if (showroom) {
-    if (showroom.includes('Hà Nội') || showroom.includes('Hanoi')) return 'Thành phố Hà Nội';
-    if (showroom.includes('Hồ Chí Minh') || showroom.includes('Ho Chi Minh') || showroom.includes('TP.HCM')) return 'Thành phố Hồ Chí Minh';
-    if (showroom.includes('Đà Nẵng')) return 'Thành phố Đà Nẵng';
-    if (showroom.includes('Hải Phòng')) return 'Thành phố Hải Phòng';
-    if (showroom.includes('Cần Thơ')) return 'Thành phố Cần Thơ';
+  if (showroomText) {
+    if (showroomText.includes('Hà Nội') || showroomText.includes('Hanoi')) return 'Thành phố Hà Nội';
+    if (showroomText.includes('Hồ Chí Minh') || showroomText.includes('Ho Chi Minh') || showroomText.includes('TP.HCM')) return 'Thành phố Hồ Chí Minh';
+    if (showroomText.includes('Đà Nẵng')) return 'Thành phố Đà Nẵng';
+    if (showroomText.includes('Hải Phòng')) return 'Thành phố Hải Phòng';
+    if (showroomText.includes('Cần Thơ')) return 'Thành phố Cần Thơ';
   }
 
   return '';

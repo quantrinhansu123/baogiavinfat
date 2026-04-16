@@ -172,7 +172,10 @@ export default function Dashboard() {
 
         if (userRole === "leader") {
           // Include current user in team if found
-          if (foundEmployeeName && !teamNames.includes(foundEmployeeName)) {
+          if (
+            foundEmployeeName &&
+            (!Array.isArray(teamNames) || !teamNames.includes(foundEmployeeName))
+          ) {
             teamNames.push(foundEmployeeName);
           }
           setTeamEmployeeNames(teamNames);
@@ -303,7 +306,9 @@ export default function Dashboard() {
         if (userDepartment && teamEmployeeNames.length > 0) {
           filteredContracts = allContracts.filter((contract) => {
             const contractTVBH = contract.TVBH || "";
-            return teamEmployeeNames.includes(contractTVBH);
+            return Array.isArray(teamEmployeeNames)
+              ? teamEmployeeNames.includes(contractTVBH)
+              : false;
           });
         } else {
           // No department or no team members found, show empty
@@ -411,7 +416,9 @@ export default function Dashboard() {
       if (userDepartment && teamEmployeeNames.length > 0) {
         filteredCustomers = allCustomers.filter((customer) => {
           const customerTVBH = customer.TVBH || customer.tvbh || "";
-          return teamEmployeeNames.includes(customerTVBH);
+          return Array.isArray(teamEmployeeNames)
+            ? teamEmployeeNames.includes(customerTVBH)
+            : false;
         });
       } else {
         // No team members found, show empty

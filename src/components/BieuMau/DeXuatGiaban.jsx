@@ -569,7 +569,13 @@ const DeXuatGiaban = () => {
         if (stateData.customerPhone || stateData.soDienThoai || stateData.phone) setDienThoai(stateData.customerPhone || stateData.soDienThoai || stateData.phone);
         if (stateData.customerCCCD) setCccd(stateData.customerCCCD);
         if (stateData.hieuxe || stateData.model || stateData.dongXe) setLoaiXe(stateData.hieuxe || stateData.model || stateData.dongXe);
-        if (stateData.soKhung) setSoKhung(stateData.soKhung);
+        const stateSoKhung =
+          stateData.soKhung ||
+          stateData["Số Khung"] ||
+          stateData.chassisNumber ||
+          stateData.vin ||
+          "";
+        if (stateSoKhung) setSoKhung(stateSoKhung);
 
         if (stateData.contractPrice)
           setGiaBanHopDong(formatCurrency(stateData.contractPrice));
