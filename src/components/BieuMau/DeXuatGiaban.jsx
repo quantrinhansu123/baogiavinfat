@@ -44,9 +44,7 @@ const DeXuatGiaban = () => {
   const [banBuon, setBanBuon] = useState("");
   const [xang, setXang] = useState("");
 
-  const [chinhSachKhuyenMai, setChinhSachKhuyenMai] = useState(
-
-  );
+  const [chinhSachKhuyenMai, setChinhSachKhuyenMai] = useState("");
 
   // Giá bán
   const [giaNiemYet, setGiaNiemYet] = useState("");
@@ -61,6 +59,7 @@ const DeXuatGiaban = () => {
   const [traThang, setTraThang] = useState("");
   const [traGop, setTraGop] = useState("");
   const [nganHang, setNganHang] = useState("");
+  const [soTienDatCoc, setSoTienDatCoc] = useState("");
   const [ngayDuKienNhanXe, setNgayDuKienNhanXe] = useState("");
 
   // Đề xuất lương TVBH
@@ -210,7 +209,8 @@ const DeXuatGiaban = () => {
     );
 
     setNamSanXuat(stateData.namSanXuat || "");
-    setSoKhung(stateData.soKhung || "");
+    // Không tự điền số khung mặc định trong biểu mẫu Đề xuất giá bán.
+    setSoKhung("");
     setGiaNiemYet(stateData.giaNiemYet ? formatCurrency(String(stateData.giaNiemYet)) : "");
     setGiamGia(stateData.giaGiam ? formatCurrency(String(stateData.giaGiam)) : "");
     setGiaBanHopDong(stateData.contractPrice ? formatCurrency(String(stateData.contractPrice)) : "");
