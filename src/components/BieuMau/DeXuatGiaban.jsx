@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ref, get } from "firebase/database";
-import { database } from "../../firebase/config";
 import {
   getBranchByShowroomName,
-  getDefaultBranch,
 } from "../../data/branchData";
 import { formatCurrency, formatDate } from "../../utils/formatting";
 import {
@@ -24,53 +21,46 @@ const DeXuatGiaban = () => {
   const [branch, setBranch] = useState(null);
 
   // Editable fields
-  const [ngay, setNgay] = useState("18");
-  const [thang, setThang] = useState("11");
-  const [nam, setNam] = useState("2025");
-  const [tuVanBanHang, setTuVanBanHang] = useState("Tạ Công Trí");
-  const [khachHang, setKhachHang] = useState("NGÔ NGUYÊN HOÀI NAM");
-  const [soHopDong, setSoHopDong] = useState("S00901-VSO-25-09-0039");
-  const [ngayHopDong, setNgayHopDong] = useState("29/09/2025");
-  const [cccd, setCccd] = useState("079 099 014 151");
+  const [ngay, setNgay] = useState("");
+  const [thang, setThang] = useState("");
+  const [nam, setNam] = useState("");
+  const [tuVanBanHang, setTuVanBanHang] = useState("");
+  const [khachHang, setKhachHang] = useState("");
+  const [soHopDong, setSoHopDong] = useState("");
+  const [ngayHopDong, setNgayHopDong] = useState("");
+  const [cccd, setCccd] = useState("");
   const [maSoThue, setMaSoThue] = useState("");
-  const [dienThoai, setDienThoai] = useState("093 412 2178");
-  const [diaChi, setDiaChi] = useState(
-    "Số 72/14 Đường tỉnh lộ 7, Ấp Bình Hạ, Xã Thái Mỹ, Tp Hồ Chí Minh"
-  );
-  const [loaiXe, setLoaiXe] = useState("LIMO GREEN");
-  const [mauXe, setMauXe] = useState("TRẮNG/ĐEN");
-  const [namSanXuat, setNamSanXuat] = useState("2025");
-  const [soKhung, setSoKhung] = useState("RLLVFPNT9SH858285");
+  const [dienThoai, setDienThoai] = useState("");
+  const [diaChi, setDiaChi] = useState("");
+  const [loaiXe, setLoaiXe] = useState("");
+  const [mauXe, setMauXe] = useState("");
+  const [namSanXuat, setNamSanXuat] = useState("");
+  const [soKhung, setSoKhung] = useState("");
 
   // Đối tượng khách hàng
-  const [thong, setThong] = useState("FALSE");
-  const [corporate, setCorporate] = useState("FALSE");
-  const [vinClub, setVinClub] = useState("FALSE");
-  const [banBuon, setBanBuon] = useState("FALSE");
-  const [xang, setXang] = useState("FALSE");
+  const [thong, setThong] = useState("");
+  const [corporate, setCorporate] = useState("");
+  const [vinClub, setVinClub] = useState("");
+  const [banBuon, setBanBuon] = useState("");
+  const [xang, setXang] = useState("");
 
   const [chinhSachKhuyenMai, setChinhSachKhuyenMai] = useState(
 
   );
 
   // Giá bán
-  const [giaNiemYet, setGiaNiemYet] = useState("749.000.000");
-  const [giamGia, setGiamGia] = useState("29.960.000");
-  const [giaBanHopDong, setGiaBanHopDong] = useState("719.040.000");
+  const [giaNiemYet, setGiaNiemYet] = useState("");
+  const [giamGia, setGiamGia] = useState("");
+  const [giaBanHopDong, setGiaBanHopDong] = useState("");
 
   // Quà tặng
-  const [quaTangTheoXe, setQuaTangTheoXe] = useState(
-    "bao da tay lái, bình chữa lửa, áo trùm xe, nước hoa xe."
-  );
-  const [quaTangKhac, setQuaTangKhac] = useState(
-    "Bảo Hiểm Vật Chất Kinh Doanh, Cam, Film, Sàn"
-  );
+  const [quaTangTheoXe, setQuaTangTheoXe] = useState("");
+  const [quaTangKhac, setQuaTangKhac] = useState("");
 
   // Thanh toán
   const [traThang, setTraThang] = useState("");
-  const [traGop, setTraGop] = useState("647.000.000");
-  const [nganHang, setNganHang] = useState("VP Bank");
-  const [soTienDatCoc, setSoTienDatCoc] = useState("Full tiền");
+  const [traGop, setTraGop] = useState("");
+  const [nganHang, setNganHang] = useState("");
   const [ngayDuKienNhanXe, setNgayDuKienNhanXe] = useState("");
 
   // Đề xuất lương TVBH
@@ -184,428 +174,54 @@ const DeXuatGiaban = () => {
   };
 
   useEffect(() => {
-    const loadData = async () => {
-      let showroomName = location.state?.showroom || "";
+    const stateData = location.state || {};
+    const showroomName = stateData.showroom || "";
+    const branchInfo = showroomName ? getBranchByShowroomName(showroomName) : null;
 
-      // Thử load showroom từ contracts trước
-      let showroomLoadedFromContracts = false;
-      if (location.state?.firebaseKey) {
-        try {
-          const contractId = location.state.firebaseKey;
-          const contractsRef = ref(database, `contracts/${contractId}`);
-          const snapshot = await get(contractsRef);
-          if (snapshot.exists()) {
-            const contractData = snapshot.val();
-            if (contractData.showroom) {
-              showroomName = contractData.showroom;
-              showroomLoadedFromContracts = true;
-            }
-          }
-        } catch (error) {
-          console.error("Error loading showroom from contracts:", error);
-        }
-      }
+    setBranch(branchInfo);
+    setData(stateData);
 
-      // Load dữ liệu từ exportedContracts
-      if (location.state?.firebaseKey) {
-        try {
-          const contractRef = ref(
-            database,
-            `exportedContracts/${location.state.firebaseKey}`
-          );
-          const snapshot = await get(contractRef);
-          if (snapshot.exists()) {
-            const contractData = snapshot.val();
-            console.log("Loaded from exportedContracts:", contractData);
+    const contractDate = stateData.contractDate || "";
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(contractDate)) {
+      const [day, month, year] = contractDate.split("/");
+      setNgay(day || "");
+      setThang(month || "");
+      setNam(year || "");
+    } else {
+      setNgay("");
+      setThang("");
+      setNam("");
+    }
 
-            // Load showroom nếu chưa có từ contracts
-            if (contractData.showroom && !showroomLoadedFromContracts) {
-              showroomName = contractData.showroom;
-            }
+    setTuVanBanHang(stateData.tvbh || "");
+    setKhachHang(stateData.customerName || "");
+    setSoHopDong(stateData.contractNumber || stateData.vso || "");
+    setNgayHopDong(contractDate);
+    setCccd(stateData.customerCCCD || stateData.cccd || "");
+    setMaSoThue(stateData.maSoThue || "");
+    setDienThoai(stateData.customerPhone || stateData.phone || "");
+    setDiaChi(stateData.customerAddress || stateData.address || "");
+    setLoaiXe(stateData.model || stateData.dongXe || "");
 
-            // Tư vấn bán hàng
-            if (contractData.tvbh || contractData.TVBH) {
-              setTuVanBanHang(contractData.tvbh || contractData.TVBH || "");
-            }
+    const ngoaiThatName = getColorName(stateData.exterior || "", true);
+    const noiThatName = getColorName(stateData.interior || "", false);
+    setMauXe(
+      [ngoaiThatName, noiThatName].filter(Boolean).map((v) => v.toUpperCase()).join("/")
+    );
 
-            // Khách hàng
-            if (
-              contractData.customerName ||
-              contractData["Tên KH"] ||
-              contractData["Tên Kh"]
-            ) {
-              setKhachHang(
-                contractData.customerName ||
-                contractData["Tên KH"] ||
-                contractData["Tên Kh"] ||
-                ""
-              );
-            }
+    setNamSanXuat(stateData.namSanXuat || "");
+    setSoKhung(stateData.soKhung || "");
+    setGiaNiemYet(stateData.giaNiemYet ? formatCurrency(String(stateData.giaNiemYet)) : "");
+    setGiamGia(stateData.giaGiam ? formatCurrency(String(stateData.giaGiam)) : "");
+    setGiaBanHopDong(stateData.contractPrice ? formatCurrency(String(stateData.contractPrice)) : "");
+    setNganHang(stateData.bank || stateData.nganHang || "");
+    setQuaTangTheoXe(stateData.quaTangTheoXe || "");
+    setQuaTangKhac(stateData.quaTangKhac || "");
+    setChinhSachKhuyenMai(formatUuDaiForTextarea(stateData.uuDai || ""));
+    setSoTienDatCoc(stateData.soTienCoc ? String(stateData.soTienCoc) : "");
+    setTraGop(stateData.loanAmount ? formatCurrency(String(stateData.loanAmount)) : "");
 
-            // Số hợp đồng (VSO)
-            if (
-              contractData.vso ||
-              contractData.VSO ||
-              contractData.contractNumber
-            ) {
-              setSoHopDong(
-                contractData.vso ||
-                contractData.VSO ||
-                contractData.contractNumber ||
-                ""
-              );
-            }
-
-            // Ngày hợp đồng
-            if (
-              contractData["ngày xhd"] ||
-              contractData.ngayXhd ||
-              contractData.createdDate ||
-              contractData.contractDate
-            ) {
-              const ngayHD =
-                contractData["ngày xhd"] ||
-                contractData.ngayXhd ||
-                contractData.createdDate ||
-                contractData.contractDate ||
-                "";
-              if (ngayHD) {
-                // Format date nếu cần
-                if (ngayHD.includes("-")) {
-                  const date = new Date(ngayHD);
-                  if (!isNaN(date.getTime())) {
-                    const day = String(date.getDate()).padStart(2, "0");
-                    const month = String(date.getMonth() + 1).padStart(2, "0");
-                    const year = date.getFullYear();
-                    setNgayHopDong(`${day}/${month}/${year}`);
-                  } else {
-                    setNgayHopDong(ngayHD);
-                  }
-                } else {
-                  setNgayHopDong(ngayHD);
-                }
-              }
-            }
-
-            // CCCD
-            if (
-              contractData.cccd ||
-              contractData.CCCD ||
-              contractData.customerCCCD
-            ) {
-              setCccd(
-                contractData.cccd ||
-                contractData.CCCD ||
-                contractData.customerCCCD ||
-                ""
-              );
-            }
-
-            // Mã số thuế
-            if (
-              contractData.maSoThue ||
-              contractData["Mã số thuế"] ||
-              contractData["Mã Số Thuế"]
-            ) {
-              setMaSoThue(
-                contractData.maSoThue ||
-                contractData["Mã số thuế"] ||
-                contractData["Mã Số Thuế"] ||
-                ""
-              );
-            }
-
-            // Điện thoại
-            if (
-              contractData.phone ||
-              contractData["Số Điện Thoại"] ||
-              contractData["Số điện thoại"]
-            ) {
-              setDienThoai(
-                contractData.phone ||
-                contractData["Số Điện Thoại"] ||
-                contractData["Số điện thoại"] ||
-                ""
-              );
-            }
-
-            // Địa chỉ
-            if (
-              contractData.address ||
-              contractData["Địa Chỉ"] ||
-              contractData["Địa chỉ"]
-            ) {
-              setDiaChi(
-                contractData.address ||
-                contractData["Địa Chỉ"] ||
-                contractData["Địa chỉ"] ||
-                ""
-              );
-            }
-
-            // Loại xe
-            if (
-              contractData.dongXe ||
-              contractData.model ||
-              contractData["Dòng xe"]
-            ) {
-              setLoaiXe(
-                contractData.dongXe ||
-                contractData.model ||
-                contractData["Dòng xe"] ||
-                ""
-              );
-            }
-
-            // Màu xe (ngoại thất/nội thất) - chuyển từ mã sang tên
-            if (
-              contractData.ngoaiThat ||
-              contractData["Ngoại Thất"] ||
-              contractData.exterior
-            ) {
-              const ngoaiThatCode =
-                contractData.ngoaiThat ||
-                contractData["Ngoại Thất"] ||
-                contractData.exterior ||
-                "";
-              const noiThatCode =
-                contractData.noiThat ||
-                contractData["Nội Thất"] ||
-                contractData.interior ||
-                "";
-
-              const ngoaiThatName = getColorName(ngoaiThatCode, true);
-              const noiThatName = getColorName(noiThatCode, false);
-
-              if (noiThatName && noiThatName !== noiThatCode) {
-                setMauXe(
-                  `${ngoaiThatName.toUpperCase()}/${noiThatName.toUpperCase()}`
-                );
-              } else if (noiThatCode) {
-                // Nếu có nội thất nhưng không tìm thấy tên, giữ nguyên
-                setMauXe(
-                  `${ngoaiThatName.toUpperCase()}/${noiThatCode.toUpperCase()}`
-                );
-              } else {
-                setMauXe(ngoaiThatName.toUpperCase());
-              }
-            }
-
-            // Số khung
-            if (
-              contractData.soKhung ||
-              contractData["Số Khung"] ||
-              contractData.chassisNumber
-            ) {
-              setSoKhung(
-                contractData.soKhung ||
-                contractData["Số Khung"] ||
-                contractData.chassisNumber ||
-                ""
-              );
-            }
-
-            // Năm sản xuất
-            if (
-              contractData.namSanXuat ||
-              contractData["Năm sản xuất"] ||
-              contractData.year
-            ) {
-              setNamSanXuat(
-                contractData.namSanXuat ||
-                contractData["Năm sản xuất"] ||
-                contractData.year ||
-                ""
-              );
-            }
-
-            // Giá niêm yết
-            if (contractData.giaNiemYet || contractData["Giá Niêm Yết"]) {
-              const gia =
-                contractData.giaNiemYet || contractData["Giá Niêm Yết"] || "";
-              if (gia) {
-                setGiaNiemYet(formatCurrency(gia.toString()));
-              }
-            }
-
-            // Giảm giá
-            if (contractData.giaGiam || contractData["Giá Giảm"]) {
-              const giam =
-                contractData.giaGiam || contractData["Giá Giảm"] || "";
-              if (giam) {
-                setGiamGia(formatCurrency(giam.toString()));
-              }
-            }
-
-            // Giá bán hợp đồng
-            if (
-              contractData.giaHopDong ||
-              contractData["Giá Hợp Đồng"] ||
-              contractData.contractPrice ||
-              contractData.giaHD
-            ) {
-              const giaHD =
-                contractData.giaHopDong ||
-                contractData["Giá Hợp Đồng"] ||
-                contractData.contractPrice ||
-                contractData.giaHD ||
-                "";
-              if (giaHD) {
-                setGiaBanHopDong(formatCurrency(giaHD.toString()));
-              }
-            }
-
-            // Ngân hàng
-            if (
-              contractData.nganHang ||
-              contractData.bank ||
-              contractData["ngân hàng"]
-            ) {
-              setNganHang(
-                contractData.nganHang ||
-                contractData.bank ||
-                contractData["ngân hàng"] ||
-                ""
-              );
-            }
-
-            // Quà tặng theo xe - luôn set giá trị từ Firebase
-            const quaTangValue =
-              contractData.quaTang ||
-              contractData["Quà tặng"] ||
-              contractData["quà tặng"] ||
-              contractData.quaTangTheoXe ||
-              contractData["quà tặng theo xe"] ||
-              "";
-            // Chỉ dùng giá trị mặc định nếu không có dữ liệu nào trong Firebase
-            if (quaTangValue) {
-              setQuaTangTheoXe(quaTangValue);
-            } else {
-              // Nếu không có dữ liệu, để trống thay vì dùng giá trị mặc định   
-              setQuaTangTheoXe("");
-            }
-
-            // Quà tặng khác - luôn set giá trị từ Firebase, không có giá trị mặc định
-            const quaTangKhacValue =
-              contractData.quaTangKhac ||
-              contractData["Quà tặng khác"] ||
-              contractData["quà tặng khác"] ||
-              "";
-            setQuaTangKhac(quaTangKhacValue);
-
-            // Ưu đãi / Chính sách khuyến mãi
-            const uuDaiValue =
-              contractData.uuDai ||
-              contractData["Ưu đãi"] ||
-              contractData["ưu đãi"] ||
-              "";
-            if (uuDaiValue) {
-              const formattedUuDai = formatUuDaiForTextarea(uuDaiValue);
-              if (formattedUuDai) {
-                setChinhSachKhuyenMai(formattedUuDai);
-              }
-            }
-
-            // Số tiền đặt cọc
-            if (
-              contractData.tienDatCoc ||
-              contractData["Tiền đặt cọc"] ||
-              contractData.soTienCoc ||
-              contractData.deposit
-            ) {
-              const tienCoc =
-                contractData.tienDatCoc ||
-                contractData["Tiền đặt cọc"] ||
-                contractData.soTienCoc ||
-                contractData.deposit ||
-                "";
-              setSoTienDatCoc(tienCoc.toString());
-            }
-
-            // Trả góp (tiền vay ngân hàng)
-            if (
-              contractData.tienVayNganHang ||
-              contractData["Tiền vay ngân hàng"] ||
-              contractData.loanAmount ||
-              contractData["Tiền vay"]
-            ) {
-              const tienVay =
-                contractData.tienVayNganHang ||
-                contractData["Tiền vay ngân hàng"] ||
-                contractData.loanAmount ||
-                contractData["Tiền vay"] ||
-                "";
-              if (tienVay) {
-                setTraGop(formatCurrency(tienVay.toString()));
-              }
-            }
-          }
-        } catch (error) {
-          console.error(
-            "Error loading contract data from exportedContracts:",
-            error
-          );
-        }
-      }
-
-      const branchInfo = showroomName ? getBranchByShowroomName(showroomName) : null;
-      setBranch(branchInfo);
-
-      const today = new Date();
-      const pad = (n) => String(n).padStart(2, "0");
-      setNgay(pad(today.getDate()));
-      setThang(pad(today.getMonth() + 1));
-      setNam(today.getFullYear().toString());
-      setNamSanXuat(today.getFullYear().toString());
-
-      if (location.state) {
-        const stateData = location.state;
-        setData(stateData);
-
-        if (stateData.customerName || stateData.tenKh) setKhachHang(stateData.customerName || stateData.tenKh);
-        if (stateData.contractNumber || stateData.vso) setSoHopDong(stateData.contractNumber || stateData.vso);
-        if (stateData.contractDate) setNgayHopDong(stateData.contractDate);
-        if (stateData.customerAddress || stateData.diaChi || stateData.address) setDiaChi(stateData.customerAddress || stateData.diaChi || stateData.address);
-        if (stateData.customerPhone || stateData.soDienThoai || stateData.phone) setDienThoai(stateData.customerPhone || stateData.soDienThoai || stateData.phone);
-        if (stateData.customerCCCD) setCccd(stateData.customerCCCD);
-        if (stateData.hieuxe || stateData.model || stateData.dongXe) setLoaiXe(stateData.hieuxe || stateData.model || stateData.dongXe);
-        const stateSoKhung =
-          stateData.soKhung ||
-          stateData["Số Khung"] ||
-          stateData.chassisNumber ||
-          stateData.vin ||
-          "";
-        if (stateSoKhung) setSoKhung(stateSoKhung);
-
-        if (stateData.contractPrice)
-          setGiaBanHopDong(formatCurrency(stateData.contractPrice));
-
-        // Ưu đãi / Chính sách khuyến mãi từ location.state
-        const stateUuDai =
-          stateData.uuDai || stateData["Ưu đãi"] || stateData["ưu đãi"] || "";
-        if (stateUuDai) {
-          const formattedUuDai = formatUuDaiForTextarea(stateUuDai);
-          if (formattedUuDai) {
-            setChinhSachKhuyenMai(formattedUuDai);
-          }
-        }
-      } else {
-        setData({
-          contractNumber: "",
-          contractDate: "",
-          customerName: "",
-          customerAddress: "",
-          customerPhone: "",
-          customerCCCD: "",
-          hieuxe: "",
-          soKhung: "",
-          contractPrice: "",
-        });
-      }
-      setLoading(false);
-    };
-
-    loadData();
+    setLoading(false);
   }, [location.state]);
 
   const handleBack = () => {

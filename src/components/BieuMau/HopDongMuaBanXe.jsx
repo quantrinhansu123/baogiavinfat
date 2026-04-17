@@ -3,10 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
   getBranchByShowroomName,
-  getDefaultBranch,
 } from "../../data/branchData";
-import { ref, get } from "firebase/database";
-import { database } from "../../firebase/config";
 import {
   uniqueNgoaiThatColors,
   uniqueNoiThatColors,
@@ -125,202 +122,149 @@ const HopDongMuaBanXe = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      let showroomName = location.state?.showroom || "";
+      try {
+        const showroomName = location.state?.showroom || "";
 
-      // Nếu có firebaseKey, thử lấy showroom từ contracts
-      if (location.state?.firebaseKey) {
-        try {
-          const contractId = location.state.firebaseKey;
-          const contractsRef = ref(database, `contracts/${contractId}`);
-          const snapshot = await get(contractsRef);
-          if (snapshot.exists()) {
-            const contractData = snapshot.val();
-            if (contractData.showroom) {
-              showroomName = contractData.showroom;
-            }
-          }
-        } catch (err) {
-          // Error handling
-        }
-      }
+        const branchInfo = showroomName
+          ? getBranchByShowroomName(showroomName)
+          : null;
+        setBranch(branchInfo);
 
-      const branchInfo = showroomName ? getBranchByShowroomName(showroomName) : null;
-      setBranch(branchInfo);
-
-      const formatDateString = (val) => {
-        if (!val) return null;
-        if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(val)) return val;
-        const d = new Date(val);
-        if (isNaN(d)) return val;
-        const pad = (n) => String(n).padStart(2, "0");
-        return `${pad(d.getDate())}/${pad(
-          d.getMonth() + 1
-        )}/${d.getFullYear()}`;
-      };
-
-      if (location.state) {
-        const incoming = location.state;
-        const today = new Date();
-        const pad = (n) => String(n).padStart(2, "0");
-        const todayStr = `${pad(today.getDate())}/${pad(
-          today.getMonth() + 1
-        )}/${today.getFullYear()}`;
-
-        const processedData = {
-          contractNumber: incoming.vso || incoming.contractNumber || "",
-          contractDate:
-            formatDateString(incoming.createdAt || incoming.ngayXhd) ||
-            todayStr,
-          customerName:
-            incoming.customerName || incoming.tenKh || incoming["Tên Kh"] || "",
-          customerAddress:
-            incoming.address || incoming.diaChi || incoming["Địa Chỉ"] || "",
-          phone:
-            incoming.phone ||
-            incoming.soDienThoai ||
-            incoming["Số Điện Thoại"] ||
-            "",
-          email: incoming.email || incoming.Email || "",
-          cccd: incoming.cccd || incoming.CCCD || "",
-          cccdIssueDate:
-            formatDateString(
-              incoming.issueDate || incoming.ngayCap || incoming["Ngày Cấp"]
-            ) || "",
-          cccdIssuePlace:
-            incoming.issuePlace || incoming.noiCap || incoming["Nơi Cấp"] || "",
-          // Thông tin tổ chức (nếu có)
-          taxCode: incoming.taxCode || incoming.MSDN || incoming.msdn || "",
-          representative: incoming.representative || incoming.daiDien || "",
-          position: incoming.position || incoming.chucVu || "",
-          giayUyQuyen: incoming.giayUyQuyen || "",
-          giayUyQuyenNgay: formatDateString(incoming.giayUyQuyenNgay || ""),
-          // Thông tin xe
-          model: incoming.model || incoming.dongXe || "",
-          variant: incoming.variant || incoming.phienBan || "",
-          exterior: incoming.exterior || incoming.ngoaiThat || "",
-          interior: incoming.interior || incoming.noiThat || "",
-          soKhung:
-            incoming.soKhung ||
-            incoming["Số Khung"] ||
-            incoming.chassisNumber ||
-            incoming.vin ||
-            "",
-          contractPrice: incoming.contractPrice || incoming.giaHopDong || "",
-          deposit: incoming.deposit || incoming.giaGiam || "",
-          // Chính sách ưu đãi
-          uuDai: incoming.uuDai || incoming["Ưu đãi"] || "",
-          showroom: incoming.showroom || branchInfo.shortName,
-          payment: incoming.payment || incoming.thanhToan || "",
-          loanAmount: incoming.loanAmount || incoming.soTienVay || "",
-          namSanXuat: incoming.namSanXuat || incoming["Năm sản xuất"] || incoming.year || "",
+        const formatDateString = (val) => {
+          if (!val) return null;
+          if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(val)) return val;
+          const d = new Date(val);
+          if (isNaN(d)) return val;
+          const pad = (n) => String(n).padStart(2, "0");
+          return `${pad(d.getDate())}/${pad(
+            d.getMonth() + 1
+          )}/${d.getFullYear()}`;
         };
-        setData(processedData);
-        setUuDai(formatUuDaiForTextarea(processedData.uuDai || ""));
-        setTaxCodeOrg(processedData.taxCode || "");
-        setRepresentativeOrg(processedData.representative || "");
-        setPositionOrg(processedData.position || "");
-        setGiayUyQuyen1(processedData.giayUyQuyen || "");
-        setGiayUyQuyen1Ngay(processedData.giayUyQuyenNgay || "");
-        setGiayUyQuyen2(processedData.giayUyQuyen || "");
-        setGiayUyQuyen2Ngay(processedData.giayUyQuyenNgay || "");
-        if (processedData.giayUyQuyenNgay) {
-          setGiayUyQuyen2NgayRaw(processedData.giayUyQuyenNgay.includes('/') ?
-            (() => {
-              const [day, month, year] = processedData.giayUyQuyenNgay.split('/');
-              return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-            })() : processedData.giayUyQuyenNgay
-          );
+
+        if (location.state) {
+          const incoming = location.state;
+
+          const processedData = {
+            contractNumber: incoming.vso || incoming.contractNumber || "",
+            contractDate: formatDateString(incoming.createdAt || incoming.ngayXhd) || "",
+            customerName:
+              incoming.customerName || incoming.tenKh || incoming["Tên Kh"] || "",
+            customerAddress:
+              incoming.address || incoming.diaChi || incoming["Địa Chỉ"] || "",
+            phone:
+              incoming.phone ||
+              incoming.soDienThoai ||
+              incoming["Số Điện Thoại"] ||
+              "",
+            email: incoming.email || incoming.Email || "",
+            cccd: incoming.cccd || incoming.CCCD || "",
+            cccdIssueDate:
+              formatDateString(
+                incoming.issueDate || incoming.ngayCap || incoming["Ngày Cấp"]
+              ) || "",
+            cccdIssuePlace:
+              incoming.issuePlace || incoming.noiCap || incoming["Nơi Cấp"] || "",
+            // Thông tin tổ chức (nếu có)
+            taxCode: incoming.taxCode || incoming.MSDN || incoming.msdn || "",
+            representative: incoming.representative || incoming.daiDien || "",
+            position: incoming.position || incoming.chucVu || "",
+            giayUyQuyen: incoming.giayUyQuyen || "",
+            giayUyQuyenNgay: formatDateString(incoming.giayUyQuyenNgay || ""),
+            // Thông tin xe
+            model: incoming.model || incoming.dongXe || "",
+            variant: incoming.variant || incoming.phienBan || "",
+            exterior: incoming.exterior || incoming.ngoaiThat || "",
+            interior: incoming.interior || incoming.noiThat || "",
+            soKhung: incoming.soKhung || "",
+            contractPrice: incoming.contractPrice || incoming.giaHopDong || "",
+            deposit: incoming.deposit || incoming.giaGiam || "",
+            // Chính sách ưu đãi
+            uuDai: incoming.uuDai || incoming["Ưu đãi"] || "",
+            showroom: incoming.showroom || branchInfo?.shortName || "",
+            payment: incoming.payment || incoming.thanhToan || "",
+            loanAmount: incoming.loanAmount || incoming.soTienVay || "",
+            namSanXuat: incoming.namSanXuat || incoming["Năm sản xuất"] || incoming.year || "",
+          };
+          setData(processedData);
+          setUuDai(formatUuDaiForTextarea(processedData.uuDai || ""));
+          setTaxCodeOrg(processedData.taxCode || "");
+          setRepresentativeOrg(processedData.representative || "");
+          setPositionOrg(processedData.position || "");
+          setGiayUyQuyen1(processedData.giayUyQuyen || "");
+          setGiayUyQuyen1Ngay(processedData.giayUyQuyenNgay || "");
+          setGiayUyQuyen2(processedData.giayUyQuyen || "");
+          setGiayUyQuyen2Ngay(processedData.giayUyQuyenNgay || "");
+          if (processedData.giayUyQuyenNgay) {
+            setGiayUyQuyen2NgayRaw(processedData.giayUyQuyenNgay.includes('/') ?
+              (() => {
+                const [day, month, year] = processedData.giayUyQuyenNgay.split('/');
+                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+              })() : processedData.giayUyQuyenNgay
+            );
+          }
+          // Initialize company fields from branch
+          setCompanyName(branchInfo?.name || "");
+          setCompanyAddress(branchInfo?.address || "");
+          setCompanyTaxCode(branchInfo?.taxCode || "");
+          // Initialize bank fields from branch
+          setBankAccount(branchInfo?.bankAccount || "");
+          setBankName(branchInfo?.bankName || "");
+          // Initialize customer fields from processed data
+          setCustomerName(processedData.customerName || "");
+          setCustomerAddress(processedData.customerAddress || "");
+          setCustomerPhone(processedData.phone || "");
+          setCustomerEmail(processedData.email || "");
+          // Initialize payment method and loan amount from processed data
+          setPaymentMethod(processedData.payment || "");
+          if (processedData.loanAmount) {
+            setSoTienVay(processedData.loanAmount);
+            setSoTienVayBangChu(vndToWords(processedData.loanAmount));
+          }
+        } else {
+          setData({
+            contractNumber: "",
+            contractDate: "",
+            customerName: "",
+            customerAddress: "",
+            phone: "",
+            email: "",
+            cccd: "",
+            cccdIssueDate: "",
+            cccdIssuePlace: "",
+            soKhung: "",
+            contractPrice: "",
+            deposit: "",
+            model: "",
+            variant: "",
+            exterior: "",
+            interior: "",
+            uuDai: "",
+            showroom: branchInfo?.shortName || "",
+            namSanXuat: "",
+          });
+          setUuDai("");
+          setTaxCodeOrg("");
+          setRepresentativeOrg("");
+          setPositionOrg("");
+          // Initialize company fields from branch
+          setCompanyName(branchInfo?.name || "");
+          setCompanyAddress(branchInfo?.address || "");
+          setCompanyTaxCode(branchInfo?.taxCode || "");
+          // Initialize bank fields from branch
+          setBankAccount(branchInfo?.bankAccount || "");
+          setBankName(branchInfo?.bankName || "");
+          setCustomerName("");
+          setCustomerAddress("");
+          setCustomerPhone("");
+          setCustomerEmail("");
         }
-        // Initialize company fields from branch
-        setCompanyName(branchInfo.name || "");
-        setCompanyAddress(branchInfo.address || "");
-        setCompanyTaxCode(branchInfo.taxCode || "");
-        // Initialize bank fields from branch
-        setBankAccount(branchInfo.bankAccount || "");
-        setBankName(branchInfo.bankName || "");
-        // Initialize customer fields from processed data
-        setCustomerName(processedData.customerName || "");
-        setCustomerAddress(processedData.customerAddress || "");
-        setCustomerPhone(processedData.phone || "");
-        setCustomerEmail(processedData.email || "");
-        // Initialize payment method and loan amount from processed data
-        setPaymentMethod(processedData.payment || "");
-        if (processedData.loanAmount) {
-          setSoTienVay(processedData.loanAmount);
-          setSoTienVayBangChu(vndToWords(processedData.loanAmount));
-        }
-      } else {
-        // Default data
-        const today = new Date();
-        const pad = (n) => String(n).padStart(2, "0");
-        const todayStr = `${pad(today.getDate())}/${pad(
-          today.getMonth() + 1
-        )}/${today.getFullYear()}`;
-        setData({
-          contractNumber: "S00901-VSO-25-09-0039",
-          contractDate: todayStr,
-          customerName: "NGÔ NGUYỄN HOÀI NAM",
-          customerAddress:
-            "Số 72/14 Đường tỉnh lộ 7, Ấp Bình Hạ, Thái Mỹ, Củ Chi, Tp Hồ Chí Minh",
-          phone: "0901234567",
-          email: "example@email.com",
-          cccd: "079123456789",
-          cccdIssueDate: "01/01/2020",
-          cccdIssuePlace: "Bộ Công An",
-          soKhung: "RLLVFPNT9SH858285",
-          contractPrice: "719040000",
-          deposit: "72040000",
-          model: "VF 8",
-          variant: "Eco",
-          exterior: "Đen",
-          interior: "Đen",
-          uuDai: "",
-          showroom: branchInfo.shortName,
-        });
-        setUuDai("");
-        setTaxCodeOrg("");
-        setRepresentativeOrg("");
-        setPositionOrg("");
-        // Initialize company fields from branch
-        setCompanyName(branchInfo.name || "");
-        setCompanyAddress(branchInfo.address || "");
-        setCompanyTaxCode(branchInfo.taxCode || "");
-        // Initialize bank fields from branch
-        setBankAccount(branchInfo.bankAccount || "");
-        setBankName(branchInfo.bankName || "");
-        // Initialize customer fields from default data
-        setCustomerName("NGÔ NGUYỄN HOÀI NAM");
-        setCustomerAddress(
-          "Số 72/14 Đường tỉnh lộ 7, Ấp Bình Hạ, Thái Mỹ, Củ Chi, Tp Hồ Chí Minh"
-        );
-        setCustomerPhone("0901234567");
-        setCustomerEmail("example@email.com");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     loadData();
   }, [location.state]);
-
-  // Tự động điền tên showroom vào địa điểm giao xe khi branch được load
-  // Chỉ điền khi diaDiemGiaoXe chưa có giá trị để không ghi đè giá trị người dùng đã nhập
-  useEffect(() => {
-    if (branch && branch.name && !diaDiemGiaoXe) {
-      setDiaDiemGiaoXe(branch.name);
-    }
-  }, [branch, diaDiemGiaoXe]);
-
-  // Tự động điền thông tin ngân hàng khi branch được load
-  useEffect(() => {
-    if (branch) {
-      if (branch.bankAccount && !bankAccount) {
-        setBankAccount(branch.bankAccount);
-      }
-      if (branch.bankName && !bankName) {
-        setBankName(branch.bankName);
-      }
-    }
-  }, [branch, bankAccount, bankName]);
 
   const handleBack = () => {
     navigate(-1);
@@ -410,7 +354,7 @@ const HopDongMuaBanXe = () => {
     );
   }
 
-  if (!data || !branch) {
+  if (!data) {
     return (
       <div
         className="min-h-screen bg-gray-50 flex items-center justify-center"
@@ -537,10 +481,10 @@ const HopDongMuaBanXe = () => {
                   </span>
                 </p>
                 <p>
-                  <strong>Đại diện:</strong> {branch.representativeName}
+                  <strong>Đại diện:</strong> {branch?.representativeName || "[---]"}
                 </p>
                 <p>
-                  <strong>Chức vụ:</strong> {branch.position}
+                  <strong>Chức vụ:</strong> {branch?.position || "[---]"}
                 </p>
                 <p>
                   <strong>Giấy uỷ quyền:</strong>{" "}
@@ -608,7 +552,7 @@ const HopDongMuaBanXe = () => {
                   </span>
                 </p>
                 <p>
-                  <strong>Chủ tài khoản:</strong> {branch.name}
+                  <strong>Chủ tài khoản:</strong> {branch?.name || "[---]"}
                 </p>
                 <p className="mt-2">
                   Sau đây gọi là <strong>"Bên Bán"</strong>
@@ -926,7 +870,7 @@ const HopDongMuaBanXe = () => {
                             />
                           </span>
                           <span className="hidden print:inline">
-                            {data.soKhung || "[---]"}
+                            {data.soKhung || ""}
                           </span>
                         </p>
                         <p>Tình trạng: Mới 100%</p>
