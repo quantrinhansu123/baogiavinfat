@@ -159,6 +159,8 @@ export default function ContractFormPage() {
     giayUyQuyen: '',
     giayUyQuyenNgay: '',
     namSanXuat: "",
+    soKhung: "",
+    soMay: "",
   });
 
   // List of all available promotions - loaded from Firebase but not shown directly in dropdown
@@ -367,6 +369,8 @@ export default function ContractFormPage() {
         congTyMST: contractData.congTyMST || '',
         congTySDT: contractData.congTySDT || '',
         congTyEmail: contractData.congTyEmail || '',
+        soKhung: contractData.soKhung || contractData["Số Khung"] || "",
+        soMay: contractData.soMay || contractData["Số Máy"] || "",
       });
     }
   }, [contractData]);
@@ -1490,6 +1494,36 @@ export default function ContractFormPage() {
                     disabled={isDetailsMode}
                     className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors text-xs sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="Ví dụ: 2025"
+                  />
+                </div>
+
+                {/* Số Khung */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                    Số Khung
+                  </label>
+                  <input
+                    type="text"
+                    value={contract.soKhung || ""}
+                    onChange={(e) => handleInputChange("soKhung", e.target.value)}
+                    disabled={isDetailsMode}
+                    className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors text-xs sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    placeholder="Số khung"
+                  />
+                </div>
+
+                {/* Số Máy */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                    Số Máy
+                  </label>
+                  <input
+                    type="text"
+                    value={contract.soMay || ""}
+                    onChange={(e) => handleInputChange("soMay", e.target.value)}
+                    disabled={isDetailsMode}
+                    className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors text-xs sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    placeholder="Số máy"
                   />
                 </div>
               </div>

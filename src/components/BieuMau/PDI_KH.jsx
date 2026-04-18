@@ -153,8 +153,19 @@ const PDI_KH = () => {
 
         if (stateData.soKhung) setSoKhung(stateData.soKhung);
         if (stateData.soMay) setSoMay(stateData.soMay);
-        if (stateData.maMau || stateData.ngoaiThat) setMaMau(stateData.maMau || stateData.ngoaiThat);
-        if (stateData.namSX) setNamSX(stateData.namSX);
+        
+        // Handle Mã màu /NT (Exterior / Interior)
+        const outer = stateData.maMau || stateData.ngoaiThat || stateData["Ngoại Thất"] || "";
+        const inner = stateData.noiThat || stateData["Nội Thất"] || "";
+        if (outer && inner) {
+          setMaMau(`${outer}/ ${inner}`);
+        } else if (outer || inner) {
+          setMaMau(outer || inner);
+        }
+
+        if (stateData.namSX || stateData.namSanXuat || stateData.year) {
+          setNamSX(stateData.namSX || stateData.namSanXuat || stateData.year);
+        }
       } else {
         setData({
           customerName: "",
