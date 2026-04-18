@@ -139,7 +139,7 @@ const GiayDeNghiThanhToan = () => {
             incoming.customerName || incoming.tenKh || incoming["Tên KH"] || "Trần Thị B",
           contractNumber: incoming.vso || "S00901-VSO-25-01-0041",
           createdAt: formatDateString(incoming.createdAt) || "28/06/2024",
-          model: incoming.model || "VF8",
+          model: incoming.model || incoming.dongXe || incoming["Dòng xe"] || "VF8",
           salePrice: giaXuatHoaDon,
           advancePayment: calculatedAdvancePayment,
           remainingAmount: soTienVay || "0",
@@ -147,12 +147,12 @@ const GiayDeNghiThanhToan = () => {
           bankBranch:
             incoming.bankBranch ||
             (branchInfo ? `${branchInfo.bankName} - ${branchInfo.bankBranch}` : ""),
-          exterior: incoming.exterior || "Đỏ",
+          exterior: incoming.exterior || incoming.ngoaiThat || incoming["Ngoại thất"] || "Đỏ",
           showroom: incoming.showroom || branchInfo?.shortName || "",
         };
         setData(processedData);
         // Initialize vehicleInfo from data
-        const defaultVehicleInfo = `Mua 01 chiếc xe ô tô con, chỗ, Nhãn hiệu: ${processedData.model
+        const defaultVehicleInfo = `Nhãn hiệu: ${processedData.model
           }, màu ${getColorName(processedData.exterior)}, số tự động, mới 100%.`;
         setVehicleInfo(incoming.vehicleInfo || defaultVehicleInfo);
         if (incoming.recipientInfo) {
@@ -370,15 +370,18 @@ const GiayDeNghiThanhToan = () => {
               - Tên khách hàng vay: <strong>{data.customerName}</strong>
               <em className="ml-4">
                 Loại xe mua:{" "}
-                <span className="print:hidden ">
+                <span className="print:hidden">
                   <input
                     type="text"
                     value={vehicleInfo}
                     onChange={(e) => setVehicleInfo(e.target.value)}
                     className="border-b border-gray-400 px-2 py-1 text-sm font-normal italic w-full max-w-lg focus:outline-none focus:border-blue-500"
-                    placeholder={`Mua 01 chiếc xe ô tô con, chỗ, Nhãn hiệu: ${data.model
-                      }, màu ${getColorName(data.exterior)} mới 100%.`}
+                    placeholder={`Nhãn hiệu: ${data.model
+                      }, màu ${getColorName(data.exterior)}, số tự động, mới 100%.`}
                   />
+                </span>
+                <span className="hidden print:inline">
+                  {vehicleInfo || `Nhãn hiệu: ${data.model}, màu ${getColorName(data.exterior)}, số tự động, mới 100%.`}
                 </span>
               </em>
             </div>

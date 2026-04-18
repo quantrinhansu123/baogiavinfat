@@ -33,11 +33,11 @@ const GiayXacNhanThongTin = () => {
       if (location.state?.firebaseKey) {
         try {
           const contractId = location.state.firebaseKey;
-          
+
           // Thử load từ exportedContracts trước (dữ liệu mới nhất)
           const exportedContractsRef = ref(database, `exportedContracts/${contractId}`);
           const exportedSnapshot = await get(exportedContractsRef);
-          
+
           if (exportedSnapshot.exists()) {
             const contractData = exportedSnapshot.val();
             if (contractData.showroom && contractData.showroom.trim() !== "") {
@@ -87,7 +87,7 @@ const GiayXacNhanThongTin = () => {
           setBranch(null);
         }
       }
-      
+
       // Load dữ liệu từ exportedContracts để lấy thông tin model
       let modelValue = "";
       if (location.state?.firebaseKey) {
@@ -106,7 +106,7 @@ const GiayXacNhanThongTin = () => {
       if (location.state) {
         const incoming = location.state;
         const processedData = {
-          contractNumber: incoming.vso || "S00901-VSO-24-10-0042",
+          contractNumber: incoming.vso || incoming.VSO || "S00901-VSO-24-10-0042",
           customerName: incoming.customerName || incoming.tenKh || incoming["Tên KH"] || "BÙI THỊ KIM OANH",
           contractDate: incoming.contractDate || incoming.createdAt || "2022-10-08",
           model: incoming.model || incoming.dongXe || modelValue || "VINFAST VF5",
@@ -114,7 +114,7 @@ const GiayXacNhanThongTin = () => {
           showroom: incoming.showroom || showroomName,
         };
         setData(processedData);
-        
+
         // Set editable fields
         const model = processedData.model;
         setThongTinHDMB(model);
@@ -129,7 +129,7 @@ const GiayXacNhanThongTin = () => {
           variant: "S",
           showroom: showroomName,
         });
-        
+
         // Set default editable fields
         setThongTinHDMB("VINFAST VF5");
         setThongTinTBPD("VINFAST, VINFAST VF5");
@@ -137,7 +137,7 @@ const GiayXacNhanThongTin = () => {
       }
       setLoading(false);
     };
-    
+
     loadData();
   }, [location.state]);
 
@@ -164,11 +164,11 @@ const GiayXacNhanThongTin = () => {
     try {
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return "08/10/2024";
-      
+
       const day = date.getDate().toString().padStart(2, '0');
       const month = (date.getMonth() + 1).toString().padStart(2, '0');
       const year = date.getFullYear();
-      
+
       return `${day}/${month}/${year}`;
     } catch {
       return "08/10/2024";
@@ -216,8 +216,6 @@ const GiayXacNhanThongTin = () => {
         <div className="text-center mb-8">
           <h1 className="text-lg font-bold mb-2">GIẤY XÁC NHẬN THÔNG TIN</h1>
           <p className="text-sm mb-2">Áp dụng đối với trường hợp cần xác nhận thông tin PTVT</p>
-          <p className="text-xs text-red-600 font-semibold print:hidden">CHO PHÉP SỬA TAY</p>
-          <p className="text-sm mb-8 hidden print:block text-red-600 font-semibold">CHO PHÉP SỬA TAY</p>
         </div>
 
         {/* Nội dung */}
@@ -227,7 +225,7 @@ const GiayXacNhanThongTin = () => {
             <p>
               Căn cứ vào Hợp đồng mua bán số <strong>{data.contractNumber}</strong> giữa <strong>{branch ? `CHI NHÁNH ${branch.shortName?.toUpperCase()}-CÔNG TY CP ĐẦU TƯ THƯƠNG MẠI VÀ DỊCH VỤ Ô TÔ ĐÔNG SÀI GÒN` : "[Chưa chọn showroom]"}</strong> và Ông/Bà <strong>{data.customerName}</strong> về việc thỏa thuận ký kết hợp đồng mua bán xe ngày {formatDateShort(data.contractDate)}
             </p>
-            
+
             <p>
               Xác nhận ô tô trong hợp đồng mua bán nêu trên và một số thông tin bên dưới là cùng một số loại xe của nhà sản xuất.
             </p>

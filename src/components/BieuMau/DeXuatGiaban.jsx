@@ -36,6 +36,7 @@ const DeXuatGiaban = () => {
   const [mauXe, setMauXe] = useState("");
   const [namSanXuat, setNamSanXuat] = useState("");
   const [soKhung, setSoKhung] = useState("");
+  const [soMay, setSoMay] = useState("");
 
   // Đối tượng khách hàng
   const [thong, setThong] = useState("");
@@ -173,53 +174,69 @@ const DeXuatGiaban = () => {
   };
 
   useEffect(() => {
-    const stateData = location.state || {};
-    const showroomName = stateData.showroom || "";
+    const incoming = location.state || {};
+    const showroomName = incoming.showroom || "";
     const branchInfo = showroomName ? getBranchByShowroomName(showroomName) : null;
 
     setBranch(branchInfo);
-    setData(stateData);
+    setData(incoming);
 
-    const contractDate = stateData.contractDate || "";
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(contractDate)) {
-      const [day, month, year] = contractDate.split("/");
-      setNgay(day || "");
-      setThang(month || "");
-      setNam(year || "");
-    } else {
-      setNgay("");
-      setThang("");
-      setNam("");
+    // Robust date parsing for Ngày/Tháng/Năm and Ngày hợp đồng
+    const rawDate = incoming.contractDate || incoming.createdAt || incoming.createdDate || incoming.ngayXhd || "";
+    let day = "", month = "", year = "", formattedDate = "";
+
+    if (rawDate) {
+      // Try parsing as ISO date first (YYYY-MM-DD)
+      const dateObj = new Date(rawDate);
+      if (!isNaN(dateObj.getTime()) && rawDate.includes('-')) {
+        day = String(dateObj.getDate()).padStart(2, "0");
+        month = String(dateObj.getMonth() + 1).padStart(2, "0");
+        year = String(dateObj.getFullYear());
+        formattedDate = `${day}/${month}/${year}`;
+      } 
+      // Fallback for DD/MM/YYYY
+      else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(rawDate)) {
+        const parts = rawDate.split("/");
+        day = parts[0].padStart(2, "0");
+        month = parts[1].padStart(2, "0");
+        year = parts[2];
+        formattedDate = `${day}/${month}/${year}`;
+      }
     }
 
-    setTuVanBanHang(stateData.tvbh || "");
-    setKhachHang(stateData.customerName || "");
-    setSoHopDong(stateData.contractNumber || stateData.vso || "");
-    setNgayHopDong(contractDate);
-    setCccd(stateData.customerCCCD || stateData.cccd || "");
-    setMaSoThue(stateData.maSoThue || "");
-    setDienThoai(stateData.customerPhone || stateData.phone || "");
-    setDiaChi(stateData.customerAddress || stateData.address || "");
-    setLoaiXe(stateData.model || stateData.dongXe || "");
+    setNgay(day);
+    setThang(month);
+    setNam(year);
+    setNgayHopDong(formattedDate || rawDate);
 
-    const ngoaiThatName = getColorName(stateData.exterior || "", true);
-    const noiThatName = getColorName(stateData.interior || "", false);
+    // Field mapping with aliases
+    setTuVanBanHang(incoming.tvbh || incoming.TVBH || incoming.salesConsultant || "");
+    setKhachHang(incoming.customerName || incoming.tenKh || incoming["Tên KH"] || incoming["Tên Kh"] || "");
+    setSoHopDong(incoming.vso || incoming.contractNumber || incoming.VSO || "");
+    setCccd(incoming.cccd || incoming.CCCD || incoming.customerCCCD || "");
+    setMaSoThue(incoming.maSoThue || incoming.msdn || incoming.MST || "");
+    setDienThoai(incoming.phone || incoming.soDienThoai || incoming.customerPhone || "");
+    setDiaChi(incoming.address || incoming.diaChi || incoming.customerAddress || "");
+    setLoaiXe(incoming.model || incoming.dongXe || incoming["Dòng xe"] || "");
+
+    const ngoaiThatName = getColorName(incoming.exterior || incoming.ngoaiThat || "", true);
+    const noiThatName = getColorName(incoming.interior || incoming.noiThat || "", false);
     setMauXe(
       [ngoaiThatName, noiThatName].filter(Boolean).map((v) => v.toUpperCase()).join("/")
     );
 
-    setNamSanXuat(stateData.namSanXuat || "");
-    // Không tự điền số khung mặc định trong biểu mẫu Đề xuất giá bán.
-    setSoKhung("");
-    setGiaNiemYet(stateData.giaNiemYet ? formatCurrency(String(stateData.giaNiemYet)) : "");
-    setGiamGia(stateData.giaGiam ? formatCurrency(String(stateData.giaGiam)) : "");
-    setGiaBanHopDong(stateData.contractPrice ? formatCurrency(String(stateData.contractPrice)) : "");
-    setNganHang(stateData.bank || stateData.nganHang || "");
-    setQuaTangTheoXe(stateData.quaTangTheoXe || "");
-    setQuaTangKhac(stateData.quaTangKhac || "");
-    setChinhSachKhuyenMai(formatUuDaiForTextarea(stateData.uuDai || ""));
-    setSoTienDatCoc(stateData.soTienCoc ? String(stateData.soTienCoc) : "");
-    setTraGop(stateData.loanAmount ? formatCurrency(String(stateData.loanAmount)) : "");
+    setNamSanXuat(incoming.namSanXuat || incoming["Năm sản xuất"] || incoming.year || "");
+    setSoKhung(incoming.soKhung || incoming["Số Khung"] || incoming.chassisNumber || "");
+    setSoMay(incoming.soMay || incoming["Số Máy"] || incoming.engineNumber || "");
+    setGiaNiemYet(incoming.giaNiemYet ? formatCurrency(String(incoming.giaNiemYet)) : "");
+    setGiamGia(incoming.giaGiam ? formatCurrency(String(incoming.giaGiam)) : "");
+    setGiaBanHopDong(incoming.contractPrice ? formatCurrency(String(incoming.contractPrice)) : incoming.giaHopDong ? formatCurrency(String(incoming.giaHopDong)) : "");
+    setNganHang(incoming.bank || incoming.nganHang || incoming["ngân hàng"] || "");
+    setQuaTangTheoXe(incoming.quaTangTheoXe || "");
+    setQuaTangKhac(incoming.quaTangKhac || "");
+    setChinhSachKhuyenMai(formatUuDaiForTextarea(incoming.uuDai || ""));
+    setSoTienDatCoc(incoming.soTienCoc ? String(incoming.soTienCoc) : "");
+    setTraGop(incoming.loanAmount ? formatCurrency(String(incoming.loanAmount)) : "");
 
     setLoading(false);
   }, [location.state]);

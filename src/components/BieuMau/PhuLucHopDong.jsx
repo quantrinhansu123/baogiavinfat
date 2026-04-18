@@ -78,28 +78,30 @@ const PhuLucHopDong = () => {
 
       const processedData = {
         contractNumber:
-          incoming.vso || incoming.contractNumber || "S00901-VSO-25-09-0039",
+          incoming.vso || incoming.contractNumber || incoming.VSO || "S00901-VSO-25-09-0039",
         contractDate:
-          formatDateString(incoming.createdAt || incoming.ngayXhd) ||
+          formatDateString(incoming.createdAt || incoming.createdDate || incoming.ngayXhd) ||
           formatDateString(new Date()),
         customerName:
-          incoming.customerName || incoming.tenKh || incoming["Tên Kh"] || "",
+          incoming.customerName || incoming.tenKh || incoming["Tên KH"] || incoming["Tên Kh"] || "",
         customerAddress:
-          incoming.address || incoming.diaChi || incoming["Địa Chỉ"] || "",
+          incoming.address || incoming.diaChi || incoming["Địa Chỉ"] || incoming["Địa chỉ"] || "",
         cccd: incoming.cccd || incoming.CCCD || "",
         cccdIssueDate:
           formatDateString(
-            incoming.issueDate || incoming.ngayCap || incoming["Ngày Cấp"]
+            incoming.issueDate || incoming.ngayCap || incoming["Ngày Cấp"] || incoming["Ngày cấp"]
           ) || "",
         cccdIssuePlace:
           incoming.issuePlace ||
           incoming.noiCap ||
           incoming["Nơi Cấp"] ||
+          incoming["Nơi cấp"] ||
           "Bộ Công An",
         phone:
           incoming.phone ||
           incoming.soDienThoai ||
           incoming["Số Điện Thoại"] ||
+          incoming["Số điện thoại"] ||
           "",
         email: incoming.email || incoming.Email || "",
         deposit:
