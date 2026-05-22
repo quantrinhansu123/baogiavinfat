@@ -158,7 +158,7 @@ export function useContractSubmit(navigate) {
             "ưu đãi": (() => {
               const uuDaiValue = contract.uuDai || "";
               if (Array.isArray(uuDaiValue)) {
-                return uuDaiValue.length > 0 ? uuDaiValue.join(", ") : "";
+                return uuDaiValue.length > 0 ? uuDaiValue.join("\n") : "";
               }
               return safeValue(uuDaiValue);
             })(),
@@ -272,7 +272,7 @@ export function useContractSubmit(navigate) {
               "ưu đãi": (() => {
                 const uuDaiValue = contract.uuDai || "";
                 if (Array.isArray(uuDaiValue)) {
-                  return uuDaiValue.length > 0 ? uuDaiValue.join(", ") : "";
+                  return uuDaiValue.length > 0 ? uuDaiValue.join("\n") : "";
                 }
                 return safeValue(uuDaiValue);
               })(),

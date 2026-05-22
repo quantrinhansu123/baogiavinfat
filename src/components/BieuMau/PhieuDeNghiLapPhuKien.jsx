@@ -10,9 +10,13 @@ const PhieuDeNghiLapPhuKien = () => {
     const printableRef = useRef(null);
     const [loading, setLoading] = useState(true);
 
-    // Form fields
-    const [tenNguoiDeNghi, setTenNguoiDeNghi] = useState("");
-    const [phong, setPhong] = useState("");
+    // Form fields — tên người đề nghị = nhân viên đang đăng nhập
+    const [tenNguoiDeNghi, setTenNguoiDeNghi] = useState(
+        () => localStorage.getItem("username") || ""
+    );
+    const [phong, setPhong] = useState(
+        () => localStorage.getItem("userDepartment") || ""
+    );
     const [deNghiLapPhuKienXe, setDeNghiLapPhuKienXe] = useState("");
     const [bienSoSoKhung, setBienSoSoKhung] = useState("");
 
@@ -33,10 +37,12 @@ const PhieuDeNghiLapPhuKien = () => {
             if (location.state) {
                 const stateData = location.state;
 
-                // Auto-fill logic
-                if (stateData.customerName || stateData.tenKh) {
-                    setTenNguoiDeNghi(stateData.customerName || stateData.tenKh);
-                }
+                // Tên người đề nghị = nhân viên (không dùng tên khách hàng)
+                const userName = localStorage.getItem("username") || "";
+                if (userName) setTenNguoiDeNghi(userName);
+
+                const userDepartment = localStorage.getItem("userDepartment") || "";
+                if (userDepartment) setPhong(userDepartment);
 
                 // Auto-fill car info
                 const carModel = stateData.hieuxe || stateData.dongXe || stateData.model;

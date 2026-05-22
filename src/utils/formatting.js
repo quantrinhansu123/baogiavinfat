@@ -49,3 +49,55 @@ export const formatDateOrPlaceholder = (dateStr, placeholder = '___/___/______')
   const formatted = formatDate(dateStr);
   return formatted || placeholder;
 };
+
+/** Tách chuỗi ưu đãi theo dấu phẩy (có hoặc không có khoảng trắng sau dấu phẩy). */
+const splitUuDaiByComma = (text) => {
+  const trimmed = String(text).trim();
+  if (!trimmed) return [];
+  if (!trimmed.includes(',')) return [trimmed];
+  return trimmed.split(/,\s*/).map((part) => part.trim()).filter(Boolean);
+};
+
+/**
+ * Chuyển uuDai (mảng / chuỗi / JSON) thành danh sách dòng — mỗi mục sau dấu phẩy một dòng.
+ * @param {string|string[]|null|undefined} value
+ * @returns {string[]}
+ */
+export const uuDaiToLines = (value) => {
+  if (value == null || value === '') return [];
+
+  const toLines = (raw) => {
+    const str = String(raw).trim();
+    if (!str) return [];
+    if (str.includes('\n')) {
+      return str
+        .split('\n')
+        .flatMap((line) => splitUuDaiByComma(line));
+    }
+    return splitUuDaiByComma(str);
+  };
+
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => toLines(item));
+  }
+
+  const str = String(value).trim();
+  if (!str) return [];
+
+  try {
+    const parsed = JSON.parse(str);
+    if (Array.isArray(parsed)) {
+      return parsed.flatMap((item) => toLines(item));
+    }
+  } catch {
+    // not JSON
+  }
+
+  return toLines(str);
+};
+
+/**
+ * @param {string|string[]|null|undefined} value
+ * @returns {string}
+ */
+export const uuDaiToMultilineString = (value) => uuDaiToLines(value).join('\n');

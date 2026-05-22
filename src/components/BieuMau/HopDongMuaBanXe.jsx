@@ -9,7 +9,7 @@ import {
   uniqueNoiThatColors,
 } from "../../data/calculatorData";
 import { vndToWords } from "../../utils/vndToWords";
-import { formatCurrency } from "../../utils/formatting";
+import { formatCurrency, uuDaiToLines } from "../../utils/formatting";
 import CurrencyInput from "../shared/CurrencyInput";
 import { PrintStyles } from "./PrintStyles";
 
@@ -57,55 +57,8 @@ const HopDongMuaBanXe = () => {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
 
-  const parseUuDaiList = (value) => {
-    if (!value) return [];
-    if (Array.isArray(value)) {
-      return value
-        .map((item) => String(item || "").trim())
-        .filter(Boolean);
-    }
-    if (typeof value === "string") {
-      const normalized = value.replace(/\r\n/g, "\n").trim();
-      if (!normalized) return [];
-      const splitLegacyByProgramPrefix = (text) =>
-        text
-          .split(
-            /,\s*(?=(?:-?\s*CTKM:|Chương trình|CHƯƠNG TRÌNH|Ưu đãi|ƯU ĐÃI))/i
-          )
-          .map((item) => item.replace(/^-CTKM:\s*/i, "").trim())
-          .filter(Boolean);
-
-      try {
-        const parsed = JSON.parse(normalized);
-        if (Array.isArray(parsed)) {
-          return parsed
-            .map((item) => String(item || "").trim())
-            .filter(Boolean);
-        }
-      } catch (_) {
-        // Keep string parsing fallback below.
-      }
-
-      if (normalized.includes("\n")) {
-        return normalized
-          .split("\n")
-          .map((item) => item.replace(/^-CTKM:\s*/i, "").trim())
-          .filter(Boolean);
-      }
-      if (normalized.includes("-CTKM:")) {
-        return normalized
-          .split(/-CTKM:\s*/i)
-          .map((item) => item.trim())
-          .filter(Boolean);
-      }
-      // Legacy fallback: old exported text sometimes joined programs by comma.
-      // Only split when comma is followed by a likely new program prefix.
-      const legacyParts = splitLegacyByProgramPrefix(normalized);
-      if (legacyParts.length > 1) return legacyParts;
-      return [normalized];
-    }
-    return [];
-  };
+  const parseUuDaiList = (value) =>
+    uuDaiToLines(value).map((item) => item.replace(/^-CTKM:\s*/i, "").trim()).filter(Boolean);
 
   const formatUuDaiForTextarea = (value) =>
     parseUuDaiList(value)
@@ -140,7 +93,6 @@ const HopDongMuaBanXe = () => {
             d.getMonth() + 1
           )}/${d.getFullYear()}`;
         };
-
         if (location.state) {
           const incoming = location.state;
 
@@ -303,27 +255,16 @@ const HopDongMuaBanXe = () => {
     }
   };
 
-  // Helper function to format ưu đãi as bulleted list
-  const formatUuDaiList = (text) => {
-    if (!text) return " ";
-    const textStr = String(text);
-    if (!textStr.trim()) return " ";
-
-    const programs = textStr.split('\n').map(p => p.trim()).filter(p => p);
-    
-    if (programs.length === 0) return " ";
+  const renderUuDaiLines = (text) => {
+    const lines = uuDaiToLines(text);
+    if (lines.length === 0) return " ";
 
     return (
       <div className="mt-2 space-y-1">
-        {programs.map((program, programIndex) => {
-          let cleanProgram = program.replace(/^-CTKM:\s*/i, '');
-          const formattedProgram = cleanProgram.replace(/,/g, ',\u00A0');
-          
-          return (
-            <div key={programIndex}>
-              {formattedProgram}
-            </div>
-          );
+        {lines.map((line, index) => {
+          const cleanLine = line.replace(/^-CTKM:\s*/i, "");
+          const formattedLine = cleanLine.replace(/,/g, ",\u00A0");
+          return <div key={index}>{formattedLine}</div>;
         })}
       </div>
     );
@@ -941,19 +882,9 @@ const HopDongMuaBanXe = () => {
                   >
                     {uuDai ? (
                       <div className="space-y-1">
-                        {(() => {
-                          const textStr = String(uuDai);
-                          if (!textStr.trim()) return null;
-
-                          const lines = textStr
-                            .split("\n")
-                            .map((line) => line.trim())
-                            .filter((line) => line !== "");
-
-                          return lines.map((line, index) => (
-                            <div key={index}>{line}</div>
-                          ));
-                        })()}
+                        {uuDaiToLines(uuDai).map((line, index) => (
+                          <div key={index}>{line}</div>
+                        ))}
                       </div>
                     ) : (
                       <span className="text-gray-400">
@@ -963,7 +894,7 @@ const HopDongMuaBanXe = () => {
                   </div>
                 )}
               </div>
-              <div className="hidden print:block">{formatUuDaiList(uuDai)}</div>
+              <div className="hidden print:block">{renderUuDaiLines(uuDai)}</div>
               <p className="text-left leading-relaxed">
                 Thông tin chi tiết được công bố tại website:{" "}
                 <a

@@ -1192,7 +1192,7 @@ export default function HopDongPage() {
           "ưu đãi": (() => {
             const uuDaiValue = contract.uuDai || contract["Ưu đãi"] || contract["ưu đãi"] || "";
             if (Array.isArray(uuDaiValue)) {
-              return uuDaiValue.length > 0 ? uuDaiValue.join(", ") : "";
+              return uuDaiValue.length > 0 ? uuDaiValue.join("\n") : "";
             }
             return safeValue(uuDaiValue);
           })(),
