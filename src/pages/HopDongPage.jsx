@@ -12,6 +12,7 @@ import { getBranchByShowroomName, getAllBranches } from '../data/branchData';
 import { loadPromotionsFromFirebase, filterPromotionsByDongXe, normalizeDongXe } from '../data/promotionsData';
 import CurrencyInput from '../components/shared/CurrencyInput';
 import { exportTableToExcel } from '../utils/exportToExcel';
+import { buildHopDongPrintData } from '../utils/buildHopDongPrintData';
 
 export default function HopDongPage() {
   const { carPriceData } = useCarPriceData();
@@ -51,6 +52,11 @@ export default function HopDongPage() {
   const [selectedContracts, setSelectedContracts] = useState(new Set());
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isAddPromotionModalOpen, setIsAddPromotionModalOpen] = useState(false);
+  const [printTemplateModal, setPrintTemplateModal] = useState({
+    open: false,
+    printData: null,
+    contractLabel: '',
+  });
   const [newPromotionName, setNewPromotionName] = useState('');
   const [promotions, setPromotions] = useState([]);
   const [editingPromotion, setEditingPromotion] = useState({
@@ -312,6 +318,9 @@ export default function HopDongPage() {
       chucVu: c.chucVu || '',
       giayUyQuyen: c.giayUyQuyen || '',
       giayUyQuyenNgay: c.giayUyQuyenNgay || '',
+      ngaySinh: c.ngaySinh || c['Ngày sinh'] || '',
+      soMay: c.soMay || c['Số Máy'] || '',
+      tinhTrangXe: c.tinhTrangXe || c['Tình Trạng Xe'] || '',
     });
     
     const loadFromFirebase = async () => {
@@ -466,6 +475,9 @@ export default function HopDongPage() {
         chucVu: c.chucVu || '',
         giayUyQuyen: c.giayUyQuyen || '',
         giayUyQuyenNgay: c.giayUyQuyenNgay || '',
+        ngaySinh: c.ngaySinh || c['Ngày sinh'] || '',
+        soMay: c.soMay || c['Số Máy'] || '',
+        tinhTrangXe: c.tinhTrangXe || c['Tình Trạng Xe'] || '',
       });
 
       const loadFromFirebase = async () => {
@@ -1693,63 +1705,16 @@ export default function HopDongPage() {
                           {/* Print / In hợp đồng button */}
                           <button
                             onClick={() => {
-                              // Navigate to print contract page with prepared data
-                              const printData = {
-                                id: contract.id,
-                                stt: contract.stt || startIndex + index + 1,
-                                createdAt:
-                                  contract.createdAt || contract.createdDate,
-                                TVBH: contract.TVBH || contract.tvbh,
-                                showroom: contract.showroom,
-                                vso: contract.vso,
-                                customerName:
-                                  contract.customerName || contract["Tên KH"],
-                                phone: contract.phone,
-                                email: contract.email,
-                                Email: contract.email,
-                                address: contract.address,
-                                cccd: contract.cccd,
-                                issueDate: contract.issueDate || contract.ngayCap,
-                                issuePlace: contract.issuePlace || contract.noiCap,
-                                model: contract.model || contract.dongXe,
-                                variant: contract.variant || contract.phienBan,
-                                exterior: contract.exterior || contract.ngoaiThat,
-                                interior: contract.interior || contract.noiThat,
-                                contractPrice:
-                                  contract.contractPrice || contract.giaHD,
-                                deposit: contract.deposit || contract.soTienCoc,
-                                payment: contract.payment || contract.thanhToan,
-                                loanAmount: contract.loanAmount || contract.soTienVay || "",
-                                bank: contract.bank || contract.nganHang,
-                                uuDai: (() => {
-                                  const uuDaiValue = contract.uuDai || contract["Ưu đãi"] || contract["ưu đãi"] || "";
-                                  return Array.isArray(uuDaiValue) ? uuDaiValue : (uuDaiValue ? [uuDaiValue] : []);
-                                })(),
-                                status: contract.status,
-                                soKhung: contract.soKhung || "",
-                                namSanXuat: contract.namSanXuat || contract["Năm sản xuất"] || contract.year || "",
-                                year: contract.namSanXuat || contract["Năm sản xuất"] || contract.year || "",
-                                soMay: contract.soMay || contract["Số Máy"] || contract.engineNumber || "",
-                                "Số Khung": contract.soKhung || "",
-                                "Số Máy": contract.soMay || contract["Số Máy"] || contract.engineNumber || "",
-                                chassisNumber: contract.soKhung || "",
-                                engineNumber: contract.soMay || contract["Số Máy"] || contract.engineNumber || "",
-                                representativeName: contract.TVBH || contract.tvbh || "",
-                                quaTang: contract.quaTang || contract["Quà tặng"] || contract["quà tặng"] || "",
-                                quaTangKhac: contract.quaTangKhac || contract["Quà tặng khác"] || contract["quà tặng khác"] || "",
-                                giamGia: contract.giamGia || contract["Giảm giá"] || contract["giảm giá"] || "",
-                                "Quà tặng": contract.quaTang || contract["Quà tặng"] || contract["quà tặng"] || "",
-                                "Quà tặng khác": contract.quaTangKhac || contract["Quà tặng khác"] || contract["quà tặng khác"] || "",
-                                "Giảm giá": contract.giamGia || contract["Giảm giá"] || contract["giảm giá"] || "",
-                                // Company fields
-                                khachHangLa: contract.khachHangLa || '',
-                                msdn: contract.msdn || '',
-                                daiDien: contract.daiDien || '',
-                                chucVu: contract.chucVu || '',
-                                giayUyQuyen: contract.giayUyQuyen || '',
-                                giayUyQuyenNgay: contract.giayUyQuyenNgay || '',
-                              };
-                              navigate("/hop-dong-mua-ban-xe", { state: printData });
+                              const printData = buildHopDongPrintData(
+                                contract,
+                                contract.stt || startIndex + index + 1
+                              );
+                              setPrintTemplateModal({
+                                open: true,
+                                printData,
+                                contractLabel:
+                                  contract.customerName || contract.id || '',
+                              });
                             }}
                             className="px-1.5 sm:px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
                             aria-label={`In hợp đồng ${
@@ -2025,6 +1990,77 @@ export default function HopDongPage() {
                 </div>
               </div>
             </div>
+      )}
+
+      {/* Chọn mẫu in hợp đồng */}
+      {printTemplateModal.open && printTemplateModal.printData && (
+        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="modal-box bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="bg-gradient-to-r from-green-600 to-green-500 px-4 sm:px-6 py-3 sm:py-4 rounded-t-lg">
+              <h3 className="text-lg sm:text-xl font-bold text-white">
+                Chọn mẫu in hợp đồng
+              </h3>
+              {printTemplateModal.contractLabel && (
+                <p className="text-green-50 text-sm mt-1 truncate">
+                  {printTemplateModal.contractLabel}
+                </p>
+              )}
+            </div>
+            <div className="p-4 sm:p-6 space-y-3">
+              <button
+                type="button"
+                onClick={() => {
+                  navigate("/hop-dong-mua-ban-xe", {
+                    state: printTemplateModal.printData,
+                  });
+                  setPrintTemplateModal({
+                    open: false,
+                    printData: null,
+                    contractLabel: '',
+                  });
+                }}
+                className="w-full px-4 py-3 bg-white border-2 border-green-600 text-green-700 rounded-lg hover:bg-green-50 font-medium text-left"
+              >
+                <span className="block font-bold">Mẫu 1</span>
+                <span className="block text-sm text-gray-600 mt-0.5">
+                  Mẫu cũ — bố cục hiện tại
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  navigate("/hop-dong-mua-ban-xe-mau-2", {
+                    state: printTemplateModal.printData,
+                  });
+                  setPrintTemplateModal({
+                    open: false,
+                    printData: null,
+                    contractLabel: '',
+                  });
+                }}
+                className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-left"
+              >
+                <span className="block font-bold">Mẫu 2</span>
+                <span className="block text-sm text-green-100 mt-0.5">
+                  Mẫu mới — A4 chuẩn văn bản, phụ lục ưu đãi
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setPrintTemplateModal({
+                    open: false,
+                    printData: null,
+                    contractLabel: '',
+                  })
+                }
+                className="w-full px-4 py-2 text-gray-600 hover:text-gray-800 text-sm"
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Add Promotion Modal */}

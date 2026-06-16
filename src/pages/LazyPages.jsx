@@ -55,4 +55,5 @@ export const GiayThoaThuanHoTroVayLai = lazy(() => import('../components/BieuMau
 export const DeXuatGiaban = lazy(() => import('../components/BieuMau/DeXuatGiaban'))
 export const BIDV_ThoaThuanHoTroLaiVay = lazy(() => import('../components/BieuMau/BIDV_ThoaThuanHoTroLaiVay'))
 export const PhieuDeNghiLapPhuKien = lazy(() => import('../components/BieuMau/PhieuDeNghiLapPhuKien'))
+export const HopDongMuaBanXeMau2 = lazy(() => import('../components/BieuMau/HopDongMuaBanXeMau2'))
 export const GiayXacNhanThongTinTangQua = lazy(() => import('../components/BieuMau/GiayXacNhanThongTinTangQua'))

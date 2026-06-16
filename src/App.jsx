@@ -32,6 +32,7 @@ import {
   PhuLucHopDong,
   DeNghiXuatHoaDon,
   HopDongMuaBanXe,
+  HopDongMuaBanXeMau2,
   TTHTLV_CDX_Shinhan_gui_DL,
   TT_HTLV_CDX_TPB,
   Thoa_thuan_ho_tro_lai_suat_vay_CDX_Vinfast_va_LFVN,
@@ -197,6 +198,11 @@ function App() {
               <Route path="/hop-dong-mua-ban-xe" element={
                 <ProtectedRoute>
                   <LazyRoute><HopDongMuaBanXe /></LazyRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/hop-dong-mua-ban-xe-mau-2" element={
+                <ProtectedRoute>
+                  <LazyRoute><HopDongMuaBanXeMau2 /></LazyRoute>
                 </ProtectedRoute>
               } />
               <Route path="/de-nghi-xuat-hoa-don" element={
