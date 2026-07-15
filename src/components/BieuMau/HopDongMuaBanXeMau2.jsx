@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ref, get } from "firebase/database";
 import { database } from "../../firebase/config";
 import { toast } from "react-toastify";
-import { getBranchByShowroomName } from "../../data/branchData";
 import {
   uniqueNgoaiThatColors,
   uniqueNoiThatColors,
@@ -12,6 +11,20 @@ import { formatCurrency, uuDaiToLines } from "../../utils/formatting";
 import { mapHopDongIncomingState } from "../../utils/buildHopDongPrintData";
 import { vndToWords } from "../../utils/vndToWords";
 import { HopDongMau2Styles } from "./HopDongMau2Styles";
+
+const SELLER = {
+  name: "CÔNG TY CP ĐT VÀ TM NAM AUTO - ĐỊA ĐIỂM TÂY NAM BÌNH TÂN",
+  address: "175 Bình Long, Phường Bình Hưng Hoà, TP.HCM",
+  taxCode: "0316756628004",
+  representativeName: "Ông Hoàng Minh Dũng",
+  position: "Giám đốc Kinh doanh",
+  guqNumber: "26/06/2026/GUQ-GD/...",
+  guqDate: "26/06/2026",
+  bankAccount: "119002917215",
+  bankName: "TMCP Công Thương Việt Nam (Vietinbank)",
+  bankBranch: "Chi Nhánh 2",
+  accountHolder: "CÔNG TY CỔ PHẦN ĐẦU TƯ VÀ THƯƠNG MẠI NAM AUTO",
+};
 
 const formatDateVi = (dateStr) => {
   if (!dateStr) return null;
@@ -55,7 +68,6 @@ const HopDongMuaBanXeMau2 = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
-  const [branch, setBranch] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -86,10 +98,6 @@ const HopDongMuaBanXeMau2 = () => {
         }
 
         const mapped = mapHopDongIncomingState(incoming);
-        const branchInfo = mapped?.showroom
-          ? getBranchByShowroomName(mapped.showroom)
-          : null;
-        setBranch(branchInfo);
         setData(mapped);
       } finally {
         setLoading(false);
@@ -104,10 +112,6 @@ const HopDongMuaBanXeMau2 = () => {
   const handlePrint = () => {
     if (!data?.customerName) {
       toast.error("Thiếu tên khách hàng");
-      return;
-    }
-    if (!branch) {
-      toast.error("Chưa chọn showroom");
       return;
     }
     window.print();
@@ -154,7 +158,7 @@ const HopDongMuaBanXeMau2 = () => {
   const issueDateText = formatDateShort(data.issueDate);
   const exteriorName = getColorName(data.exterior, true);
   const interiorName = getColorName(data.interior, false);
-  const deliveryAddress = branch?.address || "[Chưa chọn showroom]";
+  const deliveryAddress = SELLER.address;
 
   return (
     <div className="hd-mau2-screen">
@@ -189,27 +193,21 @@ const HopDongMuaBanXeMau2 = () => {
 
         <div className="hd-mau2-info-grid">
           <div className="hd-mau2-info-col">
-            <p className="hd-mau2-party-title">
-              {branch?.name || "[Chưa chọn showroom]"}
-            </p>
+            <p className="hd-mau2-party-title">{SELLER.name}</p>
             <ul>
-              <li>Trụ sở chính: {branch?.address || "[---]"}</li>
-              <li>MSDN: {branch?.taxCode || "[---]"}</li>
+              <li>Địa chỉ: {SELLER.address}</li>
+              <li>MSDN: {SELLER.taxCode}</li>
+              <li>Đại diện: <span className="hd-mau2-b">{SELLER.representativeName}</span></li>
+              <li>Chức vụ: <span className="hd-mau2-b">{SELLER.position}</span></li>
               <li>
-                Tài khoản số: {branch?.bankAccount || "[---]"} -{" "}
-                {branch?.bankName || "[---]"}
-                {branch?.bankBranch ? ` - ${branch.bankBranch}` : ""}
+                Giấy uỷ quyền: Theo GUQ số {SELLER.guqNumber} ngày{" "}
+                {SELLER.guqDate}
               </li>
               <li>
-                Đại diện:{" "}
-                {branch?.representativeName ||
-                  ".............................................................."}
+                Tài khoản: {SELLER.bankAccount} tại {SELLER.bankName} -{" "}
+                {SELLER.bankBranch}
               </li>
-              <li>
-                Chức vụ:{" "}
-                {branch?.position ||
-                  "..............................................................."}
-              </li>
+              <li>Chủ tài khoản: {SELLER.accountHolder}</li>
             </ul>
             <p className="hd-mau2-party-footer">
               Sau đây gọi là <span className="hd-mau2-b">“Bên Bán”</span>
@@ -227,7 +225,10 @@ const HopDongMuaBanXeMau2 = () => {
                 <>
                   <li>MSDN: {data.msdn || "[---]"}</li>
                   <li>
-                    Đại diện: {data.daiDien || "[---]"} — {data.chucVu || "[---]"}
+                    Đại diện:{" "}
+                    <span className="hd-mau2-b">
+                      {data.daiDien || "[---]"} — {data.chucVu || "[---]"}
+                    </span>
                   </li>
                 </>
               ) : (
@@ -478,7 +479,7 @@ const HopDongMuaBanXeMau2 = () => {
           </li>
           <li>
             Địa điểm giao Xe:{" "}
-            <span className="hd-mau2-b">{branch?.name || "[---]"}.</span>{" "}
+            <span className="hd-mau2-b">{SELLER.name}.</span>{" "}
             <span className="hd-mau2-b">{deliveryAddress}</span>
           </li>
         </ul>
@@ -570,7 +571,7 @@ const HopDongMuaBanXeMau2 = () => {
             <p className="hd-mau2-i">(Ký, ghi rõ họ tên và đóng dấu)</p>
             <div style={{ height: 120 }} />
             <p className="hd-mau2-b">
-              {branch?.representativeName || "................................................."}
+              {SELLER.representativeName}
             </p>
           </div>
           <div className="hd-mau2-signature-box">
