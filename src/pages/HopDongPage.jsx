@@ -14,6 +14,66 @@ import CurrencyInput from '../components/shared/CurrencyInput';
 import { exportTableToExcel } from '../utils/exportToExcel';
 import { buildHopDongPrintData } from '../utils/buildHopDongPrintData';
 
+const PRINT_TEMPLATES_STORAGE_KEY = 'hopDongPrintTemplates';
+
+const DEFAULT_PRINT_TEMPLATES = [
+  {
+    id: 'mau1',
+    name: 'Mẫu 1',
+    description: 'Mẫu cũ — bố cục hiện tại',
+    route: '/hop-dong-mua-ban-xe',
+    variant: 'outline',
+  },
+  {
+    id: 'mau2',
+    name: 'Mẫu 2',
+    description: 'Mẫu mới — A4 chuẩn văn bản, phụ lục ưu đãi',
+    route: '/hop-dong-mua-ban-xe-mau-2',
+    variant: 'primary',
+  },
+];
+
+const loadPrintTemplates = () => {
+  try {
+    const raw = localStorage.getItem(PRINT_TEMPLATES_STORAGE_KEY);
+    if (!raw) return DEFAULT_PRINT_TEMPLATES.map((t) => ({ ...t }));
+    const saved = JSON.parse(raw);
+    if (!Array.isArray(saved)) return DEFAULT_PRINT_TEMPLATES.map((t) => ({ ...t }));
+    const savedMap = Object.fromEntries(
+      saved.filter((item) => item?.id).map((item) => [item.id, item])
+    );
+    return DEFAULT_PRINT_TEMPLATES.map((base) => {
+      const item = savedMap[base.id];
+      if (!item) return { ...base };
+      return {
+        ...base,
+        name: item.name?.trim() || base.name,
+        description:
+          typeof item.description === 'string'
+            ? item.description.trim()
+            : base.description,
+        hidden: Boolean(item.hidden),
+      };
+    });
+  } catch {
+    return DEFAULT_PRINT_TEMPLATES.map((t) => ({ ...t }));
+  }
+};
+
+const persistPrintTemplates = (templates) => {
+  localStorage.setItem(
+    PRINT_TEMPLATES_STORAGE_KEY,
+    JSON.stringify(
+      templates.map(({ id, name, description, hidden }) => ({
+        id,
+        name,
+        description,
+        hidden: Boolean(hidden),
+      }))
+    )
+  );
+};
+
 export default function HopDongPage() {
   const { carPriceData } = useCarPriceData();
   const availableDongXeForPromotion = getAvailableDongXeForPromotion(carPriceData);
@@ -57,6 +117,9 @@ export default function HopDongPage() {
     printData: null,
     contractLabel: '',
   });
+  const [printTemplates, setPrintTemplates] = useState(() => loadPrintTemplates());
+  const [editingPrintTemplate, setEditingPrintTemplate] = useState(null);
+  const [deletingPrintTemplate, setDeletingPrintTemplate] = useState(null);
   const [newPromotionName, setNewPromotionName] = useState('');
   const [promotions, setPromotions] = useState([]);
   const [editingPromotion, setEditingPromotion] = useState({
@@ -743,6 +806,82 @@ export default function HopDongPage() {
   // Close delete confirmation modal
   const closeDeleteConfirm = () => {
     setDeletingContract(null);
+  };
+
+  const closePrintTemplateModal = () => {
+    setPrintTemplateModal({
+      open: false,
+      printData: null,
+      contractLabel: '',
+    });
+    setEditingPrintTemplate(null);
+    setDeletingPrintTemplate(null);
+  };
+
+  const handleSelectPrintTemplate = (template) => {
+    if (!printTemplateModal.printData) return;
+    navigate(template.route, { state: printTemplateModal.printData });
+    closePrintTemplateModal();
+  };
+
+  const openEditPrintTemplate = (template, e) => {
+    e?.stopPropagation?.();
+    setDeletingPrintTemplate(null);
+    setEditingPrintTemplate({
+      id: template.id,
+      name: template.name,
+      description: template.description,
+    });
+  };
+
+  const handleSavePrintTemplate = () => {
+    if (!editingPrintTemplate?.id) return;
+    const name = editingPrintTemplate.name?.trim();
+    if (!name) {
+      toast.error('Vui lòng nhập tên mẫu');
+      return;
+    }
+    setPrintTemplates((prev) => {
+      const next = prev.map((t) =>
+        t.id === editingPrintTemplate.id
+          ? {
+              ...t,
+              name,
+              description: editingPrintTemplate.description?.trim() || '',
+            }
+          : t
+      );
+      persistPrintTemplates(next);
+      return next;
+    });
+    setEditingPrintTemplate(null);
+    toast.success('Đã cập nhật mẫu in');
+  };
+
+  const openDeletePrintTemplate = (template, e) => {
+    e?.stopPropagation?.();
+    setEditingPrintTemplate(null);
+    setDeletingPrintTemplate(template);
+  };
+
+  const handleDeletePrintTemplate = () => {
+    if (!deletingPrintTemplate) return;
+    setPrintTemplates((prev) => {
+      const next = prev.map((t) =>
+        t.id === deletingPrintTemplate.id ? { ...t, hidden: true } : t
+      );
+      persistPrintTemplates(next);
+      return next;
+    });
+    setDeletingPrintTemplate(null);
+    toast.success('Đã xóa mẫu in khỏi danh sách');
+  };
+
+  const handleRestorePrintTemplates = () => {
+    const restored = DEFAULT_PRINT_TEMPLATES.map((t) => ({ ...t }));
+    persistPrintTemplates(restored);
+    setPrintTemplates(restored);
+    toast.success('Đã khôi phục mẫu in mặc định');
   };
 
   // Delete contract from Firebase
@@ -2007,53 +2146,170 @@ export default function HopDongPage() {
               )}
             </div>
             <div className="p-4 sm:p-6 space-y-3">
+              {printTemplates.filter((t) => !t.hidden).length === 0 ? (
+                <div className="text-center py-4 space-y-3">
+                  <p className="text-sm text-gray-600">
+                    Không còn mẫu in nào. Khôi phục mẫu mặc định để tiếp tục.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleRestorePrintTemplates}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+                  >
+                    Khôi phục mẫu mặc định
+                  </button>
+                </div>
+              ) : (
+                printTemplates
+                  .filter((t) => !t.hidden)
+                  .map((template) => (
+                    <div
+                      key={template.id}
+                      className={`flex items-stretch gap-2 rounded-lg border-2 overflow-hidden ${
+                        template.variant === 'primary'
+                          ? 'border-green-600 bg-green-600'
+                          : 'border-green-600 bg-white'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleSelectPrintTemplate(template)}
+                        className={`flex-1 px-4 py-3 font-medium text-left transition-colors ${
+                          template.variant === 'primary'
+                            ? 'text-white hover:bg-green-700'
+                            : 'text-green-700 hover:bg-green-50'
+                        }`}
+                      >
+                        <span className="block font-bold">{template.name}</span>
+                        <span
+                          className={`block text-sm mt-0.5 ${
+                            template.variant === 'primary'
+                              ? 'text-green-100'
+                              : 'text-gray-600'
+                          }`}
+                        >
+                          {template.description}
+                        </span>
+                      </button>
+                      <div
+                        className={`flex flex-col justify-center gap-1 px-2 py-2 border-l ${
+                          template.variant === 'primary'
+                            ? 'border-green-500 bg-green-700/40'
+                            : 'border-green-200 bg-green-50/80'
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => openEditPrintTemplate(template, e)}
+                          className={`p-1.5 rounded-md transition-colors ${
+                            template.variant === 'primary'
+                              ? 'text-white hover:bg-green-800'
+                              : 'text-blue-600 hover:bg-blue-50'
+                          }`}
+                          aria-label={`Sửa ${template.name}`}
+                          title="Sửa mẫu"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => openDeletePrintTemplate(template, e)}
+                          className={`p-1.5 rounded-md transition-colors ${
+                            template.variant === 'primary'
+                              ? 'text-white hover:bg-red-600'
+                              : 'text-red-600 hover:bg-red-50'
+                          }`}
+                          aria-label={`Xóa ${template.name}`}
+                          title="Xóa mẫu"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+              )}
+
+              {editingPrintTemplate && (
+                <div className="mt-2 p-3 border border-blue-200 rounded-lg bg-blue-50 space-y-3">
+                  <h4 className="text-sm font-semibold text-blue-800">Sửa mẫu in</h4>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Tên mẫu
+                    </label>
+                    <input
+                      type="text"
+                      value={editingPrintTemplate.name}
+                      onChange={(e) =>
+                        setEditingPrintTemplate((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Mô tả
+                    </label>
+                    <input
+                      type="text"
+                      value={editingPrintTemplate.description}
+                      onChange={(e) =>
+                        setEditingPrintTemplate((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setEditingPrintTemplate(null)}
+                      className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSavePrintTemplate}
+                      className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                      Lưu
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {deletingPrintTemplate && (
+                <div className="mt-2 p-3 border border-red-200 rounded-lg bg-red-50 space-y-3">
+                  <p className="text-sm text-red-800">
+                    Xóa mẫu <span className="font-semibold">{deletingPrintTemplate.name}</span> khỏi danh sách chọn?
+                  </p>
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setDeletingPrintTemplate(null)}
+                      className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeletePrintTemplate}
+                      className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
+                    >
+                      Xóa mẫu
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <button
                 type="button"
-                onClick={() => {
-                  navigate("/hop-dong-mua-ban-xe", {
-                    state: printTemplateModal.printData,
-                  });
-                  setPrintTemplateModal({
-                    open: false,
-                    printData: null,
-                    contractLabel: '',
-                  });
-                }}
-                className="w-full px-4 py-3 bg-white border-2 border-green-600 text-green-700 rounded-lg hover:bg-green-50 font-medium text-left"
-              >
-                <span className="block font-bold">Mẫu 1</span>
-                <span className="block text-sm text-gray-600 mt-0.5">
-                  Mẫu cũ — bố cục hiện tại
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  navigate("/hop-dong-mua-ban-xe-mau-2", {
-                    state: printTemplateModal.printData,
-                  });
-                  setPrintTemplateModal({
-                    open: false,
-                    printData: null,
-                    contractLabel: '',
-                  });
-                }}
-                className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-left"
-              >
-                <span className="block font-bold">Mẫu 2</span>
-                <span className="block text-sm text-green-100 mt-0.5">
-                  Mẫu mới — A4 chuẩn văn bản, phụ lục ưu đãi
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setPrintTemplateModal({
-                    open: false,
-                    printData: null,
-                    contractLabel: '',
-                  })
-                }
+                onClick={closePrintTemplateModal}
                 className="w-full px-4 py-2 text-gray-600 hover:text-gray-800 text-sm"
               >
                 Hủy

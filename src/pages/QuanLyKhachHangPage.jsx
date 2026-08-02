@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, get, push, update, remove } from 'firebase/database';
 import { database } from '../firebase/config';
@@ -19,8 +19,23 @@ import {
   NGUON_OPTIONS,
   KHACH_HANG_LA_OPTIONS,
   CustomerFormModal,
-  WorkHistoryModal
+  WorkHistoryModal,
+  CustomerAdvancedFilters
 } from '../components/customer';
+
+const EMPTY_ADVANCED_FILTERS = {
+  fromDate: '', toDate: '', tenKhachHang: [], tinhThanh: [], dongXe: [], phienBan: [],
+  mauSac: [], nhuCau: [], thanhToan: [], nguon: [], mucDo: [], tinhTrang: [], noiDung: [], tvbh: [],
+};
+
+const ADVANCED_FILTER_FIELDS = ['tenKhachHang', 'tinhThanh', 'dongXe', 'phienBan', 'mauSac', 'nhuCau', 'thanhToan', 'nguon', 'mucDo', 'tinhTrang', 'noiDung', 'tvbh'];
+
+const normalizeCustomerDate = (value) => {
+  const text = String(value || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  const match = text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  return match ? `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}` : '';
+};
 
 export default function QuanLyKhachHangPage() {
   const navigate = useNavigate();
@@ -47,6 +62,7 @@ export default function QuanLyKhachHangPage() {
   const [contracts, setContracts] = useState([]);
   const [searchText, setSearchText] = useState('');
   const [customerTypeFilter, setCustomerTypeFilter] = useState('');
+  const [advancedFilters, setAdvancedFilters] = useState(EMPTY_ADVANCED_FILTERS);
   const [isWorkHistoryModalOpen, setIsWorkHistoryModalOpen] = useState(false);
   const [workHistoryCustomer, setWorkHistoryCustomer] = useState(null);
   const [workHistoryEntries, setWorkHistoryEntries] = useState([]);
@@ -500,28 +516,64 @@ export default function QuanLyKhachHangPage() {
     setFilteredCustomers(filtered);
   }, [allCustomers, userRole, actualEmployeeName, userDepartment, teamEmployeeNames, employeesLoaded]);
 
-  // Apply search filter
+  const advancedFilterOptions = useMemo(() => {
+    const result = {};
+    ADVANCED_FILTER_FIELDS.forEach((field) => {
+      let source = customers;
+      if (field === 'phienBan' && advancedFilters.dongXe.length > 0) {
+        source = customers.filter((customer) => advancedFilters.dongXe.includes(String(customer.dongXe || '').trim()));
+      }
+      result[field] = [...new Set(source.map((customer) => String(customer[field] || '').trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'vi'));
+    });
+    return result;
+  }, [customers, advancedFilters.dongXe]);
+
+  const activeAdvancedFilterCount = useMemo(() => (
+    Number(Boolean(advancedFilters.fromDate)) + Number(Boolean(advancedFilters.toDate)) +
+    ADVANCED_FILTER_FIELDS.reduce((total, field) => total + Number(advancedFilters[field].length > 0), 0)
+  ), [advancedFilters]);
+
+  const handleAdvancedFilterChange = (field, value) => {
+    setAdvancedFilters((current) => {
+      const next = { ...current, [field]: value };
+      if (field === 'dongXe') {
+        const allowedVariants = new Set(customers
+          .filter((customer) => value.length === 0 || value.includes(String(customer.dongXe || '').trim()))
+          .map((customer) => String(customer.phienBan || '').trim()));
+        next.phienBan = current.phienBan.filter((variant) => allowedVariants.has(variant));
+      }
+      return next;
+    });
+  };
+
+  // Apply search and advanced filters
   useEffect(() => {
     const customersByType = customerTypeFilter
       ? customers.filter((customer) => (customer.khachHangLa || '').toLowerCase() === customerTypeFilter.toLowerCase())
       : customers;
 
-    if (!searchText.trim()) {
-      setFilteredCustomers(customersByType);
-      return;
-    }
-
     const searchLower = searchText.toLowerCase();
     const filtered = customersByType.filter((customer) => {
-      return Object.values(customer).some((val) => {
+      const matchesSearch = !searchText.trim() || Object.values(customer).some((val) => {
         if (val === null || val === undefined) return false;
         if (typeof val === 'object') return false;
         return String(val).toLowerCase().includes(searchLower);
       });
+      if (!matchesSearch) return false;
+
+      const customerDate = normalizeCustomerDate(customer.ngay);
+      if (advancedFilters.fromDate && (!customerDate || customerDate < advancedFilters.fromDate)) return false;
+      if (advancedFilters.toDate && (!customerDate || customerDate > advancedFilters.toDate)) return false;
+
+      return ADVANCED_FILTER_FIELDS.every((field) => {
+        const selected = advancedFilters[field];
+        return selected.length === 0 || selected.includes(String(customer[field] || '').trim());
+      });
     });
 
     setFilteredCustomers(filtered);
-  }, [searchText, customers, customerTypeFilter]);
+  }, [searchText, customers, customerTypeFilter, advancedFilters]);
 
   // Handle contract selection
   const handleContractSelect = (contractId) => {
@@ -1428,6 +1480,14 @@ export default function QuanLyKhachHangPage() {
           />
         </div>
       </div>
+
+      <CustomerAdvancedFilters
+        filters={advancedFilters}
+        options={advancedFilterOptions}
+        onFilterChange={handleAdvancedFilterChange}
+        onReset={() => setAdvancedFilters(EMPTY_ADVANCED_FILTERS)}
+        activeCount={activeAdvancedFilterCount}
+      />
 
       {/* Statistics */}
       <div className="mb-3 sm:mb-4">

@@ -13,6 +13,94 @@ import {
 } from "../data/calculatorData";
 import { uploadImageToCloudinary } from "../config/cloudinary";
 
+const PRINT_FORMS_STORAGE_KEY = "hopDongDaXuatPrintForms";
+
+const COLOR_STYLES = {
+  blue: {
+    card: "bg-blue-600 border-blue-500",
+    hover: "hover:bg-blue-700",
+    actionBg: "bg-blue-700/50 border-blue-500",
+    actionHover: "hover:bg-blue-800",
+  },
+  green: {
+    card: "bg-green-600 border-green-500",
+    hover: "hover:bg-green-700",
+    actionBg: "bg-green-700/50 border-green-500",
+    actionHover: "hover:bg-green-800",
+  },
+  yellow: {
+    card: "bg-yellow-600 border-yellow-500",
+    hover: "hover:bg-yellow-700",
+    actionBg: "bg-yellow-700/50 border-yellow-500",
+    actionHover: "hover:bg-yellow-800",
+  },
+};
+
+function loadPrintFormOverrides() {
+  try {
+    const raw = localStorage.getItem(PRINT_FORMS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistPrintFormOverrides(overrides) {
+  localStorage.setItem(PRINT_FORMS_STORAGE_KEY, JSON.stringify(overrides));
+}
+
+function PrintFormCard({
+  label,
+  color = "blue",
+  compact = false,
+  onSelect,
+  onEdit,
+  onDelete,
+}) {
+  const styles = COLOR_STYLES[color] || COLOR_STYLES.blue;
+  const pad = compact
+    ? "px-3 sm:px-4 py-2 text-xs sm:text-sm"
+    : "px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base";
+
+  return (
+    <div
+      className={`flex items-stretch rounded-md border overflow-hidden ${styles.card}`}
+    >
+      <button
+        type="button"
+        onClick={onSelect}
+        className={`flex-1 ${pad} text-white text-center transition-colors ${styles.hover}`}
+      >
+        {label}
+      </button>
+      <div
+        className={`flex items-center gap-0.5 px-1.5 border-l ${styles.actionBg}`}
+      >
+        <button
+          type="button"
+          onClick={onEdit}
+          className={`p-1.5 text-white rounded transition-colors ${styles.actionHover}`}
+          aria-label={`Sửa ${label}`}
+          title="Sửa mẫu"
+        >
+          <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="p-1.5 text-white rounded transition-colors hover:bg-red-600"
+          aria-label={`Xóa ${label}`}
+          title="Xóa mẫu"
+        >
+          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function HopDongDaXuatPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -55,6 +143,10 @@ export default function HopDongDaXuatPage() {
   const [bankLoanFile, setBankLoanFile] = useState(null); // File cho vay của NH cho Đề xuất bán hàng
   const [uploadingBankLoanFile, setUploadingBankLoanFile] = useState(false);
   const [currentContractKey, setCurrentContractKey] = useState(null); // Track which contract's file we're editing
+  const [printFormOverrides, setPrintFormOverrides] = useState(() =>
+    loadPrintFormOverrides()
+  );
+  const [editingPrintForm, setEditingPrintForm] = useState(null); // { id, label }
 
   // Image modal states
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
@@ -99,6 +191,93 @@ export default function HopDongDaXuatPage() {
   // Helper function to clear print modal state from sessionStorage
   const clearPrintModalState = () => {
     sessionStorage.removeItem('printModalState');
+  };
+
+  const getPrintFormLabel = (id, defaultLabel) => {
+    const override = printFormOverrides[id];
+    return override?.label?.trim() || defaultLabel;
+  };
+
+  const isPrintFormHidden = (id) => Boolean(printFormOverrides[id]?.hidden);
+
+  const openEditPrintForm = (id, defaultLabel) => {
+    setEditingPrintForm({
+      id,
+      label: getPrintFormLabel(id, defaultLabel),
+    });
+  };
+
+  const handleSavePrintFormLabel = () => {
+    if (!editingPrintForm?.id) return;
+    const label = editingPrintForm.label?.trim();
+    if (!label) {
+      toast.error("Vui lòng nhập tên mẫu");
+      return;
+    }
+    setPrintFormOverrides((prev) => {
+      const next = {
+        ...prev,
+        [editingPrintForm.id]: {
+          ...prev[editingPrintForm.id],
+          label,
+          hidden: Boolean(prev[editingPrintForm.id]?.hidden),
+        },
+      };
+      persistPrintFormOverrides(next);
+      return next;
+    });
+    setEditingPrintForm(null);
+    toast.success("Đã cập nhật tên mẫu");
+  };
+
+  const handleDeletePrintForm = (id, label) => {
+    const confirmed = window.confirm(
+      `Xóa mẫu "${label}" khỏi danh sách chọn in?`
+    );
+    if (!confirmed) return;
+    setPrintFormOverrides((prev) => {
+      const next = {
+        ...prev,
+        [id]: {
+          ...prev[id],
+          label: prev[id]?.label || label,
+          hidden: true,
+        },
+      };
+      persistPrintFormOverrides(next);
+      return next;
+    });
+    if (editingPrintForm?.id === id) setEditingPrintForm(null);
+    toast.success("Đã xóa mẫu khỏi danh sách");
+  };
+
+  const handleRestorePrintForms = () => {
+    persistPrintFormOverrides({});
+    setPrintFormOverrides({});
+    setEditingPrintForm(null);
+    toast.success("Đã khôi phục danh sách mẫu in mặc định");
+  };
+
+  const renderPrintFormCard = ({
+    id,
+    defaultLabel,
+    color,
+    compact,
+    onSelect,
+  }) => {
+    if (isPrintFormHidden(id)) return null;
+    const label = getPrintFormLabel(id, defaultLabel);
+    return (
+      <PrintFormCard
+        key={id}
+        label={label}
+        color={color}
+        compact={compact}
+        onSelect={onSelect}
+        onEdit={() => openEditPrintForm(id, defaultLabel)}
+        onDelete={() => handleDeletePrintForm(id, label)}
+      />
+    );
   };
 
   useEffect(() => {
@@ -1924,6 +2103,7 @@ export default function HopDongDaXuatPage() {
                             setIsPrintModalOpen(false);
                             setPrintContract(null);
                             setCurrentContractKey(null);
+                            setEditingPrintForm(null);
                             clearPrintModalState(); // Clear sessionStorage when manually closing
                           }}
                           className="text-white hover:text-gray-200 transition-colors"
@@ -1941,6 +2121,42 @@ export default function HopDongDaXuatPage() {
                     </div>
 
                     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 max-h-[calc(70vh-100px)] overflow-y-auto">
+                      {editingPrintForm && (
+                        <div className="p-3 border border-blue-200 rounded-lg bg-blue-50 space-y-2 sticky top-0 z-10">
+                          <h4 className="text-sm font-semibold text-blue-800">
+                            Sửa tên mẫu in
+                          </h4>
+                          <input
+                            type="text"
+                            value={editingPrintForm.label}
+                            onChange={(e) =>
+                              setEditingPrintForm((prev) => ({
+                                ...prev,
+                                label: e.target.value,
+                              }))
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            autoFocus
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setEditingPrintForm(null)}
+                              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                            >
+                              Hủy
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSavePrintFormLabel}
+                              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                            >
+                              Lưu
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Group 1: XUẤT HÓA ĐƠN */}
                       <div className="space-y-3">
                         <h4 className="text-sm sm:text-base font-bold text-primary-700 border-b-2 border-primary-300 pb-2">
@@ -1948,176 +2164,179 @@ export default function HopDongDaXuatPage() {
                         </h4>
 
                         {/* Đề xuất bán hàng */}
-                        <div className="space-y-2">
-                          <button
-                            onClick={() =>
-                              handlePrintNavigate("/de-xuat-gia-ban", true)
-                            }
-                            className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-center text-sm sm:text-base"
-                          >
-                            Đề xuất bán hàng
-                          </button>
+                        {!isPrintFormHidden("de-xuat-gia-ban") && (
+                          <div className="space-y-2">
+                            {renderPrintFormCard({
+                              id: "de-xuat-gia-ban",
+                              defaultLabel: "Đề xuất bán hàng",
+                              color: "blue",
+                              onSelect: () =>
+                                handlePrintNavigate("/de-xuat-gia-ban", true),
+                            })}
 
-                          {/* File upload section for Đề xuất bán hàng */}
-                          <div className="bg-gray-50 p-2 sm:p-3 rounded-md border border-gray-200">
-                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                              Upload file cho vay của Ngân hàng:
-                            </label>
-                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                              <label
-                                className={`flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-md transition-colors text-xs sm:text-sm text-center ${uploadingBankLoanFile
-                                  ? "bg-gray-200 cursor-not-allowed opacity-50"
-                                  : "cursor-pointer hover:bg-gray-50"
-                                  }`}
-                              >
-                                <span className="text-gray-700">
-                                  {uploadingBankLoanFile
-                                    ? "Đang upload..."
-                                    : bankLoanFile
-                                      ? "Đã upload file"
-                                      : "Chọn file (Ảnh)"}
-                                </span>
-                                <input
-                                  type="file"
-                                  accept="image/*,.pdf"
-                                  onChange={handleBankLoanFileUpload}
-                                  className="hidden"
-                                  disabled={uploadingBankLoanFile}
-                                />
+                            {/* File upload section for Đề xuất bán hàng */}
+                            <div className="bg-gray-50 p-2 sm:p-3 rounded-md border border-gray-200">
+                              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                                Upload file cho vay của Ngân hàng:
                               </label>
-                              {bankLoanFile && (
-                                <>
-                                  <button
-                                    onClick={handlePrintFile}
-                                    className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs sm:text-sm"
-                                  >
-                                    In file
-                                  </button>
-                                  <button
-                                    onClick={async () => {
-                                      const confirmDelete = window.confirm(
-                                        "Bạn có chắc chắn muốn xóa file này?"
-                                      );
-                                      if (!confirmDelete) return;
+                              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                <label
+                                  className={`flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-md transition-colors text-xs sm:text-sm text-center ${uploadingBankLoanFile
+                                    ? "bg-gray-200 cursor-not-allowed opacity-50"
+                                    : "cursor-pointer hover:bg-gray-50"
+                                    }`}
+                                >
+                                  <span className="text-gray-700">
+                                    {uploadingBankLoanFile
+                                      ? "Đang upload..."
+                                      : bankLoanFile
+                                        ? "Đã upload file"
+                                        : "Chọn file (Ảnh)"}
+                                  </span>
+                                  <input
+                                    type="file"
+                                    accept="image/*,.pdf"
+                                    onChange={handleBankLoanFileUpload}
+                                    className="hidden"
+                                    disabled={uploadingBankLoanFile}
+                                  />
+                                </label>
+                                {bankLoanFile && (
+                                  <>
+                                    <button
+                                      onClick={handlePrintFile}
+                                      className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs sm:text-sm"
+                                    >
+                                      In file
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        const confirmDelete = window.confirm(
+                                          "Bạn có chắc chắn muốn xóa file này?"
+                                        );
+                                        if (!confirmDelete) return;
 
-                                      try {
-                                        // Remove from Firebase if contract key exists
-                                        if (
-                                          currentContractKey ||
-                                          printContract?.firebaseKey
-                                        ) {
-                                          const contractKey =
+                                        try {
+                                          if (
                                             currentContractKey ||
-                                            printContract.firebaseKey;
-                                          const contractRef = ref(
-                                            database,
-                                            `exportedContracts/${contractKey}`
-                                          );
-                                          await update(contractRef, {
-                                            bankLoanFile: "",
-                                            "File cho vay ngân hàng": "",
-                                          });
+                                            printContract?.firebaseKey
+                                          ) {
+                                            const contractKey =
+                                              currentContractKey ||
+                                              printContract.firebaseKey;
+                                            const contractRef = ref(
+                                              database,
+                                              `exportedContracts/${contractKey}`
+                                            );
+                                            await update(contractRef, {
+                                              bankLoanFile: "",
+                                              "File cho vay ngân hàng": "",
+                                            });
 
-                                          // Update local state
-                                          setContracts((prev) =>
-                                            prev.map((contract) => {
-                                              const key =
-                                                contract.firebaseKey ||
-                                                contract.id;
-                                              if (key === contractKey) {
-                                                return {
-                                                  ...contract,
-                                                  bankLoanFile: "",
-                                                  "File cho vay ngân hàng": "",
-                                                };
-                                              }
-                                              return contract;
-                                            })
+                                            setContracts((prev) =>
+                                              prev.map((contract) => {
+                                                const key =
+                                                  contract.firebaseKey ||
+                                                  contract.id;
+                                                if (key === contractKey) {
+                                                  return {
+                                                    ...contract,
+                                                    bankLoanFile: "",
+                                                    "File cho vay ngân hàng": "",
+                                                  };
+                                                }
+                                                return contract;
+                                              })
+                                            );
+                                            setFilteredContracts((prev) =>
+                                              prev.map((contract) => {
+                                                const key =
+                                                  contract.firebaseKey ||
+                                                  contract.id;
+                                                if (key === contractKey) {
+                                                  return {
+                                                    ...contract,
+                                                    bankLoanFile: "",
+                                                    "File cho vay ngân hàng": "",
+                                                  };
+                                                }
+                                                return contract;
+                                              })
+                                            );
+                                          }
+
+                                          setBankLoanFile(null);
+                                          toast.success("Xóa file thành công!");
+                                        } catch (error) {
+                                          console.error(
+                                            "Error deleting file:",
+                                            error
                                           );
-                                          setFilteredContracts((prev) =>
-                                            prev.map((contract) => {
-                                              const key =
-                                                contract.firebaseKey ||
-                                                contract.id;
-                                              if (key === contractKey) {
-                                                return {
-                                                  ...contract,
-                                                  bankLoanFile: "",
-                                                  "File cho vay ngân hàng": "",
-                                                };
-                                              }
-                                              return contract;
-                                            })
+                                          toast.error(
+                                            "Lỗi khi xóa file. Vui lòng thử lại."
                                           );
                                         }
-
-                                        setBankLoanFile(null);
-                                        toast.success("Xóa file thành công!");
-                                      } catch (error) {
-                                        console.error(
-                                          "Error deleting file:",
-                                          error
-                                        );
-                                        toast.error(
-                                          "Lỗi khi xóa file. Vui lòng thử lại."
-                                        );
-                                      }
-                                    }}
-                                    className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-xs sm:text-sm"
-                                  >
-                                    Xóa
-                                  </button>
-                                </>
-                              )}
+                                      }}
+                                      className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-xs sm:text-sm"
+                                    >
+                                      Xóa
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        )}
 
-                        <button
-                          onClick={() =>
-                            handlePrintNavigate("/de-nghi-xuat-hoa-don")
-                          }
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
-                        >
-                          Đề nghị xuất hóa đơn
-                        </button>
+                        {renderPrintFormCard({
+                          id: "de-nghi-xuat-hoa-don",
+                          defaultLabel: "Đề nghị xuất hóa đơn",
+                          color: "blue",
+                          onSelect: () =>
+                            handlePrintNavigate("/de-nghi-xuat-hoa-don"),
+                        })}
 
-                        <button
-                          onClick={() =>
-                            handlePrintNavigate("/phu-luc-hop-dong")
-                          }
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
-                        >
-                          Phụ lục hợp đồng
-                        </button>
+                        {renderPrintFormCard({
+                          id: "phu-luc-hop-dong",
+                          defaultLabel: "Phụ lục hợp đồng",
+                          color: "blue",
+                          onSelect: () =>
+                            handlePrintNavigate("/phu-luc-hop-dong"),
+                        })}
 
-                        <button
-                          onClick={() => handlePrintNavigate("/pdi-kh")}
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
-                        >
-                          Phiếu yêu cầu sửa chữa
-                        </button>
+                        {renderPrintFormCard({
+                          id: "pdi-kh",
+                          defaultLabel: "Phiếu yêu cầu sửa chữa",
+                          color: "blue",
+                          onSelect: () => handlePrintNavigate("/pdi-kh"),
+                        })}
 
-                        <button
-                          onClick={() => handlePrintNavigate("/phieu-de-nghi-lap-phu-kien")}
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
-                        >
-                          Phiếu đề nghị lắp phụ kiện
-                        </button>
+                        {renderPrintFormCard({
+                          id: "phieu-de-nghi-lap-phu-kien",
+                          defaultLabel: "Phiếu đề nghị lắp phụ kiện",
+                          color: "blue",
+                          onSelect: () =>
+                            handlePrintNavigate("/phieu-de-nghi-lap-phu-kien"),
+                        })}
 
-                        <button
-                          onClick={() => handlePrintNavigate("/phieu-rut-coc")}
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
-                        >
-                          Phiếu rút cọc
-                        </button>
+                        {renderPrintFormCard({
+                          id: "phieu-rut-coc",
+                          defaultLabel: "Phiếu rút cọc",
+                          color: "blue",
+                          onSelect: () =>
+                            handlePrintNavigate("/phieu-rut-coc"),
+                        })}
 
-                        <button
-                          onClick={() => handlePrintNavigate("/phieu-xac-nhan-thong-tin-tang-qua")}
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
-                        >
-                          Phiếu xác nhận thông tin nhận quà VinFast
-                        </button>
+                        {renderPrintFormCard({
+                          id: "phieu-xac-nhan-thong-tin-tang-qua",
+                          defaultLabel:
+                            "Phiếu xác nhận thông tin nhận quà VinFast",
+                          color: "blue",
+                          onSelect: () =>
+                            handlePrintNavigate(
+                              "/phieu-xac-nhan-thong-tin-tang-qua"
+                            ),
+                        })}
                       </div>
 
                       {/* Group 2: BỘ GIẢI NGÂN CỦA NGÂN HÀNG */}
@@ -2126,78 +2345,77 @@ export default function HopDongDaXuatPage() {
                           2. BỘ GIẢI NGÂN CỦA NGÂN HÀNG
                         </h4>
 
-                        <button
-                          onClick={() =>
-                            handlePrintNavigate("/giay-de-nghi-thanh-toan")
-                          }
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm sm:text-base"
-                        >
-                          Đề nghị thanh toán
-                        </button>
+                        {renderPrintFormCard({
+                          id: "giay-de-nghi-thanh-toan",
+                          defaultLabel: "Đề nghị thanh toán",
+                          color: "green",
+                          onSelect: () =>
+                            handlePrintNavigate("/giay-de-nghi-thanh-toan"),
+                        })}
 
-                        <button
-                          onClick={() =>
-                            handlePrintNavigate("/giay-xac-nhan-sksm")
-                          }
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm sm:text-base"
-                        >
-                          Xác nhận Số khung số máy
-                        </button>
+                        {renderPrintFormCard({
+                          id: "giay-xac-nhan-sksm",
+                          defaultLabel: "Xác nhận Số khung số máy",
+                          color: "green",
+                          onSelect: () =>
+                            handlePrintNavigate("/giay-xac-nhan-sksm"),
+                        })}
 
-                        <button
-                          onClick={() =>
-                            handlePrintNavigate("/giay-xac-nhan-thong-tin")
-                          }
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm sm:text-base"
-                        >
-                          Xác nhận kiểu loại
-                        </button>
+                        {renderPrintFormCard({
+                          id: "giay-xac-nhan-thong-tin",
+                          defaultLabel: "Xác nhận kiểu loại",
+                          color: "green",
+                          onSelect: () =>
+                            handlePrintNavigate("/giay-xac-nhan-thong-tin"),
+                        })}
 
-                        <button
-                          onClick={() =>
-                            handlePrintNavigate("/giay-xac-nhan-tang-bao-hiem")
-                          }
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm sm:text-base"
-                        >
-                          Xác nhận bảo hiểm
-                        </button>
+                        {renderPrintFormCard({
+                          id: "giay-xac-nhan-tang-bao-hiem",
+                          defaultLabel: "Xác nhận bảo hiểm",
+                          color: "green",
+                          onSelect: () =>
+                            handlePrintNavigate(
+                              "/giay-xac-nhan-tang-bao-hiem"
+                            ),
+                        })}
 
-                        <button
-                          onClick={() => handlePrintNavigate("/giay-xac-nhan")}
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm sm:text-base"
-                        >
-                          Xác nhận thanh toán
-                        </button>
+                        {renderPrintFormCard({
+                          id: "giay-xac-nhan",
+                          defaultLabel: "Xác nhận thanh toán",
+                          color: "green",
+                          onSelect: () =>
+                            handlePrintNavigate("/giay-xac-nhan"),
+                        })}
 
-                        {/* Các biểu mẫu bổ sung - hiển thị tất cả */}
+                        {/* Các biểu mẫu bổ sung */}
                         <div className="space-y-2 mt-3 pl-2 sm:pl-4 border-l-4 border-yellow-400 bg-yellow-50 p-2 sm:p-3 rounded">
                           <p className="text-xs sm:text-sm font-semibold text-yellow-800 mb-2">
                             Thỏa thuận lãi vay 0 đồng:
                           </p>
-                          <button
-                            onClick={() =>
-                              handlePrintNavigate("/giay-thoa-thuan-tra-cham")
-                            }
-                            className="w-full px-3 sm:px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors text-xs sm:text-sm"
-                          >
-                            Thỏa thuận thanh toán chậm
-                          </button>
-                          <button
-                            onClick={() =>
-                              handlePrintNavigate("/giay-thoa-thuan-tra-thay")
-                            }
-                            className="w-full px-3 sm:px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors text-xs sm:text-sm"
-                          >
-                            Thỏa thuận hỗ trợ trả thay
-                          </button>
-                          <button
-                            onClick={() =>
-                              handlePrintNavigate("/xac-nhan-cong-no")
-                            }
-                            className="w-full px-3 sm:px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors text-xs sm:text-sm"
-                          >
-                            Xác nhận công nợ
-                          </button>
+                          {renderPrintFormCard({
+                            id: "giay-thoa-thuan-tra-cham",
+                            defaultLabel: "Thỏa thuận thanh toán chậm",
+                            color: "yellow",
+                            compact: true,
+                            onSelect: () =>
+                              handlePrintNavigate("/giay-thoa-thuan-tra-cham"),
+                          })}
+                          {renderPrintFormCard({
+                            id: "giay-thoa-thuan-tra-thay",
+                            defaultLabel: "Thỏa thuận hỗ trợ trả thay",
+                            color: "yellow",
+                            compact: true,
+                            onSelect: () =>
+                              handlePrintNavigate("/giay-thoa-thuan-tra-thay"),
+                          })}
+                          {renderPrintFormCard({
+                            id: "xac-nhan-cong-no",
+                            defaultLabel: "Xác nhận công nợ",
+                            color: "yellow",
+                            compact: true,
+                            onSelect: () =>
+                              handlePrintNavigate("/xac-nhan-cong-no"),
+                          })}
                         </div>
 
                         {/* Thỏa thuận hỗ trợ lãi vay 80% */}
@@ -2205,103 +2423,108 @@ export default function HopDongDaXuatPage() {
                           <p className="text-xs sm:text-sm font-semibold text-green-800 mb-2">
                             Thỏa thuận hỗ trợ lãi vay 80%:
                           </p>
-                          <button
-                            onClick={() =>
-                              handlePrintNavigate("/bidv-thoa-thuan-ho-tro-lai-vay")
-                            }
-                            className="w-full px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs sm:text-sm"
-                          >
-                            BIDV - Thỏa thuận hỗ trợ lãi vay
-                          </button>
-                          <button
-                            onClick={() =>
-                              handlePrintNavigate("/giay-thoa-thuan-ho-tro-vay-lai")
-                            }
-                            className="w-full px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs sm:text-sm"
-                          >
-                            TCB - Thỏa thuận hỗ trợ lãi vay 80%
-                          </button>
-                          <button
-                            onClick={() =>
-                              handlePrintNavigate("/bieu-mau-tpbank")
-                            }
-                            className="w-full px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs sm:text-sm"
-                          >
-                            TPBank - Thỏa thuận hỗ trợ lãi vay
-                          </button>
-                          <button
-                            onClick={() =>
-                              handlePrintNavigate("/giay-thoa-thuan-htls-vpbank")
-                            }
-                            className="w-full px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs sm:text-sm"
-                          >
-                            VPBank - Thỏa thuận hỗ trợ lãi suất
-                          </button>
-                          <button
-                            onClick={() =>
-                              handlePrintNavigate("/thoa-thuan-ho-tro-lai-vay-shinhan-cdx")
-                            }
-                            className="w-full px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs sm:text-sm"
-                          >
-                            Shinhan - Thỏa thuận hỗ trợ lãi vay
-                          </button>
+                          {renderPrintFormCard({
+                            id: "bidv-thoa-thuan-ho-tro-lai-vay",
+                            defaultLabel: "BIDV - Thỏa thuận hỗ trợ lãi vay",
+                            color: "green",
+                            compact: true,
+                            onSelect: () =>
+                              handlePrintNavigate(
+                                "/bidv-thoa-thuan-ho-tro-lai-vay"
+                              ),
+                          })}
+                          {renderPrintFormCard({
+                            id: "giay-thoa-thuan-ho-tro-vay-lai",
+                            defaultLabel:
+                              "TCB - Thỏa thuận hỗ trợ lãi vay 80%",
+                            color: "green",
+                            compact: true,
+                            onSelect: () =>
+                              handlePrintNavigate(
+                                "/giay-thoa-thuan-ho-tro-vay-lai"
+                              ),
+                          })}
+                          {renderPrintFormCard({
+                            id: "bieu-mau-tpbank-80",
+                            defaultLabel:
+                              "TPBank - Thỏa thuận hỗ trợ lãi vay",
+                            color: "green",
+                            compact: true,
+                            onSelect: () =>
+                              handlePrintNavigate("/bieu-mau-tpbank"),
+                          })}
+                          {renderPrintFormCard({
+                            id: "giay-thoa-thuan-htls-vpbank-80",
+                            defaultLabel:
+                              "VPBank - Thỏa thuận hỗ trợ lãi suất",
+                            color: "green",
+                            compact: true,
+                            onSelect: () =>
+                              handlePrintNavigate(
+                                "/giay-thoa-thuan-htls-vpbank"
+                              ),
+                          })}
+                          {renderPrintFormCard({
+                            id: "thoa-thuan-ho-tro-lai-vay-shinhan-cdx",
+                            defaultLabel:
+                              "Shinhan - Thỏa thuận hỗ trợ lãi vay",
+                            color: "green",
+                            compact: true,
+                            onSelect: () =>
+                              handlePrintNavigate(
+                                "/thoa-thuan-ho-tro-lai-vay-shinhan-cdx"
+                              ),
+                          })}
                         </div>
 
-                        {/* Biểu mẫu theo ngân hàng - hiển thị tất cả */}
+                        {/* Biểu mẫu theo ngân hàng 90% */}
                         <div className="space-y-2 mt-3 pl-2 sm:pl-4 border-l-4 border-blue-400 bg-blue-50 p-2 sm:p-3 rounded">
                           <p className="text-xs sm:text-sm font-semibold text-blue-800 mb-2">
                             Thỏa thuận hỗ trợ lãi vay 90%:
                           </p>
-                          <button
-                            onClick={() =>
+                          {renderPrintFormCard({
+                            id: "giay-thoa-thuan-htls-vpbank-90",
+                            defaultLabel:
+                              "Thỏa thuận hỗ trợ lãi suất ngân hàng VPBank",
+                            color: "blue",
+                            compact: true,
+                            onSelect: () =>
                               handlePrintNavigate(
                                 "/giay-thoa-thuan-htls-vpbank"
-                              )
-                            }
-                            className="w-full px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs sm:text-sm"
-                          >
-                            Thỏa thuận hỗ trợ lãi suất ngân hàng VPBank
-                          </button>
-                          <button
-                            onClick={() =>
-                              handlePrintNavigate("/bieu-mau-tpbank")
-                            }
-                            className="w-full px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs sm:text-sm"
-                          >
-                            Thỏa thuận hỗ trợ lãi suất vay CĐX TPB
-                          </button>
-
-                          <button
-                            onClick={() =>
+                              ),
+                          })}
+                          {renderPrintFormCard({
+                            id: "bieu-mau-tpbank-90",
+                            defaultLabel:
+                              "Thỏa thuận hỗ trợ lãi suất vay CĐX TPB",
+                            color: "blue",
+                            compact: true,
+                            onSelect: () =>
+                              handlePrintNavigate("/bieu-mau-tpbank"),
+                          })}
+                          {renderPrintFormCard({
+                            id: "thoa-thuan-ho-tro-lai-suat-vay-cdx-vinfast-va-lfvn",
+                            defaultLabel:
+                              "Thoả thuận hỗ trợ lãi suất vay CĐX Vinfast và LFVN",
+                            color: "blue",
+                            compact: true,
+                            onSelect: () =>
                               handlePrintNavigate(
                                 "/thoa-thuan-ho-tro-lai-suat-vay-cdx-vinfast-va-lfvn"
-                              )
-                            }
-                            className="w-full px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs sm:text-sm"
-                          >
-                            Thoả thuận hỗ trợ lãi suất vay CĐX Vinfast và LFVN
-                          </button>
+                              ),
+                          })}
                         </div>
                       </div>
 
-                      {/* Legacy options (keep for backward compatibility) */}
-                      {/* <div className="space-y-3 pt-4 border-t border-gray-200">
-                          <h4 className="text-sm font-semibold text-gray-600">Các mẫu in khác:</h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              onClick={() => handlePrintNavigate("/giay-xac-nhan")}
-                              className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors text-sm"
-                            >
-                              Giấy xác nhận
-                            </button>
-                            <button
-                              onClick={() => handlePrintNavigate("/giay-xac-nhan-thong-tin")}
-                              className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors text-sm"
-                            >
-                              Giấy xác nhận thông tin
-                            </button>
-                          </div>
-                        </div> */}
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={handleRestorePrintForms}
+                          className="text-xs sm:text-sm text-gray-500 hover:text-gray-700 underline"
+                        >
+                          Khôi phục mẫu mặc định
+                        </button>
+                      </div>
                     </div>
 
                     <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 border-t flex justify-end sticky bottom-0">
@@ -2310,6 +2533,7 @@ export default function HopDongDaXuatPage() {
                           setIsPrintModalOpen(false);
                           setPrintContract(null);
                           setCurrentContractKey(null);
+                          setEditingPrintForm(null);
                           clearPrintModalState(); // Clear sessionStorage when manually closing
                         }}
                         className="w-full sm:w-auto px-4 sm:px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-sm sm:text-base"
