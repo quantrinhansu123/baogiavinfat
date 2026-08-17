@@ -42,6 +42,7 @@ const HopDongMuaBanXe = () => {
   const [thoiGianGiaoXeRaw, setThoiGianGiaoXeRaw] = useState("");
   const [bankAccount, setBankAccount] = useState("");
   const [bankName, setBankName] = useState("");
+  const [accountHolder, setAccountHolder] = useState("");
   const [uuDai, setUuDai] = useState("");
   const [isEditingUuDai, setIsEditingUuDai] = useState(false);
   const [taxCodeOrg, setTaxCodeOrg] = useState("");
@@ -161,6 +162,9 @@ const HopDongMuaBanXe = () => {
           // Initialize bank fields from branch
           setBankAccount(branchInfo?.bankAccount || "");
           setBankName(branchInfo?.bankName || "");
+          setAccountHolder(
+            branchInfo?.accountHolder || branchInfo?.name || ""
+          );
           // Initialize customer fields from processed data
           setCustomerName(processedData.customerName || "");
           setCustomerAddress(processedData.customerAddress || "");
@@ -205,6 +209,9 @@ const HopDongMuaBanXe = () => {
           // Initialize bank fields from branch
           setBankAccount(branchInfo?.bankAccount || "");
           setBankName(branchInfo?.bankName || "");
+          setAccountHolder(
+            branchInfo?.accountHolder || branchInfo?.name || ""
+          );
           setCustomerName("");
           setCustomerAddress("");
           setCustomerPhone("");
@@ -493,7 +500,19 @@ const HopDongMuaBanXe = () => {
                   </span>
                 </p>
                 <p>
-                  <strong>Chủ tài khoản:</strong> {branch?.name || "[---]"}
+                  <strong>Chủ tài khoản:</strong>{" "}
+                  <span className="print:hidden">
+                    <input
+                      type="text"
+                      value={accountHolder}
+                      onChange={(e) => setAccountHolder(e.target.value)}
+                      className="border-b border-gray-400 px-2 py-1 text-sm font-normal w-full focus:outline-none focus:border-blue-500 uppercase"
+                      placeholder=""
+                    />
+                  </span>
+                  <span className="hidden print:inline uppercase">
+                    {accountHolder || "[---]"}
+                  </span>
                 </p>
                 <p className="mt-2">
                   Sau đây gọi là <strong>"Bên Bán"</strong>
